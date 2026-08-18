@@ -8,6 +8,8 @@
 #include <element/context.hpp>
 #include <element/settings.hpp>
 
+#include <cmath>
+
 #include "engine/midiengine.hpp"
 
 #include "ui/nodeportstable.hpp"
@@ -51,6 +53,25 @@ static bool canResize (BlockComponent& block)
 {
     return block.getDisplayMode() == BlockComponent::Embed && block.getNode().getFormat() == EL_NODE_FORMAT_NAME;
 }
+
+static Colour contrastingTextColour (const Colour background)
+{
+    const auto relativeLuminance = [] (float channel)
+    {
+        channel = jlimit (0.0f, 1.0f, channel);
+        return channel <= 0.03928f
+                   ? channel / 12.92f
+                   : std::pow ((channel + 0.055f) / 1.055f, 2.4f);
+    };
+
+    const auto luminance = 0.2126f * relativeLuminance (background.getFloatRed())
+                         + 0.7152f * relativeLuminance (background.getFloatGreen())
+                         + 0.0722f * relativeLuminance (background.getFloatBlue());
+    const auto contrastWithBlack = (luminance + 0.05f) / 0.05f;
+    const auto contrastWithWhite = 1.05f / (luminance + 0.05f);
+    return contrastWithBlack >= contrastWithWhite ? Colours::black : Colours::white;
+}
+
 } // namespace detail
 
 //=============================================================================
@@ -615,7 +636,9 @@ void BlockComponent::changeListenerCallback (ChangeBroadcaster* broadcaster)
 {
     if (broadcaster == &colorSelector)
     {
-        color = colorSelector.getCurrentColour().withAlpha (1.0f);
+        const auto selectedColour = colorSelector.getCurrentColour();
+        color = selectedColour.isTransparent() ? Colour (0x00000000)
+                                               : selectedColour.withAlpha (1.0f);
         node.getUIValueTree().setProperty ("color", color.toString(), nullptr);
 
         forEachSibling ([this] (BlockComponent& sibling) {
@@ -688,6 +711,25 @@ void BlockComponent::mouseDown (const MouseEvent& e)
             node.getUIValueTree().getProperty ("color", color.toString()).toString()));
         colorSelector.addChangeListener (this);
         const int result = menu.show();
+        if (result == NodePopupMenu::ResetNodeColor)
+        {
+            const Colour transparent;
+            color = transparent;
+            node.getUIValueTree().setProperty ("color", color.toString(), nullptr);
+
+            forEachSibling ([this, transparent] (BlockComponent& sibling) {
+                if (! sibling.isSelected())
+                    return;
+
+                sibling.color = transparent;
+                sibling.node.getUIValueTree().setProperty ("color",
+                                                           sibling.color.toString(),
+                                                           nullptr);
+                sibling.repaint();
+            });
+
+            repaint();
+        }
         colorSelector.removeChangeListener (this);
 
         // Must match the array used by NodePopupMenu::addReplaceSubmenu so the
@@ -942,17 +984,22 @@ void BlockComponent::paint (Graphics& g)
     const float cornerSize = 2.4f;
     const auto box (getBoxRectangle());
     const int colorBarHeight = vertical ? 20 : 18;
-    bool colorize = color != Colour (0x00000000);
-    Colour bgc = isEnabled() && node.isEnabled() && ! node.isMissing()
-                     ? Colors::widgetBackgroundColor.brighter (0.8f)
-                     : Colors::widgetBackgroundColor.brighter (0.2f);
+    const bool enabled = isEnabled() && node.isEnabled() && ! node.isMissing();
+    const bool selected = isSelected();
+    const bool colorize = color != Colour (0x00000000);
+    const auto getNodeBackground = [&] (const char* key, const Colour fallback)
+    {
+        return detail::configuredColour (this, key, fallback);
+    };
+    const auto bgc = enabled
+                         ? getNodeBackground (selected ? Settings::nodeEnabledSelectedColorKey
+                                                        : Settings::nodeEnabledColorKey,
+                                               selected ? Colour (0xFF4A83C7) : Colour (0xFF9BA2AB))
+                         : getNodeBackground (selected ? Settings::nodeDisabledSelectedColorKey
+                                                        : Settings::nodeDisabledColorKey,
+                                               selected ? Colour (0xFF3D2470) : Colour (0xFF454A52));
 
     auto barColor = isEnabled() && node.isEnabled() ? color : color.darker (.1f);
-
-    if (isSelected())
-    {
-        bgc = bgc.brighter (0.55f);
-    }
 
     if (colorize)
     {
@@ -1011,11 +1058,13 @@ void BlockComponent::paint (Graphics& g)
         }
     }
 
-    auto normalTextColor = node.isMissing() ? Colors::toggleRed : Colours::black;
-    if (colorize && ! node.isMissing())
-        normalTextColor = Colours::white.overlaidWith (color).contrasting();
+        const auto normalTextColor = node.isMissing() ? Colors::toggleRed
+                                                   : detail::contrastingTextColour (bgc);
+    const auto titleTextColor = node.isMissing() ? Colors::toggleRed
+                                                 : detail::contrastingTextColour (colorize ? barColor : bgc);
 
-    g.setColour (normalTextColor);
+    g.setColour (titleTextColor);
+
     g.setFont (Font (FontOptions (12.f).withStyle (node.isMissing() ? "Bold" : "Regular")));
 
     if (vertical)
@@ -1030,7 +1079,7 @@ void BlockComponent::paint (Graphics& g)
 
                 if (subName.isNotEmpty())
                 {
-                    g.setColour (Colours::black);
+                    g.setColour (normalTextColor);
                     g.setFont (Font (FontOptions (9.f)));
                     y += colorBarHeight;
                     g.drawFittedText (subName, box.getX(), y, box.getWidth(), 9, Justification::centred, 2);
@@ -1054,7 +1103,7 @@ void BlockComponent::paint (Graphics& g)
 
                 if (subName.isNotEmpty())
                 {
-                    g.setColour (Colours::black);
+                    g.setColour (normalTextColor);
                     g.setFont (Font (FontOptions (9.f)));
                     y += colorBarHeight;
                     g.drawFittedText (subName, box.getX(), y, box.getWidth(), 13, Justification::centred, 2);

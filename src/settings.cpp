@@ -57,6 +57,10 @@ const char* Settings::connectionCableHoverColorKey = "connectionCableHoverColor"
 const char* Settings::nearbyConnectHighlightColorKey = "nearbyConnectHighlightColor";
 const char* Settings::nearbyDisconnectHighlightColorKey = "nearbyDisconnectHighlightColor";
 const char* Settings::nearbySwapHighlightColorKey = "nearbySwapHighlightColor";
+const char* Settings::nodeEnabledColorKey = "nodeEnabledColor";
+const char* Settings::nodeEnabledSelectedColorKey = "nodeEnabledSelectedColor";
+const char* Settings::nodeDisabledColorKey = "nodeDisabledColor";
+const char* Settings::nodeDisabledSelectedColorKey = "nodeDisabledSelectedColor";
 
 //=============================================================================
 enum OptionsMenuItemId
@@ -163,6 +167,10 @@ Settings::Settings()
         setDefault (nearbyConnectHighlightColorKey, "#0C83FF");
         setDefault (nearbyDisconnectHighlightColorKey, "#FF66B3");
         setDefault (nearbySwapHighlightColorKey, "#FFFFFF");
+        setDefault (nodeEnabledColorKey, "#9BA2AB");
+        setDefault (nodeEnabledSelectedColorKey, "#4A83C7");
+        setDefault (nodeDisabledColorKey, "#454A52");
+        setDefault (nodeDisabledSelectedColorKey, "#3D2470");
 
         if (changed)
             props->saveIfNeeded();

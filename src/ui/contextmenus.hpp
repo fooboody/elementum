@@ -131,8 +131,10 @@ public:
         Disconnect,
         DisconnectInputs,
         DisconnectOutputs,
-        DisconnectMidi,
+                DisconnectMidi,
+        ResetNodeColor,
         LastItem
+
     };
 
     typedef std::initializer_list<ItemIds> ItemList;
@@ -215,13 +217,16 @@ public:
     inline void addColorSubmenu (ColourSelector& selector)
     {
         PopupMenu color;
-        color.addCustomItem (std::numeric_limits<int>::max(),
+                color.addCustomItem (std::numeric_limits<int>::max(),
                              selector,
                              220,
                              300,
                              false,
                              nullptr);
+        color.addSeparator();
+        color.addItem (ResetNodeColor, TRANS ("Reset"));
         addSubMenu (TRANS ("Color"), color, true);
+
     }
 
     inline void addOversamplingSubmenu (PopupMenu& menuToAddTo)

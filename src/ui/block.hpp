@@ -323,8 +323,9 @@ private:
     class BlockColorSelector : public juce::ColourSelector
     {
     public:
-        BlockColorSelector() : ColourSelector (ColourSelector::showColourAtTop | ColourSelector::editableColour | ColourSelector::showColourspace)
+                BlockColorSelector() : ColourSelector (ColourSelector::showColourAtTop | ColourSelector::editableColour | ColourSelector::showColourspace)
         {
+
             colors.addArray ({
                 Colour (0xFF800000), // Dark Red
                 Colour (0xFFE24B00), // Dark Orange
@@ -366,9 +367,10 @@ private:
                 colors.set (index, color);
         }
 
-    private:
+        private:
         Array<Colour> colors;
         Colour fallback { 0xFF000000 };
+
     };
 
     BlockColorSelector colorSelector;

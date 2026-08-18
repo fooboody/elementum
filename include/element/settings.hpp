@@ -67,6 +67,10 @@ public:
     static const char* nearbyConnectHighlightColorKey;
     static const char* nearbyDisconnectHighlightColorKey;
     static const char* nearbySwapHighlightColorKey;
+    static const char* nodeEnabledColorKey;
+    static const char* nodeEnabledSelectedColorKey;
+    static const char* nodeDisabledColorKey;
+    static const char* nodeDisabledSelectedColorKey;
 
     bool getBool (std::string_view key, bool fallback = false) const noexcept;
 
