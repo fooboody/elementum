@@ -77,8 +77,8 @@ public:
 
     void mouseDown (const MouseEvent& ev) override
     {
-        StretchableLayoutResizerBar::mouseDown (ev);
         mousePressed();
+        StretchableLayoutResizerBar::mouseDown (ev);
     }
 
     void mouseUp (const MouseEvent& ev) override
@@ -142,8 +142,18 @@ public:
                 secondary.get()
             };
 
-            layout.layOutComponents (comps, 3, 0, 0, r.getWidth(), r.getHeight(), true, true);
-            lastSecondaryHeight = secondary->getHeight();
+            if (locked && secondary->getName() == EL_VIEW_GRAPH_MIXER)
+            {
+                const int secondaryHeight = jmin (lastSecondaryHeight, jmax (0, r.getHeight() - barSize - 48));
+                secondary->setBounds (r.removeFromBottom (secondaryHeight));
+                bar->setBounds (r.removeFromBottom (barSize));
+                primary->setBounds (r);
+            }
+            else
+            {
+                layout.layOutComponents (comps, 3, 0, 0, r.getWidth(), r.getHeight(), true, true);
+                lastSecondaryHeight = secondary->getHeight();
+            }
         }
         else
         {
@@ -226,10 +236,15 @@ public:
         showAccessoryView = show;
         if (showAccessoryView)
         {
+            locked = true;
             lastSecondaryHeight = jmax (50, lastSecondaryHeight);
             layout.setItemLayout (0, 48, -1.0, primary->getHeight() - 4 - lastSecondaryHeight);
             layout.setItemLayout (1, barSize, barSize, barSize);
-            layout.setItemLayout (2, 48, -1.0, lastSecondaryHeight);
+
+            if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
+                layout.setItemLayout (2, lastSecondaryHeight, lastSecondaryHeight, lastSecondaryHeight);
+            else
+                layout.setItemLayout (2, 48, -1.0, lastSecondaryHeight);
         }
 
         resized();
@@ -345,7 +360,8 @@ private:
 
         if (showAccessoryView)
         {
-            capturedAccessoryHeight = secondary->getHeight();
+            lastSecondaryHeight = secondary->getHeight();
+            capturedAccessoryHeight = lastSecondaryHeight;
         }
     }
 
