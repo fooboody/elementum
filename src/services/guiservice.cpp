@@ -342,7 +342,6 @@ void GuiService::saveProperties (PropertiesFile* props)
     {
         props->setValue ("mainWindowState", mainWindow->getWindowStateAsString());
         props->setValue ("mainWindowFullScreen", mainWindow->isFullScreen());
-        props->setValue ("mainWindowVisible", mainWindow->isOnDesktop() && mainWindow->isVisible());
     }
 
     if (_content)
@@ -671,17 +670,25 @@ void GuiService::run()
 
     mainWindow->setContentNonOwned (content(), true);
     mainWindow->centreWithSize (_content->getWidth(), _content->getHeight());
-    mainWindow->restoreWindowStateFromString (pf->getValue ("mainWindowState"));
     mainWindow->addKeyListener (keys.get());
     mainWindow->addKeyListener (commands().getKeyMappings());
     _content->restoreState (pf);
 
-    if (pf->getBoolValue ("mainWindowVisible", true))
+    const int mainWindowVisibility = pf->getIntValue ("mainWindowVisible", 1);
+    if (mainWindowVisibility >= 0)
     {
-        mainWindow->setVisible (true);
-        if (pf->getBoolValue ("mainWindowFullScreen", false))
-            mainWindow->setFullScreen (true);
         mainWindow->addToDesktop();
+        if (mainWindowVisibility > 0)
+        {
+            mainWindow->restoreWindowStateFromString (pf->getValue ("mainWindowState"));
+            mainWindow->setVisible (true);
+            if (pf->getBoolValue ("mainWindowFullScreen", false))
+                mainWindow->setFullScreen (true);
+        }
+        else
+        {
+            restoreMainWindowStateOnShow = true;
+        }
     }
 
     sibling<SessionService>()->resetChanges();
@@ -986,14 +993,32 @@ bool GuiService::perform (const InvocationInfo& info)
             auto session = context().session();
             if (auto* const window = mainWindow.get())
             {
-                if (window->isOnDesktop())
+                const auto* const props = settings().getUserSettings();
+                if (props != nullptr && props->getIntValue ("mainWindowVisible", 1) < 0)
+                    break;
+
+                if (! window->isOnDesktop())
+                    window->addToDesktop();
+
+                if (window->isVisible())
                 {
-                    window->removeFromDesktop();
+                    window->setVisible (false);
                     closeAllPluginWindows (true);
                 }
                 else
                 {
-                    window->addToDesktop();
+                    if (restoreMainWindowStateOnShow)
+                    {
+                        if (auto* const props = settings().getUserSettings())
+                        {
+                            window->restoreWindowStateFromString (props->getValue ("mainWindowState"));
+                            if (props->getBoolValue ("mainWindowFullScreen", false))
+                                window->setFullScreen (true);
+                        }
+                        restoreMainWindowStateOnShow = false;
+                    }
+
+                    window->setVisible (true);
                     window->toFront (true);
                     if (session)
                         showPluginWindowsFor (session->getActiveGraph(), true, false);

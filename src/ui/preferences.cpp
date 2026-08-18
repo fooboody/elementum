@@ -323,7 +323,10 @@ public:
     enum ComboBoxIDs
     {
         ClockSourceInternal = 1,
-        ClockSourceMidiClock = 2
+        ClockSourceMidiClock = 2,
+        MainWindowStartVisible = 1,
+        MainWindowStartHidden = 2,
+        MainWindowAlwaysHidden = 3
     };
 
     GeneralSettingsPage (Context& world, GuiService& g)
@@ -418,6 +421,33 @@ public:
         systray.setClickingTogglesState (true);
         systray.setToggleState (settings.isSystrayEnabled(), dontSendNotification);
         systray.getToggleStateValue().addListener (this);
+
+        addAndMakeVisible (mainWindowVisibilityLabel);
+        mainWindowVisibilityLabel.setText ("Main window visibility", dontSendNotification);
+        mainWindowVisibilityLabel.setFont (Font (FontOptions (12.0, Font::bold)));
+        addAndMakeVisible (mainWindowVisibilityBox);
+        mainWindowVisibilityBox.addItem ("Start visible", MainWindowStartVisible);
+        mainWindowVisibilityBox.addItem ("Start hidden", MainWindowStartHidden);
+        mainWindowVisibilityBox.addItem ("Always hidden", MainWindowAlwaysHidden);
+        const int savedVisibility = settings.getUserSettings()->getIntValue ("mainWindowVisible", 1);
+        const int selectedVisibility = savedVisibility < 0 ? MainWindowAlwaysHidden
+                                                            : savedVisibility == 0 ? MainWindowStartHidden
+                                                                                   : MainWindowStartVisible;
+        mainWindowVisibilityBox.setSelectedId (selectedVisibility, dontSendNotification);
+        mainWindowVisibilityBox.onChange = [this]()
+        {
+            int visibility = 1;
+            switch (mainWindowVisibilityBox.getSelectedId())
+            {
+                case MainWindowStartHidden:  visibility = 0;  break;
+                case MainWindowAlwaysHidden: visibility = -1; break;
+                case MainWindowStartVisible:
+                default:                     visibility = 1;  break;
+            }
+
+            settings.getUserSettings()->setValue ("mainWindowVisible", visibility);
+            settings.saveIfNeeded();
+        };
 
         addAndMakeVisible (desktopScaleLabel);
         desktopScaleLabel.setText ("Desktop scale", dontSendNotification);
@@ -538,6 +568,12 @@ public:
         mainContentBox.setBounds (r2.withSizeKeepingCentre (r2.getWidth(), settingHeight));
 
         layoutSetting (r, systrayLabel, systray);
+
+        r.removeFromTop (spacingBetweenSections);
+        r2 = r.removeFromTop (settingHeight);
+        mainWindowVisibilityLabel.setBounds (r2.removeFromLeft (getWidth() / 2));
+        mainWindowVisibilityBox.setBounds (r2.withSizeKeepingCentre (r2.getWidth(), settingHeight));
+
         layoutSetting (r, desktopScaleLabel, desktopScale, getWidth() / 4);
 
 #if ! ELEMENT_SE
@@ -667,6 +703,9 @@ private:
 
     Label systrayLabel;
     SettingButton systray;
+
+    Label mainWindowVisibilityLabel;
+    ComboBox mainWindowVisibilityBox;
 
     Label desktopScaleLabel;
     Slider desktopScale;
