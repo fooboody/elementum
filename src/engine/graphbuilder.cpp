@@ -249,39 +249,57 @@ public:
             if (measureDSPLoad)
                 node->updateDSPLoad (0.0f, numSamples);
 
-            for (int ch = numAudioIns; ch < numAudioOuts; ++ch)
-                buffer.clear (ch, 0, buffer.getNumSamples());
+            if (node->isMutingInputs())
+            {
+                // Mute Input Ports also suppresses a disabled node's Audio
+                // outputs. Without it, preserve the existing disabled-node
+                // pass-through behavior.
+                // When inputs and outputs share the same channel count, the
+                // processor buffer uses the same channels for both. Otherwise,
+                // outputs begin after the input channels.
+                const int firstOutputChannel = numAudioIns < numAudioOuts
+                                                   ? numAudioIns
+                                                   : 0;
+                const int lastOutputChannel = jmin (firstOutputChannel + numAudioOuts,
+                                                    buffer.getNumChannels());
+                for (int ch = firstOutputChannel; ch < lastOutputChannel; ++ch)
+                    buffer.clear (ch, 0, buffer.getNumSamples());
+            }
             return;
         }
 
         const bool muted = node->isMuted();
         const bool muteInput = node->isMutingInputs();
+        const int numInputChannels = jmin (numAudioIns, buffer.getNumChannels());
 
-        if (muted && muteInput)
+        // Mute Input Ports affects only the node's Audio input channels. All
+        // Audio input ports, including side-chain inputs, are included in
+        // numAudioIns; output channels and MIDI buffers remain untouched.
+        if (muteInput)
         {
-            if (lastMute != muted)
+            for (int channel = 0; channel < numInputChannels; ++channel)
             {
-                // just became muted
-                buffer.applyGainRamp (0, numSamples, node->getLastInputGain(), 0.0);
-            }
-            else
-            {
-                // normal mute processing
-                buffer.applyGain (0, numSamples, 0.0);
+                if (! lastMuteInput)
+                    buffer.applyGainRamp (channel, 0, numSamples,
+                                          node->getLastInputGain(), 0.0f);
+                else
+                    buffer.clear (channel, 0, numSamples);
             }
         }
-        else if (! muted && muteInput && muted != lastMute)
+        else if (lastMuteInput)
         {
-            // just became unmuted
-            buffer.applyGainRamp (0, numSamples, 0.0, node->getInputGain());
+            for (int channel = 0; channel < numInputChannels; ++channel)
+                buffer.applyGainRamp (channel, 0, numSamples,
+                                      0.0f, node->getInputGain());
         }
         else if (node->getInputGain() != node->getLastInputGain())
         {
-            buffer.applyGainRamp (0, numSamples, node->getLastInputGain(), node->getInputGain());
+            buffer.applyGainRamp (0, numSamples,
+                                  node->getLastInputGain(), node->getInputGain());
         }
         else
         {
-            buffer.applyGain (0, numSamples, node->getInputGain());
+            buffer.applyGain (node->getInputGain());
         }
 
         for (int i = numAudioIns; --i >= 0;)
@@ -452,6 +470,7 @@ public:
 
         node->updateGain();
         lastMute = muted;
+        lastMuteInput = muteInput;
 
         for (int i = 0; i < numAudioOuts; ++i)
             node->setOutputRMS (i, buffer.getRMSLevel (i, 0, numSamples), numSamples);
@@ -478,6 +497,7 @@ private:
     int totalChans, numAudioIns, numAudioOuts;
     int midiBufferToUse;
     bool lastMute = false;
+    bool lastMuteInput = false;
     MidiTranspose transpose;
     MidiBuffer tempMidi;
 

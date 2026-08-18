@@ -155,6 +155,9 @@ Colour PortComponent::getColor() const noexcept
     switch (this->type)
     {
         case PortType::Audio:
+            if (input && node.isMutingInputs())
+                return Colour::fromRGB (0x55, 0x55, 0x55);
+
             return detail::configuredColour (const_cast<PortComponent*> (this),
                                              connected ? Settings::audioConnectedPortColorKey
                                                        : Settings::audioDisconnectedPortColorKey,
@@ -783,6 +786,10 @@ void BlockComponent::mouseDown (const MouseEvent& e)
             }
         }
     }
+
+    for (int i = 0; i < getNumChildComponents(); ++i)
+        if (auto* const port = dynamic_cast<PortComponent*> (getChildComponent (i)))
+            port->repaint();
 
     repaint();
     getGraphPanel()->updateSelection();
