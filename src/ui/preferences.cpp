@@ -326,7 +326,6 @@ public:
         ClockSourceMidiClock = 2,
         MainWindowStartVisible = 1,
         MainWindowStartHidden = 2,
-        MainWindowAlwaysHidden = 3,
         MenuAppearanceAuto = 1,
         MenuAppearanceDark = 2,
         MenuAppearanceLight = 3
@@ -431,23 +430,20 @@ public:
         addAndMakeVisible (mainWindowVisibilityBox);
         mainWindowVisibilityBox.addItem ("Start visible", MainWindowStartVisible);
         mainWindowVisibilityBox.addItem ("Start hidden", MainWindowStartHidden);
-        mainWindowVisibilityBox.addItem ("Always hidden", MainWindowAlwaysHidden);
         const int savedVisibility = settings.getUserSettings()->getIntValue ("mainWindowVisible", 1);
-        const int selectedVisibility = savedVisibility < 0 ? MainWindowAlwaysHidden
-                                                            : savedVisibility == 0 ? MainWindowStartHidden
-                                                                                   : MainWindowStartVisible;
-        mainWindowVisibilityBox.setSelectedId (selectedVisibility, dontSendNotification);
+        const int visibility = savedVisibility == 0 ? 0 : 1;
+        if (savedVisibility != visibility)
+        {
+            settings.getUserSettings()->setValue ("mainWindowVisible", visibility);
+            settings.saveIfNeeded();
+        }
+
+        mainWindowVisibilityBox.setSelectedId (visibility == 0 ? MainWindowStartHidden
+                                                                 : MainWindowStartVisible,
+                                                 dontSendNotification);
         mainWindowVisibilityBox.onChange = [this]()
         {
-            int visibility = 1;
-            switch (mainWindowVisibilityBox.getSelectedId())
-            {
-                case MainWindowStartHidden:  visibility = 0;  break;
-                case MainWindowAlwaysHidden: visibility = -1; break;
-                case MainWindowStartVisible:
-                default:                     visibility = 1;  break;
-            }
-
+            const int visibility = mainWindowVisibilityBox.getSelectedId() == MainWindowStartHidden ? 0 : 1;
             settings.getUserSettings()->setValue ("mainWindowVisible", visibility);
             settings.saveIfNeeded();
         };

@@ -347,7 +347,19 @@ void Application::restoreMainWindow()
 
             window->setMinimised (false);
             window->setVisible (true);
+
+            // Temporarily raise the window above other windows so a duplicate
+            // launch also restores an existing but inactive instance.
+            const bool wasAlwaysOnTop = window->isAlwaysOnTop();
+            if (! wasAlwaysOnTop)
+                window->setAlwaysOnTop (true);
             window->toFront (true);
+            if (! wasAlwaysOnTop)
+            {
+                window->setAlwaysOnTop (false);
+                window->toFront (true);
+            }
+
             revealMainWindowWhenReady = false;
             return;
         }

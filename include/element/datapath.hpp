@@ -22,6 +22,9 @@ public:
     /** Overrides the app data directory for the current process before settings are created. */
     static void setApplicationDataDirOverride (const juce::File& directory);
 
+    /** Returns true when the current process uses a non-default app data directory. */
+    static bool hasApplicationDataDirOverride();
+
     /** Returns the app data dir.
         For example, on OSX this is ~/Library/Application Support/Element
      */

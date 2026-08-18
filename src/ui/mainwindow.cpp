@@ -8,6 +8,7 @@
 #include <element/ui/commands.hpp>
 #include <element/ui/mainwindow.hpp>
 #include <element/context.hpp>
+#include <element/datapath.hpp>
 #include <element/settings.hpp>
 
 #include "services/sessionservice.hpp"
@@ -112,6 +113,9 @@ void MainWindow::nameChangedSession()
         sessionName = "Untitled Session";
     if (graphName.isEmpty())
         graphName = "Untitled Graph";
+
+    if (DataPath::hasApplicationDataDirOverride())
+        title << " [" << DataPath::applicationDataDir().getFileName() << "]";
 
     title << " - " << sessionName << ": " << graphName;
     setName (title);

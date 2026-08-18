@@ -677,21 +677,25 @@ void GuiService::run()
     mainWindow->addKeyListener (commands().getKeyMappings());
     _content->restoreState (pf);
 
-    const int mainWindowVisibility = pf->getIntValue ("mainWindowVisible", 1);
-    if (mainWindowVisibility >= 0)
+    const int savedMainWindowVisibility = pf->getIntValue ("mainWindowVisible", 1);
+    const bool mainWindowVisible = savedMainWindowVisibility != 0;
+    if (savedMainWindowVisibility != (mainWindowVisible ? 1 : 0))
     {
-        mainWindow->addToDesktop();
-        if (mainWindowVisibility > 0)
-        {
-            mainWindow->restoreWindowStateFromString (pf->getValue ("mainWindowState"));
-            mainWindow->setVisible (true);
-            if (pf->getBoolValue ("mainWindowFullScreen", false))
-                mainWindow->setFullScreen (true);
-        }
-        else
-        {
-            restoreMainWindowStateOnShow = true;
-        }
+        pf->setValue ("mainWindowVisible", mainWindowVisible ? 1 : 0);
+        pf->saveIfNeeded();
+    }
+
+    mainWindow->addToDesktop();
+    if (mainWindowVisible)
+    {
+        mainWindow->restoreWindowStateFromString (pf->getValue ("mainWindowState"));
+        mainWindow->setVisible (true);
+        if (pf->getBoolValue ("mainWindowFullScreen", false))
+            mainWindow->setFullScreen (true);
+    }
+    else
+    {
+        restoreMainWindowStateOnShow = true;
     }
 
     sibling<SessionService>()->resetChanges();
@@ -996,10 +1000,6 @@ bool GuiService::perform (const InvocationInfo& info)
             auto session = context().session();
             if (auto* const window = mainWindow.get())
             {
-                const auto* const props = settings().getUserSettings();
-                if (props != nullptr && props->getIntValue ("mainWindowVisible", 1) < 0)
-                    break;
-
                 if (! window->isOnDesktop())
                     window->addToDesktop();
 

@@ -3,6 +3,7 @@
 
 #include <element/services.hpp>
 #include <element/context.hpp>
+#include <element/datapath.hpp>
 #include <element/settings.hpp>
 #include <element/devices.hpp>
 #include <element/node.hpp>
@@ -265,6 +266,9 @@ public:
         addAndMakeVisible (sampleRateLabel);
         addAndMakeVisible (streamingStatusLabel);
         addAndMakeVisible (statusLabel);
+        addAndMakeVisible (dataDirectoryLabel);
+        addMouseListener (this, true);
+        dataDirectoryLabel.setMouseCursor (MouseCursor::PointingHandCursor);
 
         const Font font (FontOptions (12.0f));
 
@@ -287,6 +291,13 @@ public:
         latencySamplesChangedConnection.disconnect();
         sampleRate.removeListener (this);
         streamingStatus.removeListener (this);
+        removeMouseListener (this);
+    }
+
+    void mouseUp (const MouseEvent& event) override
+    {
+        if (event.eventComponent == &dataDirectoryLabel && event.mouseWasClicked())
+            DataPath::applicationDataDir().startAsProcess();
     }
 
     void paint (Graphics& g) override
@@ -299,6 +310,7 @@ public:
 
         g.drawLine (streamingStatusLabel.getX(), 0, streamingStatusLabel.getX(), getHeight());
         g.drawLine (sampleRateLabel.getX(), 0, sampleRateLabel.getX(), getHeight());
+        g.drawLine (dataDirectoryLabel.getX(), 0, dataDirectoryLabel.getX(), getHeight());
         g.setColour (lineColor.darker());
         g.drawLine (0, 0, getWidth(), 0);
         g.setColour (lineColor);
@@ -308,9 +320,10 @@ public:
     void resized() override
     {
         juce::Rectangle<int> r (getLocalBounds());
-        statusLabel.setBounds (r.removeFromLeft (getWidth() / 5));
-        streamingStatusLabel.setBounds (r.removeFromLeft (r.getWidth() / 2));
-        sampleRateLabel.setBounds (r);
+        statusLabel.setBounds (r.removeFromLeft (getWidth() * 22 / 100));
+        streamingStatusLabel.setBounds (r.removeFromLeft (getWidth() * 22 / 100));
+        sampleRateLabel.setBounds (r.removeFromLeft (getWidth() * 18 / 100));
+        dataDirectoryLabel.setBounds (r);
     }
 
     void valueChanged (Value&) override
@@ -327,7 +340,7 @@ public:
         {
             String text = "Sample Rate: ";
             text << String (dev->getCurrentSampleRate() * 0.001, 1) << " KHz";
-            text << ":  Buffer: " << dev->getCurrentBufferSizeSamples();
+            text << " | Buffer: " << dev->getCurrentBufferSizeSamples();
             sampleRateLabel.setText (text, dontSendNotification);
 
             text.clear();
@@ -354,6 +367,10 @@ public:
             statusLabel.setColour (Label::textColourId, Colors::toggleRed);
         }
 
+        const auto dataDirectory = DataPath::applicationDataDir().getFullPathName();
+        dataDirectoryLabel.setText (dataDirectory, dontSendNotification);
+        dataDirectoryLabel.setTooltip (dataDirectory);
+
         if (plugins.isScanningAudioPlugins())
         {
             auto text = streamingStatusLabel.getText();
@@ -371,7 +388,7 @@ private:
     DeviceManager& devices;
     PluginManager& plugins;
 
-    Label sampleRateLabel, streamingStatusLabel, statusLabel;
+    Label sampleRateLabel, streamingStatusLabel, statusLabel, dataDirectoryLabel;
     ValueTree node;
     Value sampleRate, streamingStatus, status;
 

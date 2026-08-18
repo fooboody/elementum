@@ -15,6 +15,29 @@ using namespace juce;
 namespace element {
 namespace {
 File sApplicationDataDirOverride;
+
+File getDefaultApplicationDataDir()
+{
+#if JUCE_MAC
+    return File::getSpecialLocation (File::userApplicationDataDirectory)
+        .getChildFile ("Application Support")
+        .getChildFile (EL_APP_DATA_SUBDIR);
+#else
+    return File::getSpecialLocation (File::userApplicationDataDirectory)
+        .getChildFile (EL_APP_DATA_SUBDIR);
+#endif
+}
+
+bool areSamePath (File first, File second)
+{
+    auto firstPath = first.getLinkedTarget().getFullPathName();
+    auto secondPath = second.getLinkedTarget().getFullPathName();
+#if JUCE_WINDOWS
+    firstPath = firstPath.toLowerCase();
+    secondPath = secondPath.toLowerCase();
+#endif
+    return firstPath == secondPath;
+}
 }
 
 namespace detail {
@@ -57,19 +80,18 @@ void DataPath::setApplicationDataDirOverride (const File& directory)
     sApplicationDataDirOverride = directory;
 }
 
+bool DataPath::hasApplicationDataDirOverride()
+{
+    return sApplicationDataDirOverride.isDirectory()
+        && ! areSamePath (sApplicationDataDirOverride, getDefaultApplicationDataDir());
+}
+
 const File DataPath::applicationDataDir()
 {
     if (sApplicationDataDirOverride.isDirectory())
         return sApplicationDataDirOverride;
 
-#if JUCE_MAC
-    return File::getSpecialLocation (File::userApplicationDataDirectory)
-        .getChildFile ("Application Support")
-        .getChildFile (EL_APP_DATA_SUBDIR);
-#else
-    return File::getSpecialLocation (File::userApplicationDataDirectory)
-        .getChildFile (EL_APP_DATA_SUBDIR);
-#endif
+    return getDefaultApplicationDataDir();
 }
 
 const File DataPath::defaultUserDataPath()
