@@ -228,6 +228,9 @@ public:
     /** Suspend processing */
     void suspendProcessing (const bool);
 
+    /** Complete a deferred bypass-off transition after one render block. */
+    void completePendingBypassResume() noexcept;
+
     /** Get latency audio samples */
     int getLatencySamples() const;
 
@@ -551,6 +554,7 @@ private:
     juce::Atomic<int> enabled { 1 };
 
     juce::Atomic<int> bypassed { 0 };
+    juce::Atomic<int> pendingBypassResume { 0 };
     juce::Atomic<int> mute { 0 };
     juce::Atomic<int> muteInput { 0 };
 
