@@ -742,7 +742,7 @@ void BlockComponent::mouseDrag (const MouseEvent& e)
         if (panel->onBlockMoved)
             panel->onBlockMoved (*this);
 
-        panel->updateAutoConnectPreview (*this, e.mods.isAltDown());
+        panel->updateAutoConnectPreview (*this, panel->isAutoConnectAudioPortsEnabled());
 
         // onBlockMoved may have reverted position
         node.getPosition (nx, ny);
@@ -787,7 +787,7 @@ void BlockComponent::mouseUp (const MouseEvent& e)
     if (panel)
     {
         panel->selectedNodes.addToSelectionOnMouseUp (node.getNodeId(), e.mods, dragging, selectionMouseDownResult);
-        panel->commitAutoConnect (*this, e.mods.isAltDown());
+        panel->commitAutoConnect (*this, panel->isAutoConnectAudioPortsEnabled());
     }
 
     doubleClickHadModifier = doubleClickHadModifier

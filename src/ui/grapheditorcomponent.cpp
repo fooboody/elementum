@@ -434,6 +434,7 @@ void GraphEditorComponent::setNode (const Node& n)
     data = graph.data();
 
     verticalLayout = graph.getProperty (tags::vertical, true);
+    autoConnectAudioPorts = graph.getProperty (tags::autoConnectAudioPorts, false);
 
     if (draggingConnector)
         removeChildComponent (draggingConnector.get());
@@ -503,6 +504,7 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
         menu.addSeparator();
         menu.addItem (5, "Change orientation...");
         menu.addItem (7, "Gather nodes...");
+        menu.addItem (8, "Auto-connect audio ports", true, autoConnectAudioPorts);
 
         menu.addSeparator();
         menu.addSectionHeader ("Plugins");
@@ -610,7 +612,13 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                         setSize (width, height);
                     return;
                 }
-                break;
+                case 8:
+                    autoConnectAudioPorts = ! autoConnectAudioPorts;
+                    graph.setProperty (tags::autoConnectAudioPorts, autoConnectAudioPorts);
+                    if (! autoConnectAudioPorts)
+                        clearAutoConnectPreview();
+                    return;
+                    break;
 
                 // Zoom options (commented don't look right yet)
                 // case 50: setZoomScale (0.25); return; break;

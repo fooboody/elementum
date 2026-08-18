@@ -89,6 +89,7 @@ static const juce::Identifier panel = "panel";
 static const juce::Identifier item = "item";
 static const juce::Identifier area = "area";
 static const juce::Identifier vertical = "vertical";
+static const juce::Identifier autoConnectAudioPorts = "autoConnectAudioPorts";
 static const juce::Identifier bounds = "bounds";
 static const juce::Identifier barSize = "barSize";
 static const juce::Identifier sizes = "sizes";
