@@ -72,20 +72,20 @@ ParsedLaunchArguments parseLaunchArguments (const String& commandLine)
     {
         const auto& token = tokens[i];
         String value;
-        bool isDataDirectoryOption = false;
+        bool isProfileDirectoryOption = false;
 
-        if (token == "--datadir" && i + 1 < tokens.size())
+        if (token == "--profile-dir" && i + 1 < tokens.size())
         {
             value = tokens[++i].unquoted();
-            isDataDirectoryOption = true;
+            isProfileDirectoryOption = true;
         }
-        else if (token.startsWith ("--datadir="))
+        else if (token.startsWith ("--profile-dir="))
         {
             value = token.fromFirstOccurrenceOf ("=", false, false).unquoted();
-            isDataDirectoryOption = value.isNotEmpty();
+            isProfileDirectoryOption = value.isNotEmpty();
         }
 
-        if (isDataDirectoryOption)
+        if (isProfileDirectoryOption)
         {
             parsed.applicationDataDirectory = File();
             const auto directory = File::isAbsolutePath (value)
