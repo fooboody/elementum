@@ -200,8 +200,15 @@ void AddConnectionMessage::createActions (Services& app, OwnedArray<UndoableActi
     actions.add (new AddConnectionAction (app, target, sourceNode, sourcePort, destNode, destPort));
 }
 
-void AddConnectionsMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
+void ModifyConnectionsMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
 {
+    for (const auto& connection : disconnects)
+        actions.add (new RemoveConnectionAction (app, target,
+                                                  connection.sourceNode,
+                                                  connection.sourcePort,
+                                                  connection.destNode,
+                                                  connection.destPort));
+
     for (const auto& connection : connections)
         actions.add (new AddConnectionAction (app, target,
                                                connection.sourceNode,

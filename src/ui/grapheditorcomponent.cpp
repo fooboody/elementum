@@ -434,7 +434,7 @@ void GraphEditorComponent::setNode (const Node& n)
     data = graph.data();
 
     verticalLayout = graph.getProperty (tags::vertical, true);
-    autoConnectAudioPorts = graph.getProperty (tags::autoConnectAudioPorts, false);
+    autoConnectNearbyPorts = graph.getProperty (tags::autoConnectNearbyPorts, false);
 
     if (draggingConnector)
         removeChildComponent (draggingConnector.get());
@@ -504,7 +504,7 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
         menu.addSeparator();
         menu.addItem (5, "Change orientation...");
         menu.addItem (7, "Gather nodes...");
-        menu.addItem (8, "Auto-connect audio ports", true, autoConnectAudioPorts);
+        menu.addItem (8, "Auto-connect nearby ports", true, autoConnectNearbyPorts);
 
         menu.addSeparator();
         menu.addSectionHeader ("Plugins");
@@ -613,9 +613,9 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                     return;
                 }
                 case 8:
-                    autoConnectAudioPorts = ! autoConnectAudioPorts;
-                    graph.setProperty (tags::autoConnectAudioPorts, autoConnectAudioPorts);
-                    if (! autoConnectAudioPorts)
+                    autoConnectNearbyPorts = ! autoConnectNearbyPorts;
+                    graph.setProperty (tags::autoConnectNearbyPorts, autoConnectNearbyPorts);
+                    if (! autoConnectNearbyPorts)
                         clearAutoConnectPreview();
                     return;
                     break;
@@ -739,6 +739,7 @@ Array<GraphEditorComponent::AutoConnectPair>
     {
         uint32 node { 0 };
         uint32 port { 0 };
+        PortType type;
         bool input { false };
         Point<float> position;
     };
@@ -757,22 +758,81 @@ Array<GraphEditorComponent::AutoConnectPair>
                 continue;
 
             const auto portIndex = port->getPortIndex();
-            if (node.getPort ((int) portIndex).getType() != PortType::Audio)
+            const auto type = node.getPort ((int) portIndex).getType();
+            if (! type.isAudio() && ! type.isMidi())
                 continue;
 
             float x = 0.0f, y = 0.0f;
             if (! block.getPortPos ((int) portIndex, port->isInput(), x, y))
                 continue;
 
-            result.add ({ node.getNodeId(), portIndex, port->isInput(), { x, y } });
+            result.add ({ node.getNodeId(), portIndex, type, port->isInput(), { x, y } });
         }
 
         return result;
     };
 
     const auto movedPorts = collectPorts (movedBlock);
-    Array<AutoConnectPair> candidates;
+    Array<AutoConnectPair> result;
+    Array<uint64> disconnectedSources, disconnectedDestinations;
+    auto key = [] (const uint32 node, const uint32 port) -> uint64
+    {
+        return (static_cast<uint64> (node) << 32) | static_cast<uint64> (port);
+    };
 
+    auto findPort = [] (const Array<PortInfo>& ports, const uint32 node, const uint32 port) -> const PortInfo*
+    {
+        for (const auto& info : ports)
+            if (info.node == node && info.port == port)
+                return &info;
+        return nullptr;
+    };
+
+    OwnedArray<Arc> arcs;
+    for (int i = 0; i < graph.getNumConnections(); ++i)
+        arcs.add (new Arc (Node::arcFromValueTree (graph.getConnectionValueTree (i))));
+
+    for (const auto* const arc : arcs)
+    {
+        const auto* movedSource = findPort (movedPorts, arc->sourceNode, arc->sourcePort);
+        const auto* movedDest = findPort (movedPorts, arc->destNode, arc->destPort);
+        if (movedSource == nullptr && movedDest == nullptr)
+            continue;
+        if (movedSource != nullptr && movedDest != nullptr)
+            continue;
+
+        const auto otherNode = movedSource != nullptr ? arc->destNode : arc->sourceNode;
+        const auto* otherBlock = getComponentForFilter (otherNode);
+        if (otherBlock == nullptr)
+            continue;
+
+        const auto otherPorts = collectPorts (*otherBlock);
+        const auto* source = movedSource != nullptr
+                                 ? movedSource
+                                 : findPort (otherPorts, arc->sourceNode, arc->sourcePort);
+        const auto* dest = movedDest != nullptr
+                               ? movedDest
+                               : findPort (otherPorts, arc->destNode, arc->destPort);
+        if (source == nullptr || dest == nullptr)
+            continue;
+
+        const auto distance = std::hypot (source->position.x - dest->position.x,
+                                          source->position.y - dest->position.y);
+        if (distance > maxDistance)
+            continue;
+
+        const bool facing = verticalLayout ? source->position.y <= dest->position.y
+                                           : source->position.x <= dest->position.x;
+        result.add ({ arc->sourceNode, arc->sourcePort,
+                      arc->destNode, arc->destPort,
+                      distance, facing,
+                      arc->sourcePort == arc->destPort,
+                      true });
+        disconnectedSources.add (key (arc->sourceNode, arc->sourcePort));
+        disconnectedDestinations.add (key (arc->destNode, arc->destPort));
+    }
+
+    Array<AutoConnectPair> candidates;
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
         const auto* const block = dynamic_cast<const BlockComponent*> (getChildComponent (i));
@@ -784,7 +844,7 @@ Array<GraphEditorComponent::AutoConnectPair>
         {
             for (const auto& b : otherPorts)
             {
-                if (a.input == b.input)
+                if (a.input == b.input || a.type != b.type)
                     continue;
 
                 const auto distance = std::hypot (a.position.x - b.position.x,
@@ -794,7 +854,23 @@ Array<GraphEditorComponent::AutoConnectPair>
 
                 const auto* output = a.input ? &b : &a;
                 const auto* input = a.input ? &a : &b;
+                if (disconnectedSources.contains (key (output->node, output->port))
+                    || disconnectedDestinations.contains (key (input->node, input->port)))
+                    continue;
+
                 if (! graph.canConnect (output->node, output->port, input->node, input->port))
+                    continue;
+
+                bool alreadyConnected = false;
+                for (const auto* const arc : arcs)
+                    if (arc->sourceNode == output->node && arc->sourcePort == output->port
+                        && arc->destNode == input->node && arc->destPort == input->port)
+                    {
+                        alreadyConnected = true;
+                        break;
+                    }
+
+                if (alreadyConnected)
                     continue;
 
                 const bool facing = verticalLayout ? output->position.y <= input->position.y
@@ -802,7 +878,8 @@ Array<GraphEditorComponent::AutoConnectPair>
                 candidates.add ({ output->node, output->port,
                                   input->node, input->port,
                                   distance, facing,
-                                  output->port == input->port });
+                                  output->port == input->port,
+                                  false });
             }
         }
     }
@@ -816,12 +893,7 @@ Array<GraphEditorComponent::AutoConnectPair>
         return a.distance < b.distance;
     });
 
-    Array<AutoConnectPair> result;
     Array<uint64> usedSources, usedDestinations;
-    auto key = [] (const uint32 node, const uint32 port) -> uint64
-    {
-        return (static_cast<uint64> (node) << 32) | static_cast<uint64> (port);
-    };
 
     for (const auto& candidate : candidates)
     {
@@ -898,9 +970,14 @@ void GraphEditorComponent::commitAutoConnect (const BlockComponent& movedBlock, 
     const auto pairs = findAutoConnectPairs (movedBlock);
     if (! pairs.isEmpty())
     {
-        auto* const message = new AddConnectionsMessage (graph);
+        auto* const message = new ModifyConnectionsMessage (graph);
         for (const auto& pair : pairs)
-            message->add (pair.sourceNode, pair.sourcePort, pair.destNode, pair.destPort);
+        {
+            if (pair.disconnect)
+                message->addDisconnect (pair.sourceNode, pair.sourcePort, pair.destNode, pair.destPort);
+            else
+                message->add (pair.sourceNode, pair.sourcePort, pair.destNode, pair.destPort);
+        }
         ViewHelpers::postMessageFor (this, message);
     }
 

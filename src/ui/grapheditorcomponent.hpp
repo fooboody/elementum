@@ -55,7 +55,7 @@ public:
     bool isLayoutVertical() const { return verticalLayout; }
 
     /** Returns true if nearby audio ports should be auto-connected. */
-    bool isAutoConnectAudioPortsEnabled() const noexcept { return autoConnectAudioPorts; }
+    bool isAutoConnectNearbyPortsEnabled() const noexcept { return autoConnectNearbyPorts; }
 
     /** Changes the layout to vertical or not */
     void setVerticalLayout (const bool isVertical);
@@ -109,7 +109,7 @@ private:
     std::unique_ptr<BlockFactory> factory;
 
     bool verticalLayout = true;
-    bool autoConnectAudioPorts = false;
+    bool autoConnectNearbyPorts = false;
 
     LassoComponent<uint32> lasso;
     friend class SelectedNodes;
@@ -158,6 +158,7 @@ private:
         float distance { 0.0f };
         bool facing { false };
         bool samePortIndex { false };
+        bool disconnect { false };
     };
 
     Array<AutoConnectPair> findAutoConnectPairs (const BlockComponent& movedBlock) const;
