@@ -812,6 +812,7 @@ Array<GraphEditorComponent::AutoConnectPair>
     for (int i = 0; i < graph.getNumConnections(); ++i)
         arcs.add (new Arc (Node::arcFromValueTree (graph.getConnectionValueTree (i))));
 
+    Array<AutoConnectPair> candidates;
     if (swapEnabled)
     {
         for (int i = 0; i < getNumChildComponents(); ++i)
@@ -838,13 +839,13 @@ Array<GraphEditorComponent::AutoConnectPair>
 
                     const bool facing = verticalLayout ? a.position.y <= b.position.y
                                                        : a.position.x <= b.position.x;
-                    result.add ({ a.node, a.port,
-                                  b.node, b.port,
-                                  distance, facing,
-                                  a.port == b.port,
-                                  false,
-                                  true,
-                                  a.input });
+                    candidates.add ({ a.node, a.port,
+                                      b.node, b.port,
+                                      distance, facing,
+                                      a.port == b.port,
+                                      false,
+                                      true,
+                                      a.input });
                 }
             }
         }
@@ -893,7 +894,6 @@ Array<GraphEditorComponent::AutoConnectPair>
         }
     }
 
-    Array<AutoConnectPair> candidates;
     if (autoConnectEnabled)
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
@@ -958,12 +958,27 @@ Array<GraphEditorComponent::AutoConnectPair>
         return a.distance < b.distance;
     });
 
-    Array<uint64> usedSources, usedDestinations;
+    Array<uint64> usedSources, usedDestinations, usedSwapPorts;
 
     for (const auto& candidate : candidates)
     {
         const auto sourceKey = key (candidate.sourceNode, candidate.sourcePort);
         const auto destKey = key (candidate.destNode, candidate.destPort);
+
+        // A port may take part in only one nearby swap. Without this, the
+        // broader Audio compatibility check can select both straight and
+        // crossed pairings for a multi-channel node overlap.
+        if (candidate.swap)
+        {
+            if (usedSwapPorts.contains (sourceKey) || usedSwapPorts.contains (destKey))
+                continue;
+
+            result.add (candidate);
+            usedSwapPorts.add (sourceKey);
+            usedSwapPorts.add (destKey);
+            continue;
+        }
+
         if (usedSources.contains (sourceKey) || usedDestinations.contains (destKey))
             continue;
 
@@ -1099,15 +1114,9 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
                     continue;
                 if (arc.destNode != nodeA && arc.destNode != nodeB)
                     continue;
-                if (arc.sourceNode == arc.destNode)
+                if (arc.sourceNode == arc.destNode || ! isAudioArc (arc))
                     continue;
-
-                const auto sourceNode = graph.getNodeById (arc.sourceNode);
-                const auto destNode = graph.getNodeById (arc.destNode);
-                if (sourceNode.isValid() && destNode.isValid()
-                    && sourceNode.getPort ((int) arc.sourcePort).getType().isAudio()
-                    && destNode.getPort ((int) arc.destPort).getType().isAudio())
-                    return true;
+                return true;
             }
             return false;
         };
@@ -1147,6 +1156,38 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
             return false;
         };
 
+        auto swapNodeEndpoint = [&] (uint32& node, const Array<std::pair<uint32, uint32>>& nodeSwaps)
+        {
+            for (const auto& swap : nodeSwaps)
+            {
+                if (node == swap.first)
+                {
+                    node = swap.second;
+                    return true;
+                }
+
+                if (node == swap.second)
+                {
+                    node = swap.first;
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        auto swapDirectEndpoint = [&] (uint32& node, uint32& port, const bool input)
+        {
+            // Prefer an explicit port correspondence when one exists. This
+            // supports compatible ports with different indices.
+            if (swapEndpoint (node, port, input))
+                return true;
+
+            // For a direct node-to-node swap, preserve all unmatched ports by
+            // swapping their node endpoint as a fallback.
+            return swapNodeEndpoint (node, swaps);
+        };
+
         for (const auto& swap : swaps)
         {
             auto* const firstBlock = getComponentForFilter (swap.first);
@@ -1180,37 +1221,11 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
         if (! swaps.isEmpty())
             updateConnectorComponents (false);
 
-        for (const auto& pair : pairs)
-        {
-            if (! pair.swap || hasDirectAudioConnection (pair.sourceNode, pair.destNode))
-                continue;
-
-            for (int i = 0; i < graph.getNumConnections(); ++i)
-            {
-                const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
-                uint32 sourceNode = arc.sourceNode;
-                uint32 sourcePort = arc.sourcePort;
-                uint32 destNode = arc.destNode;
-                uint32 destPort = arc.destPort;
-                bool affected = false;
-
-                if (pair.swapInput)
-                    affected = swapPairEndpoint (pair, destNode, destPort, true);
-                else
-                    affected = swapPairEndpoint (pair, sourceNode, sourcePort, false);
-
-                if (! affected || ! isAudioArc (arc))
-                    continue;
-
-                message->addDisconnect (arc.sourceNode, arc.sourcePort, arc.destNode, arc.destPort);
-                if (sourceNode != destNode
-                    && graph.canConnect (sourceNode, sourcePort, destNode, destPort))
-                    message->add (sourceNode, sourcePort, destNode, destPort);
-            }
-        }
-
         if (! swaps.isEmpty())
         {
+            // Transform each existing audio arc once from its original endpoints.
+            // Applying input and output candidates in separate passes can turn a
+            // two-channel swap into additional crossed connections.
             for (int i = 0; i < graph.getNumConnections(); ++i)
             {
                 const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
@@ -1221,17 +1236,22 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
                 uint32 sourcePort = arc.sourcePort;
                 uint32 destNode = arc.destNode;
                 uint32 destPort = arc.destPort;
-                bool affected = false;
-
+                bool hasDirectSwap = false;
                 for (const auto& swap : swaps)
                     if (hasDirectAudioConnection (swap.first, swap.second))
                     {
-                        const auto sourceChanged = swapEndpoint (sourceNode, sourcePort, false);
-                        const auto destChanged = swapEndpoint (destNode, destPort, true);
-                        affected = affected || sourceChanged || destChanged;
+                        hasDirectSwap = true;
+                        break;
                     }
 
-                if (! affected)
+                const auto sourceChanged = hasDirectSwap
+                                               ? swapDirectEndpoint (sourceNode, sourcePort, false)
+                                               : swapEndpoint (sourceNode, sourcePort, false);
+                const auto destChanged = hasDirectSwap
+                                             ? swapDirectEndpoint (destNode, destPort, true)
+                                             : swapEndpoint (destNode, destPort, true);
+
+                if (! sourceChanged && ! destChanged)
                     continue;
 
                 message->addDisconnect (arc.sourceNode, arc.sourcePort, arc.destNode, arc.destPort);
