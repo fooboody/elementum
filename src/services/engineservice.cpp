@@ -35,6 +35,45 @@ static void initializeRootGraphPorts (RootGraph* root, const Node& model)
     root->setNumPorts (PortType::Midi, ins.size(), true, false);
     root->setNumPorts (PortType::Midi, outs.size(), false, false);
 }
+
+/** Connects every existing MIDI input device to every MIDI input port of a new node. */
+static void connectExistingMidiInputDevices (GraphManager& controller,
+                                             const Node& graph,
+                                             const Node& target)
+{
+    PortArray targetInputs;
+    target.getPorts (targetInputs, PortType::Midi, true);
+    if (targetInputs.isEmpty())
+        return;
+
+    ConnectionBuilder builder;
+    for (int i = 0; i < graph.getNumNodes(); ++i)
+    {
+        const Node device (graph.getNode (i));
+        if (! device.isMidiInputDevice())
+            continue;
+
+        PortArray deviceOutputs;
+        device.getPorts (deviceOutputs, PortType::Midi, false);
+        for (const auto& source : deviceOutputs)
+        {
+            const int sourceChannel = source.channel();
+            if (sourceChannel < 0)
+                continue;
+
+            for (const auto& destination : targetInputs)
+            {
+                const int targetChannel = destination.channel();
+                if (targetChannel >= 0)
+                    builder.addChannel (device, PortType::Midi,
+                                        sourceChannel, targetChannel, false);
+            }
+        }
+    }
+
+    builder.addConnections (controller, target.getNodeId());
+}
+
 } // namespace detail
 
 struct RootGraphHolder
@@ -844,14 +883,7 @@ void EngineService::syncModels()
 
 Node EngineService::addPlugin (const Node& graph, const PluginDescription& desc)
 {
-    if (! graph.isGraph())
-        return {};
-
-    Node node;
-    if (auto* controller = graphs->findGraphManagerFor (graph))
-        node = addPlugin (*controller, desc);
-
-    return node;
+    return addPlugin (graph, desc, ConnectionBuilder(), true);
 }
 
 Node EngineService::addPlugin (const Node& graph, const PluginDescription& desc, const ConnectionBuilder& builder, const bool verified)
@@ -896,11 +928,13 @@ Node EngineService::addPlugin (const Node& graph, const PluginDescription& desc,
     if (auto* controller = graphs->findGraphManagerFor (graph))
     {
         const Node node (addPlugin (*controller, descToLoad));
-        if (node.isValid())
+                if (node.isValid())
         {
             builder.addConnections (*controller, node.getNodeId());
+            detail::connectExistingMidiInputDevices (*controller, graph, node);
             jassert (! node.getUuid().isNull());
         }
+
         return node;
     }
 
