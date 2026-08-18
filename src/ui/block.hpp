@@ -32,6 +32,8 @@ public:
     /** Returns the color this port is painted */
     virtual Colour getColor() const noexcept;
 
+    void setAutoConnectHighlighted (bool highlighted) noexcept;
+
     void paint (Graphics& g) override;
     void mouseDown (const MouseEvent& e) override;
     void mouseDrag (const MouseEvent& e) override;
@@ -45,6 +47,7 @@ private:
     PortType type { PortType::Unknown };
     bool input { true };
     bool vertical { false };
+    bool autoConnectHighlighted { false };
 
     GraphEditorComponent* getGraphEditor() const noexcept;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PortComponent)
@@ -223,7 +226,7 @@ public:
     /** Gets the coordinate of the port index 
         Returns true if the coords were acquired.
      */
-    bool getPortPos (const int index, const bool isInput, float& x, float& y);
+    bool getPortPos (const int index, const bool isInput, float& x, float& y) const;
 
     /** @internal */
     void buttonClicked (Button* b) override;

@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <element/ui/popups.hpp>
+
+#include <algorithm>
+#include <cmath>
+
 #include <element/node.hpp>
 #include <element/plugins.hpp>
 #include <element/ui/content.hpp>
@@ -25,6 +29,7 @@
 #include "ui/sessiontreepanel.hpp"
 #include "ui/audioiopanelview.hpp"
 #include "ui/grapheditorcomponent.hpp"
+#include "messages.hpp"
 
 #include "scopedflag.hpp"
 
@@ -717,6 +722,181 @@ ConnectorComponent* GraphEditorComponent::getComponentForConnection (const Arc& 
     }
 
     return nullptr;
+}
+
+Array<GraphEditorComponent::AutoConnectPair>
+    GraphEditorComponent::findAutoConnectPairs (const BlockComponent& movedBlock) const
+{
+    struct PortInfo
+    {
+        uint32 node { 0 };
+        uint32 port { 0 };
+        bool input { false };
+        Point<float> position;
+    };
+
+    constexpr float maxDistance = 20.0f;
+
+    auto collectPorts = [] (const BlockComponent& block)
+    {
+        Array<PortInfo> result;
+        const Node node (block.getNode());
+
+        for (int i = 0; i < block.getNumChildComponents(); ++i)
+        {
+            const auto* const port = dynamic_cast<const PortComponent*> (block.getChildComponent (i));
+            if (port == nullptr)
+                continue;
+
+            const auto portIndex = port->getPortIndex();
+            if (node.getPort ((int) portIndex).getType() != PortType::Audio)
+                continue;
+
+            float x = 0.0f, y = 0.0f;
+            if (! block.getPortPos ((int) portIndex, port->isInput(), x, y))
+                continue;
+
+            result.add ({ node.getNodeId(), portIndex, port->isInput(), { x, y } });
+        }
+
+        return result;
+    };
+
+    const auto movedPorts = collectPorts (movedBlock);
+    Array<AutoConnectPair> candidates;
+
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        const auto* const block = dynamic_cast<const BlockComponent*> (getChildComponent (i));
+        if (block == nullptr || block == &movedBlock)
+            continue;
+
+        const auto otherPorts = collectPorts (*block);
+        for (const auto& a : movedPorts)
+        {
+            for (const auto& b : otherPorts)
+            {
+                if (a.input == b.input)
+                    continue;
+
+                const auto distance = std::hypot (a.position.x - b.position.x,
+                                                  a.position.y - b.position.y);
+                if (distance > maxDistance)
+                    continue;
+
+                const auto* output = a.input ? &b : &a;
+                const auto* input = a.input ? &a : &b;
+                if (! graph.canConnect (output->node, output->port, input->node, input->port))
+                    continue;
+
+                const bool facing = verticalLayout ? output->position.y <= input->position.y
+                                                   : output->position.x <= input->position.x;
+                candidates.add ({ output->node, output->port,
+                                  input->node, input->port,
+                                  distance, facing,
+                                  output->port == input->port });
+            }
+        }
+    }
+
+    std::sort (candidates.begin(), candidates.end(), [] (const AutoConnectPair& a, const AutoConnectPair& b)
+    {
+        if (a.facing != b.facing)
+            return a.facing > b.facing;
+        if (a.samePortIndex != b.samePortIndex)
+            return a.samePortIndex > b.samePortIndex;
+        return a.distance < b.distance;
+    });
+
+    Array<AutoConnectPair> result;
+    Array<uint64> usedSources, usedDestinations;
+    auto key = [] (const uint32 node, const uint32 port) -> uint64
+    {
+        return (static_cast<uint64> (node) << 32) | static_cast<uint64> (port);
+    };
+
+    for (const auto& candidate : candidates)
+    {
+        const auto sourceKey = key (candidate.sourceNode, candidate.sourcePort);
+        const auto destKey = key (candidate.destNode, candidate.destPort);
+        if (usedSources.contains (sourceKey) || usedDestinations.contains (destKey))
+            continue;
+
+        result.add (candidate);
+        usedSources.add (sourceKey);
+        usedDestinations.add (destKey);
+    }
+
+    return result;
+}
+
+void GraphEditorComponent::clearAutoConnectPreview()
+{
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        if (auto* const block = dynamic_cast<BlockComponent*> (getChildComponent (i)))
+        {
+            for (int j = 0; j < block->getNumChildComponents(); ++j)
+                if (auto* const port = dynamic_cast<PortComponent*> (block->getChildComponent (j)))
+                    port->setAutoConnectHighlighted (false);
+        }
+    }
+
+    autoConnectPreviewPairs.clearQuick();
+}
+
+void GraphEditorComponent::updateAutoConnectPreview (const BlockComponent& movedBlock, const bool enabled)
+{
+    clearAutoConnectPreview();
+    if (! enabled)
+        return;
+
+    autoConnectPreviewPairs = findAutoConnectPairs (movedBlock);
+    for (const auto& pair : autoConnectPreviewPairs)
+    {
+        for (int i = 0; i < getNumChildComponents(); ++i)
+        {
+            auto* const block = dynamic_cast<BlockComponent*> (getChildComponent (i));
+            if (block == nullptr)
+                continue;
+
+            for (int j = 0; j < block->getNumChildComponents(); ++j)
+            {
+                auto* const port = dynamic_cast<PortComponent*> (block->getChildComponent (j));
+                if (port == nullptr)
+                    continue;
+
+                const bool sourceMatch = port->getNodeId() == pair.sourceNode
+                                          && port->getPortIndex() == pair.sourcePort
+                                          && ! port->isInput();
+                const bool destMatch = port->getNodeId() == pair.destNode
+                                       && port->getPortIndex() == pair.destPort
+                                       && port->isInput();
+                if (sourceMatch || destMatch)
+                    port->setAutoConnectHighlighted (true);
+            }
+        }
+    }
+}
+
+void GraphEditorComponent::commitAutoConnect (const BlockComponent& movedBlock, const bool enabled)
+{
+    if (! enabled)
+    {
+        clearAutoConnectPreview();
+        return;
+    }
+
+    const auto pairs = findAutoConnectPairs (movedBlock);
+    if (! pairs.isEmpty())
+    {
+        auto* const message = new AddConnectionsMessage (graph);
+        for (const auto& pair : pairs)
+            message->add (pair.sourceNode, pair.sourcePort, pair.destNode, pair.destPort);
+        ViewHelpers::postMessageFor (this, message);
+    }
+
+    clearAutoConnectPreview();
 }
 
 PortComponent* GraphEditorComponent::findPinAt (const int x, const int y) const

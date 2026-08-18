@@ -144,6 +144,25 @@ private:
     PortComponent* findPinAt (const int x, const int y) const;
 
     void updateSelection();
+
+    struct AutoConnectPair
+    {
+        uint32 sourceNode { 0 };
+        uint32 sourcePort { 0 };
+        uint32 destNode { 0 };
+        uint32 destPort { 0 };
+        float distance { 0.0f };
+        bool facing { false };
+        bool samePortIndex { false };
+    };
+
+    Array<AutoConnectPair> findAutoConnectPairs (const BlockComponent& movedBlock) const;
+    void updateAutoConnectPreview (const BlockComponent& movedBlock, bool enabled);
+    void commitAutoConnect (const BlockComponent& movedBlock, bool enabled);
+    void clearAutoConnectPreview();
+
+    Array<AutoConnectPair> autoConnectPreviewPairs;
+
     void ensureSize();
 
     void valueTreePropertyChanged (ValueTree& treeWhosePropertyHasChanged, const Identifier& property) override {}

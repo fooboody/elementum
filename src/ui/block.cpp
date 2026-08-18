@@ -74,6 +74,15 @@ bool PortComponent::isInput() const noexcept { return input; }
 uint32 PortComponent::getNodeId() const noexcept { return nodeID; }
 uint32 PortComponent::getPortIndex() const noexcept { return port; }
 
+void PortComponent::setAutoConnectHighlighted (const bool highlighted) noexcept
+{
+    if (autoConnectHighlighted == highlighted)
+        return;
+
+    autoConnectHighlighted = highlighted;
+    repaint();
+}
+
 Colour PortComponent::getColor() const noexcept
 {
     switch (this->type)
@@ -100,6 +109,15 @@ void PortComponent::paint (Graphics& g)
     {
         g.setColour (getColor());
         g.fillRoundedRectangle (0.f, 0.f, (float) getWidth(), (float) getHeight(), 2.f);
+
+        if (autoConnectHighlighted)
+        {
+            g.setColour (Colours::white);
+            g.drawRoundedRectangle (0.75f, 0.75f,
+                                    (float) getWidth() - 1.5f,
+                                    (float) getHeight() - 1.5f,
+                                    2.f, 2.f);
+        }
     }
     else
     {
@@ -724,6 +742,8 @@ void BlockComponent::mouseDrag (const MouseEvent& e)
         if (panel->onBlockMoved)
             panel->onBlockMoved (*this);
 
+        panel->updateAutoConnectPreview (*this, e.mods.isAltDown());
+
         // onBlockMoved may have reverted position
         node.getPosition (nx, ny);
         hasMoved = nx != ox || ny != oy;
@@ -765,7 +785,10 @@ void BlockComponent::mouseUp (const MouseEvent& e)
     auto* panel = getGraphPanel();
 
     if (panel)
+    {
         panel->selectedNodes.addToSelectionOnMouseUp (node.getNodeId(), e.mods, dragging, selectionMouseDownResult);
+        panel->commitAutoConnect (*this, e.mods.isAltDown());
+    }
 
     doubleClickHadModifier = doubleClickHadModifier
                              || e.mods.isAltDown()
@@ -1094,7 +1117,7 @@ void BlockComponent::resized()
     }
 }
 
-bool BlockComponent::getPortPos (const int index, const bool isInput, float& x, float& y)
+bool BlockComponent::getPortPos (const int index, const bool isInput, float& x, float& y) const
 {
     bool res = false;
 

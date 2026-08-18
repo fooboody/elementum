@@ -200,6 +200,16 @@ void AddConnectionMessage::createActions (Services& app, OwnedArray<UndoableActi
     actions.add (new AddConnectionAction (app, target, sourceNode, sourcePort, destNode, destPort));
 }
 
+void AddConnectionsMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
+{
+    for (const auto& connection : connections)
+        actions.add (new AddConnectionAction (app, target,
+                                               connection.sourceNode,
+                                               connection.sourcePort,
+                                               connection.destNode,
+                                               connection.destPort));
+}
+
 void RemoveConnectionMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
 {
     jassert (usePorts()); // channel-ports not yet supported

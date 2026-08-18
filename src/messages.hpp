@@ -107,6 +107,36 @@ struct AddConnectionMessage : public AppMessage
     void createActions (Services& app, juce::OwnedArray<juce::UndoableAction>& actions) const override;
 };
 
+/** Send multiple new connections as one undo transaction. */
+struct AddConnectionsMessage : public AppMessage
+{
+    struct Connection
+    {
+        uint32_t sourceNode { 0 };
+        uint32_t sourcePort { 0 };
+        uint32_t destNode { 0 };
+        uint32_t destPort { 0 };
+    };
+
+    explicit AddConnectionsMessage (const Node& tgt = Node()) : target (tgt) {}
+
+    void add (const uint32_t sourceNode, const uint32_t sourcePort,
+              const uint32_t destNode, const uint32_t destPort)
+    {
+        Connection connection;
+        connection.sourceNode = sourceNode;
+        connection.sourcePort = sourcePort;
+        connection.destNode = destNode;
+        connection.destPort = destPort;
+        connections.add (connection);
+    }
+
+    const Node target;
+    juce::Array<Connection> connections;
+
+    void createActions (Services& app, juce::OwnedArray<juce::UndoableAction>& actions) const override;
+};
+
 /** Send this to remove a connection from the graph */
 class RemoveConnectionMessage : public AppMessage
 {
