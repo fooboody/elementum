@@ -30,7 +30,8 @@ public:
     static const char* showPluginWindowsKey;
     static const char* autoConnectMidiInputNodesKey;
     static const char* autoConnectNearbyPortsKey;
-    static const char* swapNearbyAudioConnectionsKey;
+static const char* swapNearbyAudioConnectionsKey;
+    static const char* autoEnableNodesWithAudioConnectionsKey;
     static const char* openLastUsedSessionKey;
 static const char* askToSaveSessionKey;
     static const char* menuAppearanceKey;
@@ -106,6 +107,8 @@ static const char* askToSaveSessionKey;
     void setAutoConnectNearbyPorts (const bool);
     bool swapNearbyAudioConnections() const;
     void setSwapNearbyAudioConnections (const bool);
+    bool autoEnableNodesWithAudioConnections() const;
+    void setAutoEnableNodesWithAudioConnections (const bool);
 
     /** True if the last used session should be opened on launch.
         If running as Solo/Lite, then this returns true if the last

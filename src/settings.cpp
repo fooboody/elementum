@@ -19,6 +19,7 @@ const char* Settings::showPluginWindowsKey = "showPluginWindows";
 const char* Settings::autoConnectMidiInputNodesKey = "autoConnectMidiInputNodes";
 const char* Settings::autoConnectNearbyPortsKey = "autoConnectNearbyPorts";
 const char* Settings::swapNearbyAudioConnectionsKey = "swapNearbyAudioConnections";
+const char* Settings::autoEnableNodesWithAudioConnectionsKey = "autoEnableNodesWithAudioConnections";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
 const char* Settings::menuAppearanceKey = "menuAppearance";
@@ -74,8 +75,9 @@ enum OptionsMenuItemId
     PluginWindowsOnTop,
         OpenLastUsedSession,
     AskToSaveSessions,
-    AutoConnectNearbyPorts,
+        AutoConnectNearbyPorts,
     SwapNearbyAudioConnections,
+    AutoEnableNodesWithAudioConnections,
 
     MidiInputDevice = 2000000,
     MidiOutputDevice = 3000000,
@@ -327,6 +329,19 @@ void Settings::setSwapNearbyAudioConnections (const bool value)
 {
     if (auto* props = getProps())
         props->setValue (swapNearbyAudioConnectionsKey, value);
+}
+
+bool Settings::autoEnableNodesWithAudioConnections() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (autoEnableNodesWithAudioConnectionsKey, false);
+    return false;
+}
+
+void Settings::setAutoEnableNodesWithAudioConnections (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (autoEnableNodesWithAudioConnectionsKey, value);
 }
 
 //=============================================================================
@@ -738,6 +753,10 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  "Swap Nearby Audio Connections",
                  true,
                  swapNearbyAudioConnections());
+    sub.addItem (AutoEnableNodesWithAudioConnections,
+                 "Auto-Enable Nodes With Audio Connections",
+                 true,
+                 autoEnableNodesWithAudioConnections());
 
     menu.addSubMenu ("General", sub);
 
@@ -832,6 +851,9 @@ bool Settings::performMenuResult (Context& world, const int result)
             break;
         case SwapNearbyAudioConnections:
             setSwapNearbyAudioConnections (! swapNearbyAudioConnections());
+            break;
+        case AutoEnableNodesWithAudioConnections:
+            setAutoEnableNodesWithAudioConnections (! autoEnableNodesWithAudioConnections());
             break;
         default:
             handled = false;

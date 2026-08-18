@@ -5,6 +5,8 @@
 #include <element/engine.hpp>
 #include <element/plugins.hpp>
 #include <element/signals.hpp>
+#include <element/settings.hpp>
+#include <element/session.hpp>
 
 #include "messages.hpp"
 
@@ -111,7 +113,133 @@ private:
     }
 };
 
+static Node getConnectionTargetGraph (Services& app, const Node& target)
+{
+    if (target.isGraph())
+        return target;
+    if (auto session = app.context().session())
+        return session->getActiveGraph();
+    return Node();
+}
+
+class AutoNodeEnablementAction : public juce::UndoableAction
+{
+public:
+    AutoNodeEnablementAction (Services& a, const Node& targetGraph, const Array<Arc>& changedArcs)
+        : graph (getConnectionTargetGraph (a, targetGraph))
+    {
+        if (! graph.isGraph())
+            return;
+
+        Array<uint32> nodeIds;
+        for (const auto& arc : changedArcs)
+        {
+            nodeIds.addIfNotAlreadyThere (arc.sourceNode);
+            nodeIds.addIfNotAlreadyThere (arc.destNode);
+        }
+
+        for (const auto nodeId : nodeIds)
+        {
+            const Node node (graph.getNodeById (nodeId));
+            auto* const object = node.getObject();
+            if (! node.isValid() || object == nullptr || ! hasAudioPorts (node))
+                continue;
+
+            entries.add ({ node, countAudioConnections (graph, nodeId), object->isEnabled(), false });
+        }
+    }
+
+    bool perform() override
+    {
+        for (auto& entry : entries)
+        {
+            entry.changed = false;
+            const bool wasConnected = entry.audioConnectionsBefore > 0;
+            const bool isConnected = countAudioConnections (graph, entry.node.getNodeId()) > 0;
+            if (wasConnected == isConnected)
+                continue;
+
+            if (auto* const object = entry.node.getObject())
+            {
+                object->setEnabled (isConnected);
+                entry.node.setProperty (tags::enabled, object->isEnabled());
+                entry.changed = true;
+            }
+        }
+        return true;
+    }
+
+    bool undo() override
+    {
+        for (auto& entry : entries)
+        {
+            if (! entry.changed)
+                continue;
+
+            if (auto* const object = entry.node.getObject())
+            {
+                object->setEnabled (entry.enabledBefore);
+                entry.node.setProperty (tags::enabled, object->isEnabled());
+            }
+        }
+        return true;
+    }
+
+private:
+    struct Entry
+    {
+        Node node;
+        int audioConnectionsBefore = 0;
+        bool enabledBefore = true;
+        bool changed = false;
+    };
+
+    const Node graph;
+    Array<Entry> entries;
+
+    static bool hasAudioPorts (const Node& node)
+    {
+        for (int i = 0; i < node.getNumPorts(); ++i)
+            if (node.getPort (i).getType().isAudio())
+                return true;
+        return false;
+    }
+
+    static int countAudioConnections (const Node& graph, const uint32 nodeId)
+    {
+        int count = 0;
+        for (int i = 0; i < graph.getNumConnections(); ++i)
+        {
+            const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
+            if (arc.sourceNode != nodeId && arc.destNode != nodeId)
+                continue;
+
+            const Node source (graph.getNodeById (arc.sourceNode));
+            const Node dest (graph.getNodeById (arc.destNode));
+            if (! source.isValid() || ! dest.isValid())
+                continue;
+
+            if (source.getPort ((int) arc.sourcePort).getType().isAudio()
+                && dest.getPort ((int) arc.destPort).getType().isAudio())
+                ++count;
+        }
+        return count;
+    }
+};
+
+static void addAutoNodeEnablementAction (Services& app,
+                                         OwnedArray<UndoableAction>& actions,
+                                         const Node& graph,
+                                         const Array<Arc>& changedArcs)
+{
+    if (changedArcs.isEmpty() || ! app.context().settings().autoEnableNodesWithAudioConnections())
+        return;
+
+    actions.add (new AutoNodeEnablementAction (app, graph, changedArcs));
+}
+
 class AddConnectionAction : public juce::UndoableAction
+
 {
 public:
     AddConnectionAction (Services& a, const Node& targetGraph, const uint32 sn, const uint32 sp, const uint32 dn, const uint32 dp)
@@ -198,29 +326,48 @@ void AddConnectionMessage::createActions (Services& app, OwnedArray<UndoableActi
 {
     jassert (usePorts()); // channel-ports not yet supported
     actions.add (new AddConnectionAction (app, target, sourceNode, sourcePort, destNode, destPort));
+
+    Array<Arc> changedArcs;
+    changedArcs.add ({ sourceNode, sourcePort, destNode, destPort });
+    addAutoNodeEnablementAction (app, actions, target, changedArcs);
 }
 
 void ModifyConnectionsMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
 {
+    Array<Arc> changedArcs;
     for (const auto& connection : disconnects)
+    {
         actions.add (new RemoveConnectionAction (app, target,
                                                   connection.sourceNode,
                                                   connection.sourcePort,
                                                   connection.destNode,
                                                   connection.destPort));
+        changedArcs.add ({ connection.sourceNode, connection.sourcePort,
+                           connection.destNode, connection.destPort });
+    }
 
     for (const auto& connection : connections)
+    {
         actions.add (new AddConnectionAction (app, target,
                                                connection.sourceNode,
                                                connection.sourcePort,
                                                connection.destNode,
                                                connection.destPort));
+        changedArcs.add ({ connection.sourceNode, connection.sourcePort,
+                           connection.destNode, connection.destPort });
+    }
+
+    addAutoNodeEnablementAction (app, actions, target, changedArcs);
 }
 
 void RemoveConnectionMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
 {
     jassert (usePorts()); // channel-ports not yet supported
     actions.add (new RemoveConnectionAction (app, target, sourceNode, sourcePort, destNode, destPort));
+
+    Array<Arc> changedArcs;
+    changedArcs.add ({ sourceNode, sourcePort, destNode, destPort });
+    addAutoNodeEnablementAction (app, actions, target, changedArcs);
 }
 
 } // namespace element
