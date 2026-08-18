@@ -136,6 +136,15 @@ public:
     ~ConnectorComponent() {}
 
     bool isDragging() const { return dragging; }
+    bool isHovered() const { return hover; }
+    bool isMidiConnection() const
+    {
+        if (const auto sourceNode = graph.getNodeById (sourceFilterID); sourceNode.isValid())
+            return sourceNode.getPort (sourceFilterChannel).getType().isMidi();
+        if (const auto destNode = graph.getNodeById (destFilterID); destNode.isValid())
+            return destNode.getPort (destFilterChannel).getType().isMidi();
+        return false;
+    }
     void setDragging (const bool shouldDrag)
     {
         if (dragging != shouldDrag)
@@ -231,11 +240,7 @@ public:
     void paint (Graphics& g) override
     {
         auto c = Colours::black.brighter();
-        bool midi = false;
-        if (const auto sourceNode = graph.getNodeById (sourceFilterID); sourceNode.isValid())
-            midi = sourceNode.getPort (sourceFilterChannel).getType().isMidi();
-        else if (const auto destNode = graph.getNodeById (destFilterID); destNode.isValid())
-            midi = destNode.getPort (destFilterChannel).getType().isMidi();
+        const bool midi = isMidiConnection();
 
         if (auto* const world = ViewHelpers::getGlobals (this))
         {
@@ -276,6 +281,7 @@ public:
             return;
         hover = true;
         repaint();
+        getGraphPanel()->updateConnectorZOrder();
     }
 
     void mouseExit (const MouseEvent&) override
@@ -284,6 +290,7 @@ public:
             return;
         hover = false;
         repaint();
+        getGraphPanel()->updateConnectorZOrder();
     }
 
     void mouseDown (const MouseEvent&) override
@@ -1378,6 +1385,51 @@ void GraphEditorComponent::updateConnectorComponents (bool async)
             }
         }
     }
+
+    updateConnectorZOrder();
+}
+
+void GraphEditorComponent::updateConnectorZOrder()
+{
+    Component* backmostBlock = nullptr;
+    Array<ConnectorComponent*> midiConnectors;
+    Array<ConnectorComponent*> audioConnectors;
+    Array<ConnectorComponent*> hoveredConnectors;
+
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        auto* const child = getChildComponent (i);
+        if (backmostBlock == nullptr && dynamic_cast<BlockComponent*> (child) != nullptr)
+            backmostBlock = child;
+
+        if (auto* const connector = dynamic_cast<ConnectorComponent*> (child))
+        {
+            if (connector->isDragging())
+                continue;
+
+            if (connector->isHovered())
+                hoveredConnectors.add (connector);
+            else if (connector->isMidiConnection())
+                midiConnectors.add (connector);
+            else
+                audioConnectors.add (connector);
+        }
+    }
+
+    const auto stackBehindBlocks = [backmostBlock] (const Array<ConnectorComponent*>& connectors)
+    {
+        for (auto* const connector : connectors)
+        {
+            if (backmostBlock != nullptr)
+                connector->toBehind (backmostBlock);
+            else
+                connector->toFront (false);
+        }
+    };
+
+    stackBehindBlocks (midiConnectors);
+    stackBehindBlocks (audioConnectors);
+    stackBehindBlocks (hoveredConnectors);
 }
 
 void GraphEditorComponent::updateBlockComponents (const bool doPosition)
