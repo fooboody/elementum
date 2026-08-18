@@ -688,6 +688,18 @@ void BlockComponent::mouseDown (const MouseEvent& e)
         cc->services().find<GuiService>()->selectNode (node);
     }
 
+    if (! e.mods.isPopupMenu() && e.mods.isAltDown())
+    {
+        if (auto obj = node.getObject())
+        {
+            obj->setEnabled (! obj->isEnabled());
+            node.data().setProperty (tags::enabled, obj->isEnabled(), nullptr);
+            panel->updateConnectorComponents();
+            repaint();
+        }
+        return;
+    }
+
     if (e.mods.isPopupMenu())
     {
         auto* const world = ViewHelpers::getGlobals (this);
