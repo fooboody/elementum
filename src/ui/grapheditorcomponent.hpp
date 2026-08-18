@@ -57,6 +57,9 @@ public:
     /** Returns true if nearby audio ports should be auto-connected. */
     bool isAutoConnectNearbyPortsEnabled() const noexcept { return autoConnectNearbyPorts; }
 
+    /** Returns true if nearby audio connections should be swapped. */
+    bool isSwapNearbyAudioConnectionsEnabled() const noexcept { return swapNearbyAudioConnections; }
+
     /** Changes the layout to vertical or not */
     void setVerticalLayout (const bool isVertical);
 
@@ -110,6 +113,7 @@ private:
 
     bool verticalLayout = true;
     bool autoConnectNearbyPorts = false;
+    bool swapNearbyAudioConnections = false;
 
     LassoComponent<uint32> lasso;
     friend class SelectedNodes;
@@ -159,6 +163,8 @@ private:
         bool facing { false };
         bool samePortIndex { false };
         bool disconnect { false };
+        bool swap { false };
+        bool swapInput { false };
     };
 
     Array<AutoConnectPair> findAutoConnectPairs (const BlockComponent& movedBlock) const;

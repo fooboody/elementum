@@ -33,6 +33,8 @@ public:
     virtual Colour getColor() const noexcept;
 
     void setAutoConnectHighlighted (bool highlighted) noexcept;
+    void setDisconnectHighlighted (bool highlighted) noexcept;
+    void setSwapHighlighted (bool highlighted) noexcept;
 
     void paint (Graphics& g) override;
     void mouseDown (const MouseEvent& e) override;
@@ -48,6 +50,8 @@ private:
     bool input { true };
     bool vertical { false };
     bool autoConnectHighlighted { false };
+    bool disconnectHighlighted { false };
+    bool swapHighlighted { false };
 
     GraphEditorComponent* getGraphEditor() const noexcept;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PortComponent)

@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #include <element/node.hpp>
 #include <element/plugins.hpp>
@@ -435,6 +436,7 @@ void GraphEditorComponent::setNode (const Node& n)
 
     verticalLayout = graph.getProperty (tags::vertical, true);
     autoConnectNearbyPorts = graph.getProperty (tags::autoConnectNearbyPorts, false);
+    swapNearbyAudioConnections = graph.getProperty (tags::swapNearbyAudioConnections, false);
 
     if (draggingConnector)
         removeChildComponent (draggingConnector.get());
@@ -505,6 +507,7 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
         menu.addItem (5, "Change orientation...");
         menu.addItem (7, "Gather nodes...");
         menu.addItem (8, "Auto-connect nearby ports", true, autoConnectNearbyPorts);
+        menu.addItem (9, "Swap nearby audio connections", true, swapNearbyAudioConnections);
 
         menu.addSeparator();
         menu.addSectionHeader ("Plugins");
@@ -616,6 +619,14 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                     autoConnectNearbyPorts = ! autoConnectNearbyPorts;
                     graph.setProperty (tags::autoConnectNearbyPorts, autoConnectNearbyPorts);
                     if (! autoConnectNearbyPorts)
+                        clearAutoConnectPreview();
+                    return;
+                    break;
+
+                case 9:
+                    swapNearbyAudioConnections = ! swapNearbyAudioConnections;
+                    graph.setProperty (tags::swapNearbyAudioConnections, swapNearbyAudioConnections);
+                    if (! swapNearbyAudioConnections)
                         clearAutoConnectPreview();
                     return;
                     break;
@@ -792,9 +803,49 @@ Array<GraphEditorComponent::AutoConnectPair>
     for (int i = 0; i < graph.getNumConnections(); ++i)
         arcs.add (new Arc (Node::arcFromValueTree (graph.getConnectionValueTree (i))));
 
-    for (const auto* const arc : arcs)
+    if (swapNearbyAudioConnections)
     {
-        const auto* movedSource = findPort (movedPorts, arc->sourceNode, arc->sourcePort);
+        for (int i = 0; i < getNumChildComponents(); ++i)
+        {
+            const auto* const block = dynamic_cast<const BlockComponent*> (getChildComponent (i));
+            if (block == nullptr || block == &movedBlock)
+                continue;
+
+            const auto otherPorts = collectPorts (*block);
+            for (const auto& a : movedPorts)
+            {
+                if (! a.type.isAudio())
+                    continue;
+
+                for (const auto& b : otherPorts)
+                {
+                    if (! b.type.isAudio() || a.input != b.input)
+                        continue;
+
+                    const auto distance = std::hypot (a.position.x - b.position.x,
+                                                      a.position.y - b.position.y);
+                    if (distance > maxDistance)
+                        continue;
+
+                    const bool facing = verticalLayout ? a.position.y <= b.position.y
+                                                       : a.position.x <= b.position.x;
+                    result.add ({ a.node, a.port,
+                                  b.node, b.port,
+                                  distance, facing,
+                                  a.port == b.port,
+                                  false,
+                                  true,
+                                  a.input });
+                }
+            }
+        }
+    }
+
+    if (autoConnectNearbyPorts)
+    {
+        for (const auto* const arc : arcs)
+        {
+            const auto* movedSource = findPort (movedPorts, arc->sourceNode, arc->sourcePort);
         const auto* movedDest = findPort (movedPorts, arc->destNode, arc->destPort);
         if (movedSource == nullptr && movedDest == nullptr)
             continue;
@@ -828,11 +879,13 @@ Array<GraphEditorComponent::AutoConnectPair>
                       distance, facing,
                       arc->sourcePort == arc->destPort,
                       true });
-        disconnectedSources.add (key (arc->sourceNode, arc->sourcePort));
-        disconnectedDestinations.add (key (arc->destNode, arc->destPort));
+            disconnectedSources.add (key (arc->sourceNode, arc->sourcePort));
+            disconnectedDestinations.add (key (arc->destNode, arc->destPort));
+        }
     }
 
     Array<AutoConnectPair> candidates;
+    if (autoConnectNearbyPorts)
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
         const auto* const block = dynamic_cast<const BlockComponent*> (getChildComponent (i));
@@ -845,6 +898,9 @@ Array<GraphEditorComponent::AutoConnectPair>
             for (const auto& b : otherPorts)
             {
                 if (a.input == b.input || a.type != b.type)
+                    continue;
+                if (swapNearbyAudioConnections && a.type.isAudio()
+                    && a.input == b.input)
                     continue;
 
                 const auto distance = std::hypot (a.position.x - b.position.x,
@@ -918,7 +974,11 @@ void GraphEditorComponent::clearAutoConnectPreview()
         {
             for (int j = 0; j < block->getNumChildComponents(); ++j)
                 if (auto* const port = dynamic_cast<PortComponent*> (block->getChildComponent (j)))
+                {
                     port->setAutoConnectHighlighted (false);
+                    port->setDisconnectHighlighted (false);
+                    port->setSwapHighlighted (false);
+                }
         }
     }
 
@@ -948,12 +1008,19 @@ void GraphEditorComponent::updateAutoConnectPreview (const BlockComponent& moved
 
                 const bool sourceMatch = port->getNodeId() == pair.sourceNode
                                           && port->getPortIndex() == pair.sourcePort
-                                          && ! port->isInput();
+                                          && (pair.swap || ! port->isInput());
                 const bool destMatch = port->getNodeId() == pair.destNode
                                        && port->getPortIndex() == pair.destPort
-                                       && port->isInput();
+                                       && (pair.swap || port->isInput());
                 if (sourceMatch || destMatch)
-                    port->setAutoConnectHighlighted (true);
+                {
+                    if (pair.swap)
+                        port->setSwapHighlighted (true);
+                    else if (pair.disconnect)
+                        port->setDisconnectHighlighted (true);
+                    else
+                        port->setAutoConnectHighlighted (true);
+                }
             }
         }
     }
@@ -971,14 +1038,184 @@ void GraphEditorComponent::commitAutoConnect (const BlockComponent& movedBlock, 
     if (! pairs.isEmpty())
     {
         auto* const message = new ModifyConnectionsMessage (graph);
+        Array<uint64> swappedNodePairs;
+        Array<std::pair<uint32, uint32>> swaps;
+
+        auto pairKey = [] (uint32 a, uint32 b) -> uint64
+        {
+            if (a > b)
+                std::swap (a, b);
+            return (static_cast<uint64> (a) << 32) | static_cast<uint64> (b);
+        };
+
         for (const auto& pair : pairs)
         {
+            if (! pair.swap)
+                continue;
+
+            const auto key = pairKey (pair.sourceNode, pair.destNode);
+            if (pair.sourceNode != pair.destNode && ! swappedNodePairs.contains (key))
+            {
+                swappedNodePairs.add (key);
+                swaps.add ({ pair.sourceNode, pair.destNode });
+            }
+        }
+
+        auto isAudioArc = [&] (const Arc& arc)
+        {
+            const auto sourceNode = graph.getNodeById (arc.sourceNode);
+            const auto destNode = graph.getNodeById (arc.destNode);
+            return sourceNode.isValid() && destNode.isValid()
+                   && sourceNode.getPort ((int) arc.sourcePort).getType().isAudio()
+                   && destNode.getPort ((int) arc.destPort).getType().isAudio();
+        };
+
+        auto containsConnection = [] (const Array<ModifyConnectionsMessage::Connection>& connections,
+                                      uint32 sourceNode, uint32 sourcePort,
+                                      uint32 destNode, uint32 destPort)
+        {
+            for (const auto& connection : connections)
+                if (connection.sourceNode == sourceNode && connection.sourcePort == sourcePort
+                    && connection.destNode == destNode && connection.destPort == destPort)
+                    return true;
+            return false;
+        };
+
+        auto hasDirectAudioConnection = [&] (uint32 nodeA, uint32 nodeB)
+        {
+            for (int i = 0; i < graph.getNumConnections(); ++i)
+            {
+                const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
+                if (arc.sourceNode != nodeA && arc.sourceNode != nodeB)
+                    continue;
+                if (arc.destNode != nodeA && arc.destNode != nodeB)
+                    continue;
+                if (arc.sourceNode == arc.destNode)
+                    continue;
+
+                const auto sourceNode = graph.getNodeById (arc.sourceNode);
+                const auto destNode = graph.getNodeById (arc.destNode);
+                if (sourceNode.isValid() && destNode.isValid()
+                    && sourceNode.getPort ((int) arc.sourcePort).getType().isAudio()
+                    && destNode.getPort ((int) arc.destPort).getType().isAudio())
+                    return true;
+            }
+            return false;
+        };
+
+        for (const auto& pair : pairs)
+        {
+            if (! pair.swap || hasDirectAudioConnection (pair.sourceNode, pair.destNode))
+                continue;
+
+            for (int i = 0; i < graph.getNumConnections(); ++i)
+            {
+                const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
+                uint32 sourceNode = arc.sourceNode;
+                uint32 destNode = arc.destNode;
+                bool affected = false;
+
+                if (pair.swapInput)
+                {
+                    if (arc.destNode == pair.sourceNode && arc.destPort == pair.sourcePort)
+                    {
+                        destNode = pair.destNode;
+                        affected = true;
+                    }
+                    else if (arc.destNode == pair.destNode && arc.destPort == pair.destPort)
+                    {
+                        destNode = pair.sourceNode;
+                        affected = true;
+                    }
+                }
+                else if (arc.sourceNode == pair.sourceNode && arc.sourcePort == pair.sourcePort)
+                {
+                    sourceNode = pair.destNode;
+                    affected = true;
+                }
+                else if (arc.sourceNode == pair.destNode && arc.sourcePort == pair.destPort)
+                {
+                    sourceNode = pair.sourceNode;
+                    affected = true;
+                }
+
+                if (! affected || ! isAudioArc (arc))
+                    continue;
+
+                message->addDisconnect (arc.sourceNode, arc.sourcePort, arc.destNode, arc.destPort);
+                if (sourceNode != destNode
+                    && graph.canConnect (sourceNode, arc.sourcePort, destNode, arc.destPort))
+                    message->add (sourceNode, arc.sourcePort, destNode, arc.destPort);
+            }
+        }
+
+        if (! swaps.isEmpty())
+        {
+            for (int i = 0; i < graph.getNumConnections(); ++i)
+            {
+                const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
+                if (! isAudioArc (arc))
+                    continue;
+
+                uint32 sourceNode = arc.sourceNode;
+                uint32 destNode = arc.destNode;
+                bool affected = false;
+
+                for (const auto& swap : swaps)
+                {
+                    if (! hasDirectAudioConnection (swap.first, swap.second))
+                        continue;
+
+                    if (sourceNode == swap.first)
+                    {
+                        sourceNode = swap.second;
+                        affected = true;
+                    }
+                    else if (sourceNode == swap.second)
+                    {
+                        sourceNode = swap.first;
+                        affected = true;
+                    }
+
+                    if (destNode == swap.first)
+                    {
+                        destNode = swap.second;
+                        affected = true;
+                    }
+                    else if (destNode == swap.second)
+                    {
+                        destNode = swap.first;
+                        affected = true;
+                    }
+                }
+
+                if (! affected)
+                    continue;
+
+                message->addDisconnect (arc.sourceNode, arc.sourcePort, arc.destNode, arc.destPort);
+                if (sourceNode == destNode || ! graph.canConnect (sourceNode, arc.sourcePort, destNode, arc.destPort))
+                    continue;
+
+                if (! containsConnection (message->connections, sourceNode, arc.sourcePort, destNode, arc.destPort))
+                    message->add (sourceNode, arc.sourcePort, destNode, arc.destPort);
+            }
+        }
+
+        for (const auto& pair : pairs)
+        {
+            if (pair.swap)
+                continue;
+
             if (pair.disconnect)
                 message->addDisconnect (pair.sourceNode, pair.sourcePort, pair.destNode, pair.destPort);
             else
                 message->add (pair.sourceNode, pair.sourcePort, pair.destNode, pair.destPort);
         }
-        ViewHelpers::postMessageFor (this, message);
+
+        if (! message->disconnects.isEmpty() || ! message->connections.isEmpty())
+            ViewHelpers::postMessageFor (this, message);
+        else
+            delete message;
     }
 
     clearAutoConnectPreview();

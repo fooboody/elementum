@@ -83,6 +83,24 @@ void PortComponent::setAutoConnectHighlighted (const bool highlighted) noexcept
     repaint();
 }
 
+void PortComponent::setDisconnectHighlighted (const bool highlighted) noexcept
+{
+    if (disconnectHighlighted == highlighted)
+        return;
+
+    disconnectHighlighted = highlighted;
+    repaint();
+}
+
+void PortComponent::setSwapHighlighted (const bool highlighted) noexcept
+{
+    if (swapHighlighted == highlighted)
+        return;
+
+    swapHighlighted = highlighted;
+    repaint();
+}
+
 Colour PortComponent::getColor() const noexcept
 {
     switch (this->type)
@@ -110,9 +128,25 @@ void PortComponent::paint (Graphics& g)
         g.setColour (getColor());
         g.fillRoundedRectangle (0.f, 0.f, (float) getWidth(), (float) getHeight(), 2.f);
 
-        if (autoConnectHighlighted)
+        if (swapHighlighted)
         {
             g.setColour (Colours::white);
+            g.drawRoundedRectangle (0.75f, 0.75f,
+                                    (float) getWidth() - 1.5f,
+                                    (float) getHeight() - 1.5f,
+                                    2.f, 2.f);
+        }
+        else if (disconnectHighlighted)
+        {
+            g.setColour (Colour (0xFFFF66B3));
+            g.drawRoundedRectangle (0.75f, 0.75f,
+                                    (float) getWidth() - 1.5f,
+                                    (float) getHeight() - 1.5f,
+                                    2.f, 2.f);
+        }
+        else if (autoConnectHighlighted)
+        {
+            g.setColour (Colour (0xFF0C83FF));
             g.drawRoundedRectangle (0.75f, 0.75f,
                                     (float) getWidth() - 1.5f,
                                     (float) getHeight() - 1.5f,
@@ -742,7 +776,9 @@ void BlockComponent::mouseDrag (const MouseEvent& e)
         if (panel->onBlockMoved)
             panel->onBlockMoved (*this);
 
-        panel->updateAutoConnectPreview (*this, panel->isAutoConnectNearbyPortsEnabled());
+        panel->updateAutoConnectPreview (*this,
+                                         panel->isAutoConnectNearbyPortsEnabled()
+                                             || panel->isSwapNearbyAudioConnectionsEnabled());
 
         // onBlockMoved may have reverted position
         node.getPosition (nx, ny);
@@ -787,7 +823,9 @@ void BlockComponent::mouseUp (const MouseEvent& e)
     if (panel)
     {
         panel->selectedNodes.addToSelectionOnMouseUp (node.getNodeId(), e.mods, dragging, selectionMouseDownResult);
-        panel->commitAutoConnect (*this, panel->isAutoConnectNearbyPortsEnabled());
+        panel->commitAutoConnect (*this,
+                                  panel->isAutoConnectNearbyPortsEnabled()
+                                      || panel->isSwapNearbyAudioConnectionsEnabled());
     }
 
     doubleClickHadModifier = doubleClickHadModifier
