@@ -257,12 +257,18 @@ LookAndFeel_E1::LookAndFeel_E1()
     setColour (TextButton::textColourOffId, Colours::white);
     setColour (TextButton::textColourOnId, Colours::white);
 
+    // WINDOW_CHROME_TOGGLE_PATCH
+    // Use the platform's current light/dark preference for window chrome and menus.
+    const bool darkWindowChrome = Desktop::getInstance().isDarkModeActive();
+    const auto chromeBackground = darkWindowChrome ? Colours::black : Colour (0xfff0f0f0);
+    const auto chromeText = darkWindowChrome ? Colours::white : Colour (0xff1d1d1e);
+
     // PopupMenu Styling
-    setColour (PopupMenu::backgroundColourId, Colour (0xfff0f0f0));
-    setColour (PopupMenu::textColourId, Colour (0xff1d1d1e));
-    setColour (PopupMenu::headerTextColourId, Colour (0xff1d1d1e));
+    setColour (PopupMenu::backgroundColourId, chromeBackground);
+    setColour (PopupMenu::textColourId, chromeText);
+    setColour (PopupMenu::headerTextColourId, chromeText);
     setColour (PopupMenu::highlightedBackgroundColourId, Colors::elemental);
-    setColour (PopupMenu::highlightedTextColourId, Colour (0xfff0f0f0));
+    setColour (PopupMenu::highlightedTextColourId, chromeBackground);
 
     // ComboBox Styling
     setColour (ComboBox::backgroundColourId, Colours::black);

@@ -3,7 +3,11 @@
 
 file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-juce_add_console_app(test_element)
+juce_add_console_app(test_element
+    PRODUCT_NAME "test_elementum"
+    COMPANY_NAME "Fooboody Studio"
+    BUNDLE_ID "com.fooboody.test_elementum"
+)
 target_sources(test_element PRIVATE ${TEST_SOURCES})
 target_link_libraries(test_element PRIVATE kv::element)
 target_include_directories(test_element

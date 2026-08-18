@@ -125,11 +125,14 @@ void MainWindow::closeButtonPressed()
 
 void MainWindow::minimiseButtonPressed()
 {
-    auto& gui = *world.services().find<GuiService>();
-    if (world.settings().isSystrayEnabled())
-        gui.commands().invokeDirectly (Commands::toggleUserInterface, true);
-    else
-        DocumentWindow::minimiseButtonPressed();
+    // WINDOW_CHROME_TOGGLE_PATCH: Always perform standard minimisation
+    setMinimised (true);
+}
+
+void MainWindow::maximiseButtonPressed()
+{
+    // WINDOW_CHROME_TOGGLE_PATCH: Always perform standard maximisation
+    setFullScreen (! isFullScreen());
 }
 
 void MainWindow::activeWindowStatusChanged()

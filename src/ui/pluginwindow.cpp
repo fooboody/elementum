@@ -256,11 +256,7 @@ PluginWindow::PluginWindow (GuiService& g, Component* const ui, const Node& n)
       node (n),
       delayedNodeFocus (*this)
 {
-#if JUCE_LINUX || JUCE_BSD
-    setUsingNativeTitleBar (true);
-#else
-    setUsingNativeTitleBar (true);
-#endif
+    setUsingNativeTitleBar (false); // WINDOW_CHROME_TOGGLE_PATCH
 
     setLookAndFeel (&g.getLookAndFeel());
     setSize (400, 300);

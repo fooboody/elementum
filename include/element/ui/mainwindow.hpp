@@ -20,6 +20,7 @@ public:
     virtual ~MainWindow();
     virtual void closeButtonPressed() override;
     void minimiseButtonPressed() override;
+    void maximiseButtonPressed() override; // WINDOW_CHROME_TOGGLE_PATCH
 
     void refreshMenu();
     Context& context() { return world; }
