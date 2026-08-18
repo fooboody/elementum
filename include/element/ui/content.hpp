@@ -104,8 +104,10 @@ public:
     virtual void presentView (const juce::String&) = 0;
 
     //=========================================================================
+    virtual void windowStateChanged() {}
     virtual void saveState (juce::PropertiesFile*);
     virtual void restoreState (juce::PropertiesFile*);
+
     virtual void getSessionState (juce::String&) {}
     virtual void applySessionState (const juce::String&) {}
 

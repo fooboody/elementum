@@ -14,7 +14,8 @@
 namespace element {
 
 class SessionTreePanel : public juce::Component,
-                         private juce::ValueTree::Listener
+                         private juce::ValueTree::Listener,
+                         private juce::Timer
 {
 public:
     explicit SessionTreePanel();
@@ -25,12 +26,16 @@ public:
     void setSession (SessionPtr);
     void showNode (const Node& newNode);
     bool showingNode() const noexcept;
+    void updateDSPMeteringState();
 
     SessionPtr session() const;
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void visibilityChanged() override;
+    void parentHierarchyChanged() override;
     void mouseDown (const MouseEvent& event) override;
+
     bool keyPressed (const KeyPress&) override;
 
 private:
@@ -46,7 +51,9 @@ private:
     SignalConnection nodeSelectedConnection;
 
     bool ignoreActiveRootGraphSelectionHandler = false;
+    bool dspMeteringActive = false;
     void selectActiveRootGraph();
+    void timerCallback() override;
 
     TreeViewItem* findItemForNode (const Node& node) const;
 

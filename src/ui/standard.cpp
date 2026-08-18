@@ -808,8 +808,15 @@ void StandardContent::stabilize (const bool refreshDataPathTrees)
     refreshStatusBar();
 }
 
+void StandardContent::windowStateChanged()
+{
+    if (auto* ss = nav->findPanel<SessionTreePanel>())
+        ss->updateDSPMeteringState();
+}
+
 void StandardContent::stabilizeViews()
 {
+
     if (container->primary)
         container->primary->stabilizeContent();
     if (auto c2 = container->secondary.get())

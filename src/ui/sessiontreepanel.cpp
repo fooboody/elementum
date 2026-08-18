@@ -7,6 +7,7 @@
 #include <element/ui/content.hpp>
 #include <element/ui/navigation.hpp>
 #include <element/node.hpp>
+#include <element/processor.hpp>
 
 #include "ui/datapathbrowser.hpp"
 #include "ui/grapheditorview.hpp"
@@ -33,7 +34,11 @@ inline static void repaintItems (TreeViewItem* item)
         return;
     for (int i = 0; i < item->getNumSubItems(); ++i)
         if (auto si = item->getSubItem (i))
+        {
             si->repaintItem();
+            repaintItems (si);
+        }
+
 }
 
 inline static Node findRoot (const Node& node)
@@ -255,8 +260,32 @@ public:
             view->grabKeyboardFocus();
     }
 
-    String getRenamingName() const override { return getDisplayName(); }
+        String getRenamingName() const override { return getDisplayName(); }
     String getDisplayName() const override { return node.getDisplayName(); }
+
+    void paintContent (Graphics& g, const Rectangle<int>& area) override
+    {
+        auto* processor = node.getObject();
+        if (processor == nullptr || node.isGraph())
+        {
+            TreeItemBase::paintContent (g, area);
+            return;
+        }
+
+        constexpr int loadWidth = 56;
+        constexpr int loadGap = 6;
+        auto nameArea = area;
+        const auto loadArea = nameArea.removeFromRight (loadWidth);
+        nameArea.removeFromRight (loadGap);
+
+        TreeItemBase::paintContent (g, nameArea);
+
+        String loadText (processor->getDSPLoad(), 1);
+        loadText << "%";
+        g.setFont (getFont());
+        g.setColour (Colors::textColor.withAlpha (0.8f));
+        g.drawText (loadText, loadArea, Justification::centredRight, false);
+    }
 
     void setName (const String& newName) override
     {
@@ -463,6 +492,11 @@ private:
         }
 
         String getRenamingName() const override { return getDisplayName(); }
+
+        void paintContent (Graphics& g, const Rectangle<int>& area) override
+        {
+            TreeItemBase::paintContent (g, area);
+        }
     };
 };
 
@@ -879,6 +913,10 @@ SessionTreePanel::SessionTreePanel()
 
 SessionTreePanel::~SessionTreePanel()
 {
+    stopTimer();
+    if (dspMeteringActive)
+        Processor::setDSPMeteringEnabled (false);
+
     nodeSelectedConnection.disconnect();
     data.removeListener (this);
     panel->setRoot (nullptr);
@@ -912,6 +950,49 @@ void SessionTreePanel::paint (juce::Graphics& g)
 void SessionTreePanel::resized()
 {
     panel->setBounds (getLocalBounds());
+    updateDSPMeteringState();
+}
+
+void SessionTreePanel::visibilityChanged()
+{
+    updateDSPMeteringState();
+}
+
+void SessionTreePanel::parentHierarchyChanged()
+{
+    updateDSPMeteringState();
+}
+
+void SessionTreePanel::updateDSPMeteringState()
+{
+    const bool shouldMeasure = panel != nullptr && isShowing() && getHeight() > 0 && panel->getHeight() > 0;
+    if (shouldMeasure == dspMeteringActive)
+        return;
+
+    dspMeteringActive = shouldMeasure;
+    Processor::setDSPMeteringEnabled (dspMeteringActive);
+
+    if (dspMeteringActive)
+    {
+        startTimerHz (4);
+        timerCallback();
+    }
+    else
+    {
+        stopTimer();
+    }
+}
+
+void SessionTreePanel::timerCallback()
+{
+    if (! dspMeteringActive || ! isShowing() || getHeight() <= 0 || panel == nullptr || panel->getHeight() <= 0)
+    {
+        updateDSPMeteringState();
+        return;
+    }
+
+    if (panel->rootItem)
+        detail::repaintItems (panel->rootItem.get());
 }
 
 void SessionTreePanel::mouseDown (const MouseEvent& ev) {}

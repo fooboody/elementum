@@ -268,6 +268,13 @@ public:
     void setOutputRMS (int chan, float rms, int numSamples);
     float getOutputRMS (int chan) const { return (chan < outRMS.size()) ? outRMS.getUnchecked (chan)->value.get() : 0.0f; }
 
+    /** Per-node audio processing load, expressed as a percentage of one audio block. */
+    float getDSPLoad() const { return dspLoad.value.get(); }
+
+    /** Enables per-node DSP metering while a live consumer is visible. */
+    static void setDSPMeteringEnabled (bool shouldBeEnabled);
+    static bool isDSPMeteringEnabled() { return dspMeteringEnabled.get() != 0; }
+
     //=========================================================================
     /** Connect this node's output audio to another node's input audio */
     void connectAudioTo (const Processor* other);
@@ -539,7 +546,10 @@ private:
     GraphNode* parent = nullptr;
     bool isPrepared = false;
 
+    static juce::Atomic<int> dspMeteringEnabled;
+
     juce::Atomic<int> enabled { 1 };
+
     juce::Atomic<int> bypassed { 0 };
     juce::Atomic<int> mute { 0 };
     juce::Atomic<int> muteInput { 0 };
@@ -563,8 +573,14 @@ private:
     };
     juce::OwnedArray<RMSMeter> inRMS, outRMS;
 
+    struct DSPLoadMeter {
+        float valueForAudioThread = 0.0f;
+        AtomicValue<float> value;
+    } dspLoad;
+
     /** Integrates a block's RMS into the given meter with a fixed time window. */
     void updateRMSMeter (RMSMeter& meter, float blockRMS, int numSamples);
+    void updateDSPLoad (float blockLoad, int numSamples);
 
     juce::Atomic<int> keyRangeLow { 0 };
     juce::Atomic<int> keyRangeHigh { 127 };

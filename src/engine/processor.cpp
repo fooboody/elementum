@@ -15,6 +15,8 @@
 
 namespace element {
 
+juce::Atomic<int> Processor::dspMeteringEnabled { 0 };
+
 Processor::Processor (const PortList& portList)
     : nodeId (0),
       isPrepared (false),
@@ -223,7 +225,25 @@ void Processor::updateRMSMeter (RMSMeter& meter, float blockRMS, int numSamples)
     meter.value.set (std::sqrt (meter.meanSquare));
 }
 
+void Processor::updateDSPLoad (float blockLoad, int numSamples)
+{
+    if (numSamples <= 0)
+        return;
+
+    static constexpr double integrationSeconds = 0.3;
+    const double fs = sampleRate > 0.0 ? sampleRate : 44100.0;
+    const float alpha = (float) (1.0 - std::exp (-(double) numSamples / (integrationSeconds * fs)));
+    dspLoad.valueForAudioThread += (blockLoad - dspLoad.valueForAudioThread) * alpha;
+    dspLoad.value.set (dspLoad.valueForAudioThread);
+}
+
+void Processor::setDSPMeteringEnabled (bool shouldBeEnabled)
+{
+    dspMeteringEnabled.set (shouldBeEnabled ? 1 : 0);
+}
+
 void Processor::setInputRMS (int chan, float rms, int numSamples)
+
 {
     if (chan < inRMS.size())
         updateRMSMeter (*inRMS.getUnchecked (chan), rms, numSamples);

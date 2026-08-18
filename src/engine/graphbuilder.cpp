@@ -232,6 +232,9 @@ public:
 
     void perform (AudioSampleBuffer& sharedBufferChans, const OwnedArray<MidiBuffer>& sharedMidiBuffers, const int numSamples)
     {
+        const bool measureDSPLoad = Processor::isDSPMeteringEnabled();
+        const auto startTicks = measureDSPLoad ? juce::Time::getHighResolutionTicks() : 0;
+
         for (int i = totalChans; --i >= 0;)
         {
             channels[i] = sharedBufferChans.getWritePointer (audioChannelsToUse.getUnchecked (i), 0);
@@ -243,6 +246,9 @@ public:
 
         if (! node->isEnabled())
         {
+            if (measureDSPLoad)
+                node->updateDSPLoad (0.0f, numSamples);
+
             for (int ch = numAudioIns; ch < numAudioOuts; ++ch)
                 buffer.clear (ch, 0, buffer.getNumSamples());
             return;
@@ -449,6 +455,17 @@ public:
 
         for (int i = 0; i < numAudioOuts; ++i)
             node->setOutputRMS (i, buffer.getRMSLevel (i, 0, numSamples), numSamples);
+
+        if (measureDSPLoad)
+        {
+            const auto elapsedTicks = juce::Time::getHighResolutionTicks() - startTicks;
+            const auto ticksPerSecond = juce::Time::getHighResolutionTicksPerSecond();
+            const auto sampleRate = node->getSampleRate() > 0.0 ? node->getSampleRate() : 44100.0;
+            const auto blockSeconds = (double) numSamples / sampleRate;
+            const auto elapsedSeconds = (double) elapsedTicks / (double) ticksPerSecond;
+            const auto blockLoad = blockSeconds > 0.0 ? (float) (elapsedSeconds / blockSeconds * 100.0) : 0.0f;
+            node->updateDSPLoad (jmax (0.0f, blockLoad), numSamples);
+        }
     }
 
     const ProcessorPtr node;

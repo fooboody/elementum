@@ -61,6 +61,7 @@ public:
 
     void stabilize (const bool refreshDataPathTrees = false) override;
     void stabilizeViews() override;
+    void windowStateChanged() override;
 
     void setShowAccessoryView (const bool show);
     bool showAccessoryView() const;

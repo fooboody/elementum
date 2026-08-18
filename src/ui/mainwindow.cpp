@@ -137,6 +137,9 @@ void MainWindow::maximiseButtonPressed()
 
 void MainWindow::activeWindowStatusChanged()
 {
+    if (auto* content = dynamic_cast<Content*> (getContentComponent()))
+        content->windowStateChanged();
+
     if (nullptr == getContentComponent())
         return;
     auto& gui = *services().find<UI>();
