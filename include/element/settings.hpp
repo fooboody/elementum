@@ -28,13 +28,13 @@ public:
     static const char* lastPluginScanPathPrefix;
     static const char* scanForPluginsOnStartKey;
     static const char* showPluginWindowsKey;
-    static const char* autoConnectMidiInputNodesKey;
-    static const char* autoConnectNearbyPortsKey;
-static const char* swapNearbyAudioConnectionsKey;
-    static const char* autoEnableNodesWithAudioConnectionsKey;
     static const char* openLastUsedSessionKey;
-static const char* askToSaveSessionKey;
+    static const char* askToSaveSessionKey;
     static const char* menuAppearanceKey;
+    static const char* autoConnectNearbyPortsKey;
+    static const char* swapNearbyAudioConnectionsKey;
+    static const char* autoEnableNodesWithAudioConnectionsKey;
+    static const char* autoConnectMidiInputNodesKey;
     static const char* defaultNewSessionFile;
     static const char* generateMidiClockKey;
     static const char* sendMidiClockToInputKey;
@@ -99,17 +99,6 @@ static const char* askToSaveSessionKey;
     bool showPluginWindowsWhenAdded() const;
     void setShowPluginWindowsWhenAdded (const bool);
 
-    /** True if MIDI input sources should be connected to new plugins automatically */
-    bool autoConnectMidiInputNodes() const;
-    void setAutoConnectMidiInputNodes (const bool);
-
-    bool autoConnectNearbyPorts() const;
-    void setAutoConnectNearbyPorts (const bool);
-    bool swapNearbyAudioConnections() const;
-    void setSwapNearbyAudioConnections (const bool);
-    bool autoEnableNodesWithAudioConnections() const;
-    void setAutoEnableNodesWithAudioConnections (const bool);
-
     /** True if the last used session should be opened on launch.
         If running as Solo/Lite, then this returns true if the last
         Graph should be opened on launch instead of a Session
@@ -124,6 +113,17 @@ static const char* askToSaveSessionKey;
     /** True if the user should be prompted to save when exiting the app */
     bool askToSaveSession();
     void setAskToSaveSession (const bool);
+
+    bool autoConnectNearbyPorts() const;
+    void setAutoConnectNearbyPorts (const bool);
+    bool swapNearbyAudioConnections() const;
+    void setSwapNearbyAudioConnections (const bool);
+    bool autoEnableNodesWithAudioConnections() const;
+    void setAutoEnableNodesWithAudioConnections (const bool);
+
+    /** True if MIDI input sources should be connected to new plugins automatically */
+    bool autoConnectMidiInputNodes() const;
+    void setAutoConnectMidiInputNodes (const bool);
 
     const juce::File getDefaultNewSessionFile() const;
     void setDefaultNewSessionFile (const juce::File&);

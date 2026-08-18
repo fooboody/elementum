@@ -16,13 +16,13 @@ const char* Settings::pluginFormatsKey = "pluginFormatsKey";
 const char* Settings::pluginWindowOnTopDefault = "pluginWindowOnTopDefault";
 const char* Settings::scanForPluginsOnStartKey = "scanForPluginsOnStart";
 const char* Settings::showPluginWindowsKey = "showPluginWindows";
-const char* Settings::autoConnectMidiInputNodesKey = "autoConnectMidiInputNodes";
-const char* Settings::autoConnectNearbyPortsKey = "autoConnectNearbyPorts";
-const char* Settings::swapNearbyAudioConnectionsKey = "swapNearbyAudioConnections";
-const char* Settings::autoEnableNodesWithAudioConnectionsKey = "autoEnableNodesWithAudioConnections";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
 const char* Settings::menuAppearanceKey = "menuAppearance";
+const char* Settings::autoConnectNearbyPortsKey = "autoConnectNearbyPorts";
+const char* Settings::swapNearbyAudioConnectionsKey = "swapNearbyAudioConnections";
+const char* Settings::autoEnableNodesWithAudioConnectionsKey = "autoEnableNodesWithAudioConnections";
+const char* Settings::autoConnectMidiInputNodesKey = "autoConnectMidiInputNodes";
 const char* Settings::defaultNewSessionFile = "defaultNewSessionFile";
 const char* Settings::generateMidiClockKey = "generateMidiClockKey";
 const char* Settings::sendMidiClockToInputKey = "sendMidiClockToInputKey";
@@ -70,14 +70,14 @@ enum OptionsMenuItemId
     CheckForUpdatesOnStart = 1000000,
     ScanFormPluginsOnStart,
     AutomaticallyShowPluginWindows,
-    AutoConnectMidiInputNodes,
     HidePluginWindowsWhenFocusLost,
     PluginWindowsOnTop,
-        OpenLastUsedSession,
+    OpenLastUsedSession,
     AskToSaveSessions,
-        AutoConnectNearbyPorts,
+    AutoConnectNearbyPorts,
     SwapNearbyAudioConnections,
     AutoEnableNodesWithAudioConnections,
+    AutoConnectMidiInputNodes,
 
     MidiInputDevice = 2000000,
     MidiOutputDevice = 3000000,
@@ -290,59 +290,12 @@ void Settings::setShowPluginWindowsWhenAdded (const bool shouldShow)
         p->setValue (showPluginWindowsKey, shouldShow);
 }
 
-bool Settings::autoConnectMidiInputNodes() const
-{
-    if (auto* p = getProps())
-        return p->getBoolValue (autoConnectMidiInputNodesKey, true);
-    return true;
-}
 
-void Settings::setAutoConnectMidiInputNodes (const bool shouldConnect)
-{
-    if (shouldConnect == autoConnectMidiInputNodes())
-        return;
-    if (auto* p = getProps())
-        p->setValue (autoConnectMidiInputNodesKey, shouldConnect);
-}
 
-bool Settings::autoConnectNearbyPorts() const
-{
-    if (auto* props = getProps())
-        return props->getBoolValue (autoConnectNearbyPortsKey, false);
-    return false;
-}
 
-void Settings::setAutoConnectNearbyPorts (const bool value)
-{
-    if (auto* props = getProps())
-        props->setValue (autoConnectNearbyPortsKey, value);
-}
 
-bool Settings::swapNearbyAudioConnections() const
-{
-    if (auto* props = getProps())
-        return props->getBoolValue (swapNearbyAudioConnectionsKey, false);
-    return false;
-}
 
-void Settings::setSwapNearbyAudioConnections (const bool value)
-{
-    if (auto* props = getProps())
-        props->setValue (swapNearbyAudioConnectionsKey, value);
-}
 
-bool Settings::autoEnableNodesWithAudioConnections() const
-{
-    if (auto* props = getProps())
-        return props->getBoolValue (autoEnableNodesWithAudioConnectionsKey, false);
-    return false;
-}
-
-void Settings::setAutoEnableNodesWithAudioConnections (const bool value)
-{
-    if (auto* props = getProps())
-        props->setValue (autoEnableNodesWithAudioConnectionsKey, value);
-}
 
 //=============================================================================
 
@@ -393,6 +346,60 @@ void Settings::setAskToSaveSession (const bool value)
 {
     if (auto* props = getProps())
         props->setValue (askToSaveSessionKey, value);
+}
+
+bool Settings::autoConnectNearbyPorts() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (autoConnectNearbyPortsKey, false);
+    return false;
+}
+
+void Settings::setAutoConnectNearbyPorts (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (autoConnectNearbyPortsKey, value);
+}
+
+bool Settings::swapNearbyAudioConnections() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (swapNearbyAudioConnectionsKey, false);
+    return false;
+}
+
+void Settings::setSwapNearbyAudioConnections (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (swapNearbyAudioConnectionsKey, value);
+}
+
+bool Settings::autoEnableNodesWithAudioConnections() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (autoEnableNodesWithAudioConnectionsKey, false);
+    return false;
+}
+
+void Settings::setAutoEnableNodesWithAudioConnections (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (autoEnableNodesWithAudioConnectionsKey, value);
+}
+
+bool Settings::autoConnectMidiInputNodes() const
+{
+    if (auto* p = getProps())
+        return p->getBoolValue (autoConnectMidiInputNodesKey, true);
+    return true;
+}
+
+void Settings::setAutoConnectMidiInputNodes (const bool shouldConnect)
+{
+    if (shouldConnect == autoConnectMidiInputNodes())
+        return;
+    if (auto* p = getProps())
+        p->setValue (autoConnectMidiInputNodesKey, shouldConnect);
 }
 
 bool Settings::sendMidiClockToInput() const
@@ -723,7 +730,6 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
 
     sub.addItem (ScanFormPluginsOnStart, "Scan Plugins at Startup", true, scanForPluginsOnStartup());
     sub.addItem (AutomaticallyShowPluginWindows, "Automatically Show Plugin Windows", true, showPluginWindowsWhenAdded());
-    sub.addItem (AutoConnectMidiInputNodes, "Auto-Connect MIDI Input Nodes", true, autoConnectMidiInputNodes());
     sub.addItem (PluginWindowsOnTop, "Plugins On Top By Default", true, pluginWindowsOnTop());
     sub.addItem (HidePluginWindowsWhenFocusLost, "Hide Plugin Windows When App Inactive", true, hidePluginWindowsWhenFocusLost());
 
@@ -757,6 +763,10 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  "Auto-Enable Nodes With Audio Connections",
                  true,
                  autoEnableNodesWithAudioConnections());
+    sub.addItem (AutoConnectMidiInputNodes,
+                 "Auto-Connect MIDI Input Nodes",
+                 true,
+                 autoConnectMidiInputNodes());
 
     menu.addSubMenu ("General", sub);
 
@@ -831,9 +841,6 @@ bool Settings::performMenuResult (Context& world, const int result)
         case AutomaticallyShowPluginWindows:
             setShowPluginWindowsWhenAdded (! showPluginWindowsWhenAdded());
             break;
-        case AutoConnectMidiInputNodes:
-            setAutoConnectMidiInputNodes (! autoConnectMidiInputNodes());
-            break;
         case PluginWindowsOnTop:
             setPluginWindowsOnTop (! pluginWindowsOnTop());
             break;
@@ -854,6 +861,9 @@ bool Settings::performMenuResult (Context& world, const int result)
             break;
         case AutoEnableNodesWithAudioConnections:
             setAutoEnableNodesWithAudioConnections (! autoEnableNodesWithAudioConnections());
+            break;
+        case AutoConnectMidiInputNodes:
+            setAutoConnectMidiInputNodes (! autoConnectMidiInputNodes());
             break;
         default:
             handled = false;
