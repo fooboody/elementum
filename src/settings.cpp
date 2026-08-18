@@ -16,6 +16,7 @@ const char* Settings::pluginFormatsKey = "pluginFormatsKey";
 const char* Settings::pluginWindowOnTopDefault = "pluginWindowOnTopDefault";
 const char* Settings::scanForPluginsOnStartKey = "scanForPluginsOnStart";
 const char* Settings::showPluginWindowsKey = "showPluginWindows";
+const char* Settings::autoConnectMidiInputNodesKey = "autoConnectMidiInputNodes";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
 const char* Settings::defaultNewSessionFile = "defaultNewSessionFile";
@@ -50,6 +51,7 @@ enum OptionsMenuItemId
     CheckForUpdatesOnStart = 1000000,
     ScanFormPluginsOnStart,
     AutomaticallyShowPluginWindows,
+    AutoConnectMidiInputNodes,
     HidePluginWindowsWhenFocusLost,
     PluginWindowsOnTop,
     OpenLastUsedSession,
@@ -196,7 +198,23 @@ void Settings::setShowPluginWindowsWhenAdded (const bool shouldShow)
         p->setValue (showPluginWindowsKey, shouldShow);
 }
 
+bool Settings::autoConnectMidiInputNodes() const
+{
+    if (auto* p = getProps())
+        return p->getBoolValue (autoConnectMidiInputNodesKey, true);
+    return true;
+}
+
+void Settings::setAutoConnectMidiInputNodes (const bool shouldConnect)
+{
+    if (shouldConnect == autoConnectMidiInputNodes())
+        return;
+    if (auto* p = getProps())
+        p->setValue (autoConnectMidiInputNodesKey, shouldConnect);
+}
+
 //=============================================================================
+
 bool Settings::openLastUsedSession() const
 {
     if (auto* p = getProps())
@@ -574,6 +592,7 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
 
     sub.addItem (ScanFormPluginsOnStart, "Scan Plugins at Startup", true, scanForPluginsOnStartup());
     sub.addItem (AutomaticallyShowPluginWindows, "Automatically Show Plugin Windows", true, showPluginWindowsWhenAdded());
+    sub.addItem (AutoConnectMidiInputNodes, "Auto-Connect MIDI Input Nodes", true, autoConnectMidiInputNodes());
     sub.addItem (PluginWindowsOnTop, "Plugins On Top By Default", true, pluginWindowsOnTop());
     sub.addItem (HidePluginWindowsWhenFocusLost, "Hide Plugin Windows When App Inactive", true, hidePluginWindowsWhenFocusLost());
 
@@ -666,6 +685,9 @@ bool Settings::performMenuResult (Context& world, const int result)
             break;
         case AutomaticallyShowPluginWindows:
             setShowPluginWindowsWhenAdded (! showPluginWindowsWhenAdded());
+            break;
+        case AutoConnectMidiInputNodes:
+            setAutoConnectMidiInputNodes (! autoConnectMidiInputNodes());
             break;
         case PluginWindowsOnTop:
             setPluginWindowsOnTop (! pluginWindowsOnTop());

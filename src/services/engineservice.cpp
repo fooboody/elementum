@@ -36,10 +36,10 @@ static void initializeRootGraphPorts (RootGraph* root, const Node& model)
     root->setNumPorts (PortType::Midi, outs.size(), false, false);
 }
 
-/** Connects every existing MIDI input device to every MIDI input port of a new node. */
-static void connectExistingMidiInputDevices (GraphManager& controller,
-                                             const Node& graph,
-                                             const Node& target)
+/** Connects every existing MIDI input source node to every MIDI input port of a new node. */
+static void connectExistingMidiInputNodes (GraphManager& controller,
+                                            const Node& graph,
+                                            const Node& target)
 {
     PortArray targetInputs;
     target.getPorts (targetInputs, PortType::Midi, true);
@@ -50,7 +50,7 @@ static void connectExistingMidiInputDevices (GraphManager& controller,
     for (int i = 0; i < graph.getNumNodes(); ++i)
     {
         const Node device (graph.getNode (i));
-        if (! device.isMidiInputDevice())
+        if (! device.isMidiInputDevice() && ! device.isMidiInputNode())
             continue;
 
         PortArray deviceOutputs;
@@ -928,10 +928,11 @@ Node EngineService::addPlugin (const Node& graph, const PluginDescription& desc,
     if (auto* controller = graphs->findGraphManagerFor (graph))
     {
         const Node node (addPlugin (*controller, descToLoad));
-                if (node.isValid())
+        if (node.isValid())
         {
             builder.addConnections (*controller, node.getNodeId());
-            detail::connectExistingMidiInputDevices (*controller, graph, node);
+            if (context().settings().autoConnectMidiInputNodes())
+                detail::connectExistingMidiInputNodes (*controller, graph, node);
             jassert (! node.getUuid().isNull());
         }
 

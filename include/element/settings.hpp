@@ -26,6 +26,7 @@ public:
     static const char* lastPluginScanPathPrefix;
     static const char* scanForPluginsOnStartKey;
     static const char* showPluginWindowsKey;
+    static const char* autoConnectMidiInputNodesKey;
     static const char* openLastUsedSessionKey;
     static const char* askToSaveSessionKey;
     static const char* defaultNewSessionFile;
@@ -76,6 +77,10 @@ public:
     /** True if plugin windows should be made visible when added to a graph */
     bool showPluginWindowsWhenAdded() const;
     void setShowPluginWindowsWhenAdded (const bool);
+
+    /** True if MIDI input sources should be connected to new plugins automatically */
+    bool autoConnectMidiInputNodes() const;
+    void setAutoConnectMidiInputNodes (const bool);
 
     /** True if the last used session should be opened on launch.
         If running as Solo/Lite, then this returns true if the last
