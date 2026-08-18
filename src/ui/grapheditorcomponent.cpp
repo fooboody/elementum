@@ -1112,6 +1112,41 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
             return false;
         };
 
+        // A swap candidate identifies corresponding ports, not merely nodes.
+        // This matters when two plugins expose compatible audio ports at
+        // different indices (for example, "Output" and "Stereo Out").
+        auto swapPairEndpoint = [] (const AutoConnectPair& candidate,
+                                    uint32& node, uint32& port, const bool input)
+        {
+            if (! candidate.swap || candidate.swapInput != input)
+                return false;
+
+            if (node == candidate.sourceNode && port == candidate.sourcePort)
+            {
+                node = candidate.destNode;
+                port = candidate.destPort;
+                return true;
+            }
+
+            if (node == candidate.destNode && port == candidate.destPort)
+            {
+                node = candidate.sourceNode;
+                port = candidate.sourcePort;
+                return true;
+            }
+
+            return false;
+        };
+
+        auto swapEndpoint = [&] (uint32& node, uint32& port, const bool input)
+        {
+            for (const auto& candidate : pairs)
+                if (swapPairEndpoint (candidate, node, port, input))
+                    return true;
+
+            return false;
+        };
+
         for (const auto& swap : swaps)
         {
             auto* const firstBlock = getComponentForFilter (swap.first);
@@ -1142,6 +1177,9 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
             secondBlock->updatePosition();
         }
 
+        if (! swaps.isEmpty())
+            updateConnectorComponents (false);
+
         for (const auto& pair : pairs)
         {
             if (! pair.swap || hasDirectAudioConnection (pair.sourceNode, pair.destNode))
@@ -1151,40 +1189,23 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
             {
                 const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
                 uint32 sourceNode = arc.sourceNode;
+                uint32 sourcePort = arc.sourcePort;
                 uint32 destNode = arc.destNode;
+                uint32 destPort = arc.destPort;
                 bool affected = false;
 
                 if (pair.swapInput)
-                {
-                    if (arc.destNode == pair.sourceNode && arc.destPort == pair.sourcePort)
-                    {
-                        destNode = pair.destNode;
-                        affected = true;
-                    }
-                    else if (arc.destNode == pair.destNode && arc.destPort == pair.destPort)
-                    {
-                        destNode = pair.sourceNode;
-                        affected = true;
-                    }
-                }
-                else if (arc.sourceNode == pair.sourceNode && arc.sourcePort == pair.sourcePort)
-                {
-                    sourceNode = pair.destNode;
-                    affected = true;
-                }
-                else if (arc.sourceNode == pair.destNode && arc.sourcePort == pair.destPort)
-                {
-                    sourceNode = pair.sourceNode;
-                    affected = true;
-                }
+                    affected = swapPairEndpoint (pair, destNode, destPort, true);
+                else
+                    affected = swapPairEndpoint (pair, sourceNode, sourcePort, false);
 
                 if (! affected || ! isAudioArc (arc))
                     continue;
 
                 message->addDisconnect (arc.sourceNode, arc.sourcePort, arc.destNode, arc.destPort);
                 if (sourceNode != destNode
-                    && graph.canConnect (sourceNode, arc.sourcePort, destNode, arc.destPort))
-                    message->add (sourceNode, arc.sourcePort, destNode, arc.destPort);
+                    && graph.canConnect (sourceNode, sourcePort, destNode, destPort))
+                    message->add (sourceNode, sourcePort, destNode, destPort);
             }
         }
 
@@ -1197,46 +1218,28 @@ void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const 
                     continue;
 
                 uint32 sourceNode = arc.sourceNode;
+                uint32 sourcePort = arc.sourcePort;
                 uint32 destNode = arc.destNode;
+                uint32 destPort = arc.destPort;
                 bool affected = false;
 
                 for (const auto& swap : swaps)
-                {
-                    if (! hasDirectAudioConnection (swap.first, swap.second))
-                        continue;
-
-                    if (sourceNode == swap.first)
+                    if (hasDirectAudioConnection (swap.first, swap.second))
                     {
-                        sourceNode = swap.second;
-                        affected = true;
+                        const auto sourceChanged = swapEndpoint (sourceNode, sourcePort, false);
+                        const auto destChanged = swapEndpoint (destNode, destPort, true);
+                        affected = affected || sourceChanged || destChanged;
                     }
-                    else if (sourceNode == swap.second)
-                    {
-                        sourceNode = swap.first;
-                        affected = true;
-                    }
-
-                    if (destNode == swap.first)
-                    {
-                        destNode = swap.second;
-                        affected = true;
-                    }
-                    else if (destNode == swap.second)
-                    {
-                        destNode = swap.first;
-                        affected = true;
-                    }
-                }
 
                 if (! affected)
                     continue;
 
                 message->addDisconnect (arc.sourceNode, arc.sourcePort, arc.destNode, arc.destPort);
-                if (sourceNode == destNode || ! graph.canConnect (sourceNode, arc.sourcePort, destNode, arc.destPort))
+                if (sourceNode == destNode || ! graph.canConnect (sourceNode, sourcePort, destNode, destPort))
                     continue;
 
-                if (! containsConnection (message->connections, sourceNode, arc.sourcePort, destNode, arc.destPort))
-                    message->add (sourceNode, arc.sourcePort, destNode, arc.destPort);
+                if (! containsConnection (message->connections, sourceNode, sourcePort, destNode, destPort))
+                    message->add (sourceNode, sourcePort, destNode, destPort);
             }
         }
 
