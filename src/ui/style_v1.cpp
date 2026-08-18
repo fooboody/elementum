@@ -257,18 +257,8 @@ LookAndFeel_E1::LookAndFeel_E1()
     setColour (TextButton::textColourOffId, Colours::white);
     setColour (TextButton::textColourOnId, Colours::white);
 
-    // WINDOW_CHROME_TOGGLE_PATCH
-    // Use the platform's current light/dark preference for window chrome and menus.
-    const bool darkWindowChrome = Desktop::getInstance().isDarkModeActive();
-    const auto chromeBackground = darkWindowChrome ? Colours::black : Colour (0xfff0f0f0);
-    const auto chromeText = darkWindowChrome ? Colours::white : Colour (0xff1d1d1e);
-
     // PopupMenu Styling
-    setColour (PopupMenu::backgroundColourId, chromeBackground);
-    setColour (PopupMenu::textColourId, chromeText);
-    setColour (PopupMenu::headerTextColourId, chromeText);
-    setColour (PopupMenu::highlightedBackgroundColourId, Colors::elemental);
-    setColour (PopupMenu::highlightedTextColourId, chromeBackground);
+    setPopupMenuTheme ("auto");
 
     // ComboBox Styling
     setColour (ComboBox::backgroundColourId, Colours::black);
@@ -461,6 +451,23 @@ LookAndFeel_E1::LookAndFeel_E1()
 }
 
 LookAndFeel_E1::~LookAndFeel_E1() {}
+
+void LookAndFeel_E1::setPopupMenuTheme (const String& mode)
+{
+    const bool dark = mode == "dark"
+                          ? true
+                          : mode == "light"
+                                ? false
+                                : Desktop::getInstance().isDarkModeActive();
+    const auto menuBackground = dark ? Colours::black : Colour (0xfff0f0f0);
+    const auto menuText = dark ? Colours::white : Colour (0xff1d1d1e);
+
+    setColour (PopupMenu::backgroundColourId, menuBackground);
+    setColour (PopupMenu::textColourId, menuText);
+    setColour (PopupMenu::headerTextColourId, menuText);
+    setColour (PopupMenu::highlightedBackgroundColourId, Colors::elemental);
+    setColour (PopupMenu::highlightedTextColourId, menuBackground);
+}
 
 Typeface::Ptr LookAndFeel_E1::getTypefaceForFont (const Font& font)
 {

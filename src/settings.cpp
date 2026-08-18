@@ -21,6 +21,7 @@ const char* Settings::autoConnectNearbyPortsKey = "autoConnectNearbyPorts";
 const char* Settings::swapNearbyAudioConnectionsKey = "swapNearbyAudioConnections";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
+const char* Settings::menuAppearanceKey = "menuAppearance";
 const char* Settings::defaultNewSessionFile = "defaultNewSessionFile";
 const char* Settings::generateMidiClockKey = "generateMidiClockKey";
 const char* Settings::sendMidiClockToInputKey = "sendMidiClockToInputKey";
@@ -156,6 +157,7 @@ Settings::Settings()
             changed = true;
         }
 
+        setDefault (menuAppearanceKey, "auto");
         setDefault (audioConnectedPortColorKey, "#90EE90");
         setDefault (audioDisconnectedPortColorKey, "#90EE90");
         setDefault (midiConnectedPortColorKey, "#FFA500");

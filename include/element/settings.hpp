@@ -30,7 +30,8 @@ public:
     static const char* autoConnectNearbyPortsKey;
     static const char* swapNearbyAudioConnectionsKey;
     static const char* openLastUsedSessionKey;
-    static const char* askToSaveSessionKey;
+static const char* askToSaveSessionKey;
+    static const char* menuAppearanceKey;
     static const char* defaultNewSessionFile;
     static const char* generateMidiClockKey;
     static const char* sendMidiClockToInputKey;

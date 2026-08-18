@@ -326,7 +326,10 @@ public:
         ClockSourceMidiClock = 2,
         MainWindowStartVisible = 1,
         MainWindowStartHidden = 2,
-        MainWindowAlwaysHidden = 3
+        MainWindowAlwaysHidden = 3,
+        MenuAppearanceAuto = 1,
+        MenuAppearanceDark = 2,
+        MenuAppearanceLight = 3
     };
 
     GeneralSettingsPage (Context& world, GuiService& g)
@@ -447,6 +450,29 @@ public:
 
             settings.getUserSettings()->setValue ("mainWindowVisible", visibility);
             settings.saveIfNeeded();
+        };
+
+        addAndMakeVisible (menuAppearanceLabel);
+        menuAppearanceLabel.setText ("Menu appearance", dontSendNotification);
+        menuAppearanceLabel.setFont (Font (FontOptions (12.0, Font::bold)));
+        addAndMakeVisible (menuAppearanceBox);
+        menuAppearanceBox.addItem ("Auto", MenuAppearanceAuto);
+        menuAppearanceBox.addItem ("Dark", MenuAppearanceDark);
+        menuAppearanceBox.addItem ("Light", MenuAppearanceLight);
+        const auto savedMenuAppearance = settings.getUserSettings()->getValue (Settings::menuAppearanceKey, "auto");
+        menuAppearanceBox.setSelectedId (savedMenuAppearance == "dark" ? MenuAppearanceDark
+                                                                          : savedMenuAppearance == "light" ? MenuAppearanceLight
+                                                                                                            : MenuAppearanceAuto,
+                                         dontSendNotification);
+        menuAppearanceBox.onChange = [this]()
+        {
+            const auto mode = menuAppearanceBox.getSelectedId() == MenuAppearanceDark ? "dark"
+                                 : menuAppearanceBox.getSelectedId() == MenuAppearanceLight ? "light"
+                                                                                              : "auto";
+            settings.getUserSettings()->setValue (Settings::menuAppearanceKey, mode);
+            settings.saveIfNeeded();
+            gui.getLookAndFeel().setPopupMenuTheme (mode);
+            gui.refreshMainMenu();
         };
 
         addAndMakeVisible (desktopScaleLabel);
@@ -573,6 +599,11 @@ public:
         r2 = r.removeFromTop (settingHeight);
         mainWindowVisibilityLabel.setBounds (r2.removeFromLeft (getWidth() / 2));
         mainWindowVisibilityBox.setBounds (r2.withSizeKeepingCentre (r2.getWidth(), settingHeight));
+
+        r.removeFromTop (spacingBetweenSections);
+        r2 = r.removeFromTop (settingHeight);
+        menuAppearanceLabel.setBounds (r2.removeFromLeft (getWidth() / 2));
+        menuAppearanceBox.setBounds (r2.withSizeKeepingCentre (r2.getWidth(), settingHeight));
 
         layoutSetting (r, desktopScaleLabel, desktopScale, getWidth() / 4);
 
@@ -706,6 +737,9 @@ private:
 
     Label mainWindowVisibilityLabel;
     ComboBox mainWindowVisibilityBox;
+
+    Label menuAppearanceLabel;
+    ComboBox menuAppearanceBox;
 
     Label desktopScaleLabel;
     Slider desktopScale;

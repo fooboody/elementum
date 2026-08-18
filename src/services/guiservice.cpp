@@ -313,6 +313,9 @@ GuiService::GuiService (Context& w, Services& a)
 
     if (sGlobalLookAndFeel == nullptr)
         sGlobalLookAndFeel = std::make_unique<GlobalLookAndFeel>();
+
+    sGlobalLookAndFeel->look.setPopupMenuTheme (
+        w.settings().getUserSettings()->getValue (Settings::menuAppearanceKey, "auto"));
     sGuiControllerInstances.add (this);
 }
 
