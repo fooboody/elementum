@@ -291,6 +291,7 @@ private:
     int customWidth = 0,
         customHeight = 0;
     bool selectionMouseDownResult = false;
+    bool doubleClickHadModifier = false;
     bool vertical = true;
     bool dragging = false;
     bool blockDrag = false;

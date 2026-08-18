@@ -555,6 +555,16 @@ void BlockComponent::mouseDown (const MouseEvent& e)
     originalBounds = getBounds();
     toFront (true);
     dragging = false;
+
+    if (e.getNumberOfClicks() == 1)
+        doubleClickHadModifier = false;
+
+    doubleClickHadModifier = doubleClickHadModifier
+                             || e.mods.isAltDown()
+                             || e.mods.isCtrlDown()
+                             || e.mods.isShiftDown()
+                             || e.mods.isCommandDown();
+
     auto* const panel = getGraphPanel();
 
     selectionMouseDownResult = panel->selectedNodes.addToSelectionOnMouseDown (node.getNodeId(), e.mods);
@@ -757,8 +767,20 @@ void BlockComponent::mouseUp (const MouseEvent& e)
     if (panel)
         panel->selectedNodes.addToSelectionOnMouseUp (node.getNodeId(), e.mods, dragging, selectionMouseDownResult);
 
+    doubleClickHadModifier = doubleClickHadModifier
+                             || e.mods.isAltDown()
+                             || e.mods.isCtrlDown()
+                             || e.mods.isShiftDown()
+                             || e.mods.isCommandDown();
+
     if (e.mouseWasClicked() && e.getNumberOfClicks() == 2)
-        makeEditorActive();
+    {
+        const bool shouldOpenEditor = ! doubleClickHadModifier;
+        doubleClickHadModifier = false;
+
+        if (shouldOpenEditor)
+            makeEditorActive();
+    }
 }
 
 void BlockComponent::setSelectedInternal (bool status)
