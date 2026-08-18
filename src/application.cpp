@@ -14,6 +14,7 @@
 #include <element/ui/commands.hpp>
 #include <element/ui/commands.hpp>
 #include <element/ui/content.hpp>
+#include <element/ui/mainwindow.hpp>
 #include <element/ui/updater.hpp>
 
 #include "engine/internalformat.hpp"
@@ -43,6 +44,98 @@ using namespace juce;
 namespace element {
 
 static std::atomic<int> sCanShutdown { 0 };
+
+namespace {
+constexpr auto profileInstanceMessagePrefix = "elementum-profile-instance:";
+
+struct ParsedLaunchArguments
+{
+    StringArray remaining;
+    File applicationDataDirectory;
+};
+
+String normaliseProfileIdentifier (const File& directory)
+{
+    auto identifier = directory.getLinkedTarget().getFullPathName();
+#if JUCE_WINDOWS
+    identifier = identifier.toLowerCase();
+#endif
+    return identifier;
+}
+
+ParsedLaunchArguments parseLaunchArguments (const String& commandLine)
+{
+    ParsedLaunchArguments parsed;
+    const auto tokens = StringArray::fromTokens (commandLine, true);
+
+    for (int i = 0; i < tokens.size(); ++i)
+    {
+        const auto& token = tokens[i];
+        String value;
+        bool isDataDirectoryOption = false;
+
+        if (token == "--datadir" && i + 1 < tokens.size())
+        {
+            value = tokens[++i].unquoted();
+            isDataDirectoryOption = true;
+        }
+        else if (token.startsWith ("--datadir="))
+        {
+            value = token.fromFirstOccurrenceOf ("=", false, false).unquoted();
+            isDataDirectoryOption = value.isNotEmpty();
+        }
+
+        if (isDataDirectoryOption)
+        {
+            parsed.applicationDataDirectory = File();
+            const auto directory = File::isAbsolutePath (value)
+                                       ? File (value)
+                                       : File::getCurrentWorkingDirectory().getChildFile (value);
+            const auto settingsFile = Settings::getSettingsFileForDataDirectory (directory);
+            if (directory.isDirectory() && settingsFile.existsAsFile())
+                parsed.applicationDataDirectory = directory.getLinkedTarget();
+
+            continue;
+        }
+
+        parsed.remaining.add (token);
+    }
+
+    return parsed;
+}
+
+String encodeProfileInstanceMessage (const String& profileIdentifier,
+                                     const StringArray& arguments)
+{
+    return String (profileInstanceMessagePrefix)
+        + Base64::toBase64 (profileIdentifier)
+        + "."
+        + Base64::toBase64 (arguments.joinIntoString ("\n"));
+}
+
+bool decodeProfileInstanceMessage (const String& message,
+                                   String& profileIdentifier,
+                                   StringArray& arguments)
+{
+    if (! message.startsWith (profileInstanceMessagePrefix))
+        return false;
+
+    const auto encoded = message.fromFirstOccurrenceOf (profileInstanceMessagePrefix, false, false);
+    const auto separator = encoded.indexOfChar ('.');
+    if (separator < 0)
+        return false;
+
+    MemoryOutputStream profileData;
+    MemoryOutputStream argumentsData;
+    if (! Base64::convertFromBase64 (profileData, encoded.substring (0, separator))
+        || ! Base64::convertFromBase64 (argumentsData, encoded.substring (separator + 1)))
+        return false;
+
+    profileIdentifier = profileData.toString();
+    arguments = StringArray::fromLines (argumentsData.toString());
+    return profileIdentifier.isNotEmpty();
+}
+} // namespace
 
 class Startup : public ActionBroadcaster
 {
@@ -211,13 +304,127 @@ const String Application::getApplicationVersion() { return ELEMENT_VERSION_STRIN
 
 bool Application::moreThanOneInstanceAllowed() { return true; }
 
+bool Application::acquireProfileInstanceLock()
+{
+    profileInstanceLock = std::make_unique<InterProcessLock> (
+        "elementumProfileLock_" + String::toHexString (profileIdentifier.hashCode64()));
+
+    // Register before acquiring the lock so a just-started instance cannot miss
+    // a duplicate-launch notification in the small interval after it acquires it.
+    MessageManager::getInstance()->registerBroadcastListener (this);
+    profileBroadcastListenerRegistered = true;
+
+    if (profileInstanceLock->enter (0))
+        return true;
+
+    MessageManager::broadcastMessage (encodeProfileInstanceMessage (profileIdentifier, launchArguments));
+    releaseProfileInstanceLock();
+    return false;
+}
+
+void Application::releaseProfileInstanceLock()
+{
+    if (profileBroadcastListenerRegistered)
+    {
+        MessageManager::getInstance()->deregisterBroadcastListener (this);
+        profileBroadcastListenerRegistered = false;
+    }
+
+    profileInstanceLock.reset();
+}
+
+void Application::restoreMainWindow()
+{
+    if (! world)
+        return;
+
+    if (auto* const gui = world->services().find<GuiService>())
+    {
+        if (auto* const window = gui->getMainWindow())
+        {
+            if (! window->isOnDesktop())
+                window->addToDesktop();
+
+            window->setMinimised (false);
+            window->setVisible (true);
+            window->toFront (true);
+            revealMainWindowWhenReady = false;
+            return;
+        }
+    }
+
+    revealMainWindowWhenReady = true;
+}
+
+void Application::maybeOpenCommandLineArguments (const StringArray& arguments)
+{
+    for (const auto& argument : arguments)
+    {
+        const auto value = argument.unquoted().trim();
+        if (value.startsWith ("elementum://"))
+        {
+            handleURLSchemeCallback (value);
+            continue;
+        }
+
+        const File sessionFile = File::isAbsolutePath (value)
+                                     ? File (value)
+                                     : File::getCurrentWorkingDirectory().getChildFile (value);
+        if (! sessionFile.existsAsFile())
+            continue;
+
+        if (auto* const sc = world->services().find<SessionService>())
+        {
+            if (sessionFile.hasFileExtension ("els"))
+                sc->openFile (sessionFile);
+            else if (sessionFile.hasFileExtension ("elg"))
+                sc->importGraph (sessionFile);
+        }
+    }
+}
+
+void Application::handleProfileInstanceMessage (const String& message)
+{
+    String messageProfile;
+    StringArray arguments;
+    if (! decodeProfileInstanceMessage (message, messageProfile, arguments)
+        || messageProfile != profileIdentifier)
+        return;
+
+    restoreMainWindow();
+    const auto* const gui = world ? world->services().find<GuiService>() : nullptr;
+    if (gui != nullptr && gui->getMainWindow() != nullptr)
+        maybeOpenCommandLineArguments (arguments);
+    else
+        pendingProfileArguments.addArray (arguments);
+}
+
 void Application::initialise (const String& commandLine)
 {
-    world = std::make_unique<Context> (RunMode::Standalone, commandLine);
+    launchCommandLine = commandLine;
+    const auto parsed = parseLaunchArguments (commandLine);
+    launchArguments = parsed.remaining;
+
+    const auto applicationDataDirectory = parsed.applicationDataDirectory;
+    if (applicationDataDirectory.isDirectory())
+        DataPath::setApplicationDataDirOverride (applicationDataDirectory);
+
+    profileIdentifier = normaliseProfileIdentifier (applicationDataDirectory.isDirectory()
+                                                        ? applicationDataDirectory
+                                                        : DataPath::applicationDataDir());
+
+    const bool isScannerWorker = commandLine.contains (EL_PLUGIN_SCANNER_PROCESS_ID);
+    if (! isScannerWorker && ! acquireProfileInstanceLock())
+    {
+        quit();
+        return;
+    }
+
+    world = std::make_unique<Context> (RunMode::Standalone, commandLine, applicationDataDirectory);
     if (maybeLaunchScannerWorker (commandLine))
         return;
 
-    if (sendCommandLineToPreexistingInstance())
+    if (isScannerWorker && ! acquireProfileInstanceLock())
     {
         quit();
         return;
@@ -231,18 +438,17 @@ void Application::initialise (const String& commandLine)
 #endif
 
     launchApplication();
-
-    // Handle URL scheme if passed on command line. On Windows the URL arrives as a
-    // quoted argument (elementum.exe "elementum://..."), so strip quotes before matching.
-    const auto url = commandLine.unquoted().trim();
-    if (url.startsWith ("elementum://"))
-        handleURLSchemeCallback (url);
 }
 
 void Application::actionListenerCallback (const String& message)
 {
     if (message == "finishedLaunching")
+    {
         finishLaunching();
+        return;
+    }
+
+    handleProfileInstanceMessage (message);
 }
 
 bool Application::canShutdown()
@@ -266,7 +472,10 @@ bool Application::canShutdown()
 void Application::shutdown()
 {
     if (! world)
+    {
+        releaseProfileInstanceLock();
         return;
+    }
 
 #if JUCE_MAC || JUCE_WINDOWS
     unregisterURLSchemeHandler();
@@ -308,6 +517,7 @@ void Application::shutdown()
     Logger::setCurrentLogger (nullptr);
     world->setEngine (nullptr);
     world = nullptr;
+    releaseProfileInstanceLock();
 }
 
 void Application::systemRequestedQuit()
@@ -353,38 +563,13 @@ void Application::systemRequestedQuit()
 
 void Application::maybeOpenCommandLineFile (const String& commandLine)
 {
-    if (auto* sc = world->services().find<SessionService>())
-    {
-        const auto path = commandLine.unquoted().trim();
-        const File sessionFile = File::isAbsolutePath (path)
-                                     ? File (path)
-                                     : File::getCurrentWorkingDirectory().getChildFile (path);
-        if (sessionFile.existsAsFile())
-        {
-            const File file (path);
-            if (file.hasFileExtension ("els"))
-                sc->openFile (file);
-            else if (file.hasFileExtension ("elg"))
-                sc->importGraph (file);
-        }
-    }
+    maybeOpenCommandLineArguments (parseLaunchArguments (commandLine).remaining);
 }
 
 void Application::anotherInstanceStarted (const String& commandLine)
 {
-    if (! world)
-        return;
-
-    // Handle custom URL scheme callbacks (e.g., auth). On Windows the URL arrives as a
-    // quoted argument forwarded from the launching instance, so strip quotes before matching.
-    const auto url = commandLine.unquoted().trim();
-    if (url.startsWith ("elementum://"))
-    {
-        handleURLSchemeCallback (url);
-        return;
-    }
-
-    maybeOpenCommandLineFile (commandLine);
+    if (world)
+        maybeOpenCommandLineFile (commandLine);
 }
 
 void Application::handleURLSchemeCallback (const String& urlString)
@@ -432,7 +617,17 @@ void Application::finishLaunching()
     if (! isFirstRun && world->settings().checkForUpdates())
         startTimer (10 * 1000);
 
-    maybeOpenCommandLineFile (getCommandLineParameters());
+    maybeOpenCommandLineArguments (launchArguments);
+
+    if (revealMainWindowWhenReady)
+        restoreMainWindow();
+
+    if (! pendingProfileArguments.isEmpty())
+    {
+        const auto arguments = std::move (pendingProfileArguments);
+        pendingProfileArguments.clear();
+        maybeOpenCommandLineArguments (arguments);
+    }
 }
 
 void Application::AuthStartupThread::run()

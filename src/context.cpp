@@ -41,14 +41,16 @@ inline static void setupChildProcessHandlers (RunMode mode)
 class Context::Impl
 {
 public:
-    Impl (Context& g, RunMode m)
+    Impl (Context& g, RunMode m, const File& dataDirectory)
         : owner (g),
-          mode (m) {}
+          mode (m),
+          applicationDataDirectory (dataDirectory) {}
 
     ~Impl() {}
 
     Context& owner;
     RunMode mode;
+    File applicationDataDirectory;
 
     std::unique_ptr<Services> services;
 
@@ -71,7 +73,7 @@ private:
     {
         log.reset (new Log());
         devices.reset (new DeviceManager());
-        settings.reset (new Settings());
+        settings.reset (new Settings (applicationDataDirectory));
         mapping.reset (new MappingEngine());
         midi.reset (new MidiEngine());
         presets.reset (new PresetManager());
@@ -106,9 +108,9 @@ private:
     }
 };
 
-Context::Context (RunMode mode, const String& _cli)
+Context::Context (RunMode mode, const String& _cli, const File& applicationDataDirectory)
 {
-    impl.reset (new Impl (*this, mode));
+    impl.reset (new Impl (*this, mode, applicationDataDirectory));
     detail::setupChildProcessHandlers (mode);
     impl->init();
 }

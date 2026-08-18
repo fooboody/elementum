@@ -13,6 +13,10 @@
 using namespace juce;
 
 namespace element {
+namespace {
+File sApplicationDataDirOverride;
+}
+
 namespace detail {
 inline static StringArray getSubDirs()
 {
@@ -48,8 +52,16 @@ const void DataPath::initializeDefaultLocation()
     detail::initializeUserLibrary (defaultLocation());
 }
 
+void DataPath::setApplicationDataDirOverride (const File& directory)
+{
+    sApplicationDataDirOverride = directory;
+}
+
 const File DataPath::applicationDataDir()
 {
+    if (sApplicationDataDirOverride.isDirectory())
+        return sApplicationDataDirOverride;
+
 #if JUCE_MAC
     return File::getSpecialLocation (File::userApplicationDataDirectory)
         .getChildFile ("Application Support")

@@ -41,8 +41,8 @@ public:
     */
     const juce::String getApplicationVersion() override;
 
-    /** Indicates whether multiple instances of the application are allowed.
-        @return true to allow multiple instances
+    /** Indicates that process startup is managed by Element's profile-specific lock.
+        @return true so JUCE's global application-name lock is not used
     */
     bool moreThanOneInstanceAllowed() override;
 
@@ -141,6 +141,12 @@ protected:
     virtual std::unique_ptr<ContentFactory> createContentFactory() { return nullptr; }
 
 private:
+    bool acquireProfileInstanceLock();
+    void releaseProfileInstanceLock();
+    void handleProfileInstanceMessage (const juce::String& message);
+    void restoreMainWindow();
+    void maybeOpenCommandLineArguments (const juce::StringArray& arguments);
+
     /** Background thread that attempts a token refresh on startup. */
     class AuthStartupThread : public juce::Thread {
     public:
@@ -151,7 +157,13 @@ private:
         Context& ctx;
     };
 
-    juce::String launchCommandLine;                       ///< The command line used to launch the app
+        juce::String launchCommandLine;                       ///< The command line used to launch the app
+    juce::StringArray launchArguments;                    ///< Arguments excluding Element startup options
+    juce::StringArray pendingProfileArguments;             ///< Arguments received before the UI is ready
+    juce::String profileIdentifier;                       ///< Normalized app data directory for this process
+    std::unique_ptr<juce::InterProcessLock> profileInstanceLock;
+    bool profileBroadcastListenerRegistered = false;
+    bool revealMainWindowWhenReady = false;
     std::unique_ptr<Context> world;                       ///< The application context and services
     std::unique_ptr<Startup> startup;                     ///< Handles startup initialization
     std::unique_ptr<AuthStartupThread> authStartupThread; ///< Startup auth refresh thread

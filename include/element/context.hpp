@@ -23,7 +23,9 @@ class Settings;
 
 class Context {
 public:
-    explicit Context (RunMode mode = RunMode::Standalone, const juce::String& commandLine = juce::String());
+    explicit Context (RunMode mode = RunMode::Standalone,
+                      const juce::String& commandLine = juce::String(),
+                      const juce::File& applicationDataDirectory = {});
     virtual ~Context();
 
     Log& logger();

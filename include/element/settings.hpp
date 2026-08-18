@@ -16,8 +16,10 @@ struct MidiPanicParams;
 class Settings : public juce::ApplicationProperties,
                  public juce::ChangeBroadcaster {
 public:
-    Settings();
+    explicit Settings (const juce::File& applicationDataDirectory = {});
     ~Settings();
+
+    static juce::File getSettingsFileForDataDirectory (const juce::File& directory);
 
     static const char* checkForUpdatesKey;
     static const char* pluginListKey;

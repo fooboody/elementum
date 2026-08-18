@@ -19,6 +19,9 @@ public:
 
     static const void initializeDefaultLocation();
 
+    /** Overrides the app data directory for the current process before settings are created. */
+    static void setApplicationDataDirOverride (const juce::File& directory);
+
     /** Returns the app data dir.
         For example, on OSX this is ~/Library/Application Support/Element
      */

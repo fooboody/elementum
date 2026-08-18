@@ -111,7 +111,8 @@ const char* Settings::pluginListKey = "pluginList64";
 #endif
 #endif
 
-Settings::Settings()
+namespace {
+PropertiesFile::Options makeSettingsOptions (const File& applicationDataDirectory)
 {
     PropertiesFile::Options opts;
     opts.applicationName = EL_APP_NAME;
@@ -123,12 +124,34 @@ Settings::Settings()
     opts.applicationName << "_Debug";
 #endif
 
+    if (applicationDataDirectory.isDirectory())
+    {
+        opts.folderName = applicationDataDirectory.getFullPathName();
+    }
 #if JUCE_LINUX
-    opts.folderName = String (".config/@0@").replace ("@0@", EL_APP_DATA_SUBDIR);
+    else
+    {
+        opts.folderName = String (".config/@0@").replace ("@0@", EL_APP_DATA_SUBDIR);
+    }
 #else
-    opts.folderName = EL_APP_DATA_SUBDIR;
+    else
+    {
+        opts.folderName = EL_APP_DATA_SUBDIR;
+    }
 #endif
 
+    return opts;
+}
+} // namespace
+
+File Settings::getSettingsFileForDataDirectory (const File& directory)
+{
+    return makeSettingsOptions (directory).getDefaultFile();
+}
+
+Settings::Settings (const File& applicationDataDirectory)
+{
+    const auto opts = makeSettingsOptions (applicationDataDirectory);
     setStorageParameters (opts);
 
     if (auto* const props = getUserSettings())
