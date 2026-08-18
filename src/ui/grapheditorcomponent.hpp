@@ -55,10 +55,10 @@ public:
     bool isLayoutVertical() const { return verticalLayout; }
 
     /** Returns true if nearby audio ports should be auto-connected. */
-    bool isAutoConnectNearbyPortsEnabled() const noexcept { return autoConnectNearbyPorts; }
+    bool isAutoConnectNearbyPortsEnabled();
 
     /** Returns true if nearby audio connections should be swapped. */
-    bool isSwapNearbyAudioConnectionsEnabled() const noexcept { return swapNearbyAudioConnections; }
+    bool isSwapNearbyAudioConnectionsEnabled();
 
     /** Changes the layout to vertical or not */
     void setVerticalLayout (const bool isVertical);
@@ -167,7 +167,7 @@ private:
         bool swapInput { false };
     };
 
-    Array<AutoConnectPair> findAutoConnectPairs (const BlockComponent& movedBlock) const;
+    Array<AutoConnectPair> findAutoConnectPairs (const BlockComponent& movedBlock);
     void updateAutoConnectPreview (const BlockComponent& movedBlock, bool enabled);
     void commitAutoConnect (BlockComponent& movedBlock, bool enabled);
     void clearAutoConnectPreview();

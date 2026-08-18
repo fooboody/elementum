@@ -17,6 +17,8 @@ const char* Settings::pluginWindowOnTopDefault = "pluginWindowOnTopDefault";
 const char* Settings::scanForPluginsOnStartKey = "scanForPluginsOnStart";
 const char* Settings::showPluginWindowsKey = "showPluginWindows";
 const char* Settings::autoConnectMidiInputNodesKey = "autoConnectMidiInputNodes";
+const char* Settings::autoConnectNearbyPortsKey = "autoConnectNearbyPorts";
+const char* Settings::swapNearbyAudioConnectionsKey = "swapNearbyAudioConnections";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
 const char* Settings::defaultNewSessionFile = "defaultNewSessionFile";
@@ -54,8 +56,10 @@ enum OptionsMenuItemId
     AutoConnectMidiInputNodes,
     HidePluginWindowsWhenFocusLost,
     PluginWindowsOnTop,
-    OpenLastUsedSession,
+        OpenLastUsedSession,
     AskToSaveSessions,
+    AutoConnectNearbyPorts,
+    SwapNearbyAudioConnections,
 
     MidiInputDevice = 2000000,
     MidiOutputDevice = 3000000,
@@ -211,6 +215,32 @@ void Settings::setAutoConnectMidiInputNodes (const bool shouldConnect)
         return;
     if (auto* p = getProps())
         p->setValue (autoConnectMidiInputNodesKey, shouldConnect);
+}
+
+bool Settings::autoConnectNearbyPorts() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (autoConnectNearbyPortsKey, false);
+    return false;
+}
+
+void Settings::setAutoConnectNearbyPorts (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (autoConnectNearbyPortsKey, value);
+}
+
+bool Settings::swapNearbyAudioConnections() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (swapNearbyAudioConnectionsKey, false);
+    return false;
+}
+
+void Settings::setSwapNearbyAudioConnections (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (swapNearbyAudioConnectionsKey, value);
 }
 
 //=============================================================================
@@ -613,6 +643,16 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  true,
                  askToSaveSession());
 
+    sub.addSeparator();
+    sub.addItem (AutoConnectNearbyPorts,
+                 "Auto-Connect Nearby Ports",
+                 true,
+                 autoConnectNearbyPorts());
+    sub.addItem (SwapNearbyAudioConnections,
+                 "Swap Nearby Audio Connections",
+                 true,
+                 swapNearbyAudioConnections());
+
     menu.addSubMenu ("General", sub);
 
     menu.addSeparator();
@@ -700,6 +740,12 @@ bool Settings::performMenuResult (Context& world, const int result)
             break;
         case AskToSaveSessions:
             setAskToSaveSession (! askToSaveSession());
+            break;
+        case AutoConnectNearbyPorts:
+            setAutoConnectNearbyPorts (! autoConnectNearbyPorts());
+            break;
+        case SwapNearbyAudioConnections:
+            setSwapNearbyAudioConnections (! swapNearbyAudioConnections());
             break;
         default:
             handled = false;

@@ -418,7 +418,22 @@ GraphEditorComponent::~GraphEditorComponent()
     factory.reset();
 }
 
+bool GraphEditorComponent::isAutoConnectNearbyPortsEnabled()
+{
+    if (auto* const world = ViewHelpers::getGlobals (this))
+        return world->settings().autoConnectNearbyPorts();
+    return autoConnectNearbyPorts;
+}
+
+bool GraphEditorComponent::isSwapNearbyAudioConnectionsEnabled()
+{
+    if (auto* const world = ViewHelpers::getGlobals (this))
+        return world->settings().swapNearbyAudioConnections();
+    return swapNearbyAudioConnections;
+}
+
 void GraphEditorComponent::setNode (const Node& n)
+
 {
     bool isGraph = n.isGraph();
     bool isValid = n.isValid();
@@ -435,8 +450,13 @@ void GraphEditorComponent::setNode (const Node& n)
     data = graph.data();
 
     verticalLayout = graph.getProperty (tags::vertical, true);
-    autoConnectNearbyPorts = graph.getProperty (tags::autoConnectNearbyPorts, false);
-    swapNearbyAudioConnections = graph.getProperty (tags::swapNearbyAudioConnections, false);
+    autoConnectNearbyPorts = false;
+    swapNearbyAudioConnections = false;
+    if (auto* const world = ViewHelpers::getGlobals (this))
+    {
+        autoConnectNearbyPorts = world->settings().autoConnectNearbyPorts();
+        swapNearbyAudioConnections = world->settings().swapNearbyAudioConnections();
+    }
 
     if (draggingConnector)
         removeChildComponent (draggingConnector.get());
@@ -506,8 +526,6 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
         menu.addSeparator();
         menu.addItem (5, "Change orientation...");
         menu.addItem (7, "Gather nodes...");
-        menu.addItem (8, "Auto-connect nearby ports", true, autoConnectNearbyPorts);
-        menu.addItem (9, "Swap nearby audio connections", true, swapNearbyAudioConnections);
 
         menu.addSeparator();
         menu.addSectionHeader ("Plugins");
@@ -615,22 +633,6 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                         setSize (width, height);
                     return;
                 }
-                case 8:
-                    autoConnectNearbyPorts = ! autoConnectNearbyPorts;
-                    graph.setProperty (tags::autoConnectNearbyPorts, autoConnectNearbyPorts);
-                    if (! autoConnectNearbyPorts)
-                        clearAutoConnectPreview();
-                    return;
-                    break;
-
-                case 9:
-                    swapNearbyAudioConnections = ! swapNearbyAudioConnections;
-                    graph.setProperty (tags::swapNearbyAudioConnections, swapNearbyAudioConnections);
-                    if (! swapNearbyAudioConnections)
-                        clearAutoConnectPreview();
-                    return;
-                    break;
-
                 // Zoom options (commented don't look right yet)
                 // case 50: setZoomScale (0.25); return; break;
                 // case 51: setZoomScale (0.50); return; break;
@@ -744,7 +746,7 @@ ConnectorComponent* GraphEditorComponent::getComponentForConnection (const Arc& 
 }
 
 Array<GraphEditorComponent::AutoConnectPair>
-    GraphEditorComponent::findAutoConnectPairs (const BlockComponent& movedBlock) const
+    GraphEditorComponent::findAutoConnectPairs (const BlockComponent& movedBlock)
 {
     struct PortInfo
     {
@@ -756,6 +758,13 @@ Array<GraphEditorComponent::AutoConnectPair>
     };
 
     constexpr float maxDistance = 20.0f;
+    bool autoConnectEnabled = autoConnectNearbyPorts;
+    bool swapEnabled = swapNearbyAudioConnections;
+    if (auto* const world = ViewHelpers::getGlobals (this))
+    {
+        autoConnectEnabled = world->settings().autoConnectNearbyPorts();
+        swapEnabled = world->settings().swapNearbyAudioConnections();
+    }
 
     auto collectPorts = [] (const BlockComponent& block)
     {
@@ -803,7 +812,7 @@ Array<GraphEditorComponent::AutoConnectPair>
     for (int i = 0; i < graph.getNumConnections(); ++i)
         arcs.add (new Arc (Node::arcFromValueTree (graph.getConnectionValueTree (i))));
 
-    if (swapNearbyAudioConnections)
+    if (swapEnabled)
     {
         for (int i = 0; i < getNumChildComponents(); ++i)
         {
@@ -841,7 +850,7 @@ Array<GraphEditorComponent::AutoConnectPair>
         }
     }
 
-    if (autoConnectNearbyPorts)
+    if (autoConnectEnabled)
     {
         for (const auto* const arc : arcs)
         {
@@ -885,7 +894,7 @@ Array<GraphEditorComponent::AutoConnectPair>
     }
 
     Array<AutoConnectPair> candidates;
-    if (autoConnectNearbyPorts)
+    if (autoConnectEnabled)
     for (int i = 0; i < getNumChildComponents(); ++i)
     {
         const auto* const block = dynamic_cast<const BlockComponent*> (getChildComponent (i));
@@ -899,7 +908,7 @@ Array<GraphEditorComponent::AutoConnectPair>
             {
                 if (a.input == b.input || a.type != b.type)
                     continue;
-                if (swapNearbyAudioConnections && a.type.isAudio()
+                if (swapEnabled && a.type.isAudio()
                     && a.input == b.input)
                     continue;
 

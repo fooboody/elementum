@@ -27,6 +27,8 @@ public:
     static const char* scanForPluginsOnStartKey;
     static const char* showPluginWindowsKey;
     static const char* autoConnectMidiInputNodesKey;
+    static const char* autoConnectNearbyPortsKey;
+    static const char* swapNearbyAudioConnectionsKey;
     static const char* openLastUsedSessionKey;
     static const char* askToSaveSessionKey;
     static const char* defaultNewSessionFile;
@@ -81,6 +83,11 @@ public:
     /** True if MIDI input sources should be connected to new plugins automatically */
     bool autoConnectMidiInputNodes() const;
     void setAutoConnectMidiInputNodes (const bool);
+
+    bool autoConnectNearbyPorts() const;
+    void setAutoConnectNearbyPorts (const bool);
+    bool swapNearbyAudioConnections() const;
+    void setSwapNearbyAudioConnections (const bool);
 
     /** True if the last used session should be opened on launch.
         If running as Solo/Lite, then this returns true if the last
