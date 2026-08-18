@@ -20,6 +20,17 @@
 #include "ui/transportbar.hpp"
 #include "ui/viewhelpers.hpp"
 
+#include <thread>
+
+#if JUCE_WINDOWS
+ #ifndef NOMINMAX
+  #define NOMINMAX
+ #endif
+ #include <windows.h>
+#elif JUCE_MAC || JUCE_LINUX
+ #include <sys/resource.h>
+#endif
+
 namespace element {
 
 ContentView::ContentView()
@@ -146,7 +157,7 @@ public:
 
     void resized() override
     {
-        Rectangle<int> r (getLocalBounds());
+        juce::Rectangle<int> r (getLocalBounds());
 
         const int tempoBarWidth = jmax (120, tempoBar.getWidth());
         const int tempoBarHeight = getHeight() - 16;
@@ -296,7 +307,7 @@ public:
 
     void resized() override
     {
-        Rectangle<int> r (getLocalBounds());
+        juce::Rectangle<int> r (getLocalBounds());
         statusLabel.setBounds (r.removeFromLeft (getWidth() / 5));
         streamingStatusLabel.setBounds (r.removeFromLeft (r.getWidth() / 2));
         sampleRateLabel.setBounds (r);
@@ -320,10 +331,8 @@ public:
             sampleRateLabel.setText (text, dontSendNotification);
 
             text.clear();
-            String strText = streamingStatus.getValue().toString();
-            if (strText.isEmpty())
-                strText = "Running";
-            text << "Engine: " << strText << ":  CPU: " << String (devices.getCpuUsage() * 100.f, 1) << "%";
+            text << "DSP Load: " << String (devices.getCpuUsage() * 100.f, 1)
+                 << "% | Process CPU: " << String (getProcessCpuUsage(), 1) << "%";
             streamingStatusLabel.setText (text, dontSendNotification);
 
             statusLabel.setText (String ("Device: ") + dev->getName(), dontSendNotification);
@@ -367,6 +376,61 @@ private:
     Value sampleRate, streamingStatus, status;
 
     SignalConnection latencySamplesChangedConnection;
+
+    double getProcessCpuUsage()
+    {
+        const auto now = Time::getMillisecondCounterHiRes();
+        const auto cpuTime = getProcessCpuTimeSeconds();
+
+        if (previousWallTime >= 0.0 && previousCpuTime >= 0.0)
+        {
+            const auto wallDelta = (now - previousWallTime) * 0.001;
+            const auto cpuDelta = cpuTime - previousCpuTime;
+
+            if (wallDelta > 0.0 && cpuDelta >= 0.0)
+            {
+                const auto numCpus = jmax (1u, std::thread::hardware_concurrency());
+                processCpuUsage = jlimit (0.0, 100.0,
+                                          cpuDelta / (wallDelta * static_cast<double> (numCpus)) * 100.0);
+            }
+        }
+
+        previousWallTime = now;
+        previousCpuTime = cpuTime;
+        return processCpuUsage;
+    }
+
+    static double getProcessCpuTimeSeconds()
+    {
+#if JUCE_WINDOWS
+        FILETIME creationTime, exitTime, kernelTime, userTime;
+        if (! GetProcessTimes (GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime))
+            return 0.0;
+
+        const auto toUInt64 = [] (const FILETIME& value)
+        {
+            ULARGE_INTEGER result;
+            result.LowPart = value.dwLowDateTime;
+            result.HighPart = value.dwHighDateTime;
+            return static_cast<double> (result.QuadPart);
+        };
+
+        return (toUInt64 (kernelTime) + toUInt64 (userTime)) * 1.0e-7;
+#elif JUCE_MAC || JUCE_LINUX
+        struct rusage usage {};
+        if (getrusage (RUSAGE_SELF, &usage) != 0)
+            return 0.0;
+
+        return static_cast<double> (usage.ru_utime.tv_sec) + usage.ru_utime.tv_usec * 1.0e-6
+             + static_cast<double> (usage.ru_stime.tv_sec) + usage.ru_stime.tv_usec * 1.0e-6;
+#else
+        return 0.0;
+#endif
+    }
+
+    double previousWallTime = -1.0;
+    double previousCpuTime = -1.0;
+    double processCpuUsage = 0.0;
 
     friend class Timer;
     void timerCallback() override
@@ -415,7 +479,7 @@ void Content::paint (Graphics& g)
 
 void Content::resized()
 {
-    Rectangle<int> r (getLocalBounds());
+    juce::Rectangle<int> r (getLocalBounds());
 
     if (toolBarVisible && toolBar)
         toolBar->setBounds (r.removeFromTop (toolBarSize));
