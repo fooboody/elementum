@@ -266,6 +266,28 @@ public:
         addSubMenu (subMenuName, programs);
     }
 
+    bool isEnablementResult (const int result)
+    {
+        return resultMap[result] != nullptr
+            && dynamic_cast<EnableNodeOp*> (resultMap[result]) != nullptr;
+    }
+
+    void applyEnablementTo (const Array<Node>& nodes)
+    {
+        const bool shouldEnable = ! node.isEnabled();
+
+        for (const auto& selectedNodeRef : nodes)
+        {
+            Node selectedNode (selectedNodeRef);
+            if (auto ptr = selectedNode.getObject())
+            {
+                ptr->setEnabled (shouldEnable);
+                selectedNode.data().setProperty (tags::enabled,
+                                                  ptr->isEnabled(), nullptr);
+            }
+        }
+    }
+
     inline void addPresetsMenu (PresetManager& collection, const String& subMenuName = "Presets")
     {
         PopupMenu presets;

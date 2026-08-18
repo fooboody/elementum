@@ -751,7 +751,23 @@ void BlockComponent::mouseDown (const MouseEvent& e)
         // menu index resolves to the correct plugin.
         const auto types = plugins.getVisiblePluginTypes();
 
-        if (auto* message = menu.createMessageForResultCode (result))
+        if (menu.isEnablementResult (result))
+        {
+            Array<Node> selectedNodes;
+            for (const auto& nodeId : getGraphPanel()->selectedNodes)
+            {
+                const Node selectedNode = graph.getNodeById (nodeId);
+                if (selectedNode.isValid())
+                    selectedNodes.add (selectedNode);
+            }
+
+            if (selectedNodes.isEmpty())
+                selectedNodes.add (node);
+
+            menu.applyEnablementTo (selectedNodes);
+            getGraphPanel()->updateConnectorComponents();
+        }
+        else if (auto* message = menu.createMessageForResultCode (result))
         {
             const bool beingRemoved = nullptr != dynamic_cast<RemoveNodeMessage*> (message);
             ViewHelpers::postMessageFor (this, message);
