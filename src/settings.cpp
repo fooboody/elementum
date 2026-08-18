@@ -46,6 +46,17 @@ const char* Settings::updateKeyUserKey = "updateKeyUserKey";
 const char* Settings::authPreviewUpdatesKey = "authPreviewUpdates";
 const char* Settings::authAppcastUrlKey = "authAppcastUrl";
 const char* Settings::transportStartStopContinue = "transportStartStopContinueKey";
+const char* Settings::audioConnectedPortColorKey = "audioConnectedPortColor";
+const char* Settings::audioDisconnectedPortColorKey = "audioDisconnectedPortColor";
+const char* Settings::midiConnectedPortColorKey = "midiConnectedPortColor";
+const char* Settings::midiDisconnectedPortColorKey = "midiDisconnectedPortColor";
+const char* Settings::audioConnectionCableColorKey = "audioConnectionCableColor";
+const char* Settings::midiConnectionCableColorKey = "midiConnectionCableColor";
+const char* Settings::connectionCableDragColorKey = "connectionCableDragColor";
+const char* Settings::connectionCableHoverColorKey = "connectionCableHoverColor";
+const char* Settings::nearbyConnectHighlightColorKey = "nearbyConnectHighlightColor";
+const char* Settings::nearbyDisconnectHighlightColorKey = "nearbyDisconnectHighlightColor";
+const char* Settings::nearbySwapHighlightColorKey = "nearbySwapHighlightColor";
 
 //=============================================================================
 enum OptionsMenuItemId
@@ -114,6 +125,48 @@ Settings::Settings()
 #endif
 
     setStorageParameters (opts);
+
+    if (auto* const props = getUserSettings())
+    {
+        bool changed = false;
+        const auto setDefault = [&] (const char* key, const char* value)
+        {
+            if (! props->containsKey (key))
+            {
+                props->setValue (key, value);
+                changed = true;
+            }
+        };
+
+        constexpr auto legacyConnectionCableColorKey = "connectionCableColor";
+        if (! props->containsKey (audioConnectionCableColorKey)
+            && props->containsKey (legacyConnectionCableColorKey))
+        {
+            props->setValue (audioConnectionCableColorKey,
+                             props->getValue (legacyConnectionCableColorKey));
+            changed = true;
+        }
+        if (props->containsKey (legacyConnectionCableColorKey))
+        {
+            props->removeValue (legacyConnectionCableColorKey);
+            changed = true;
+        }
+
+        setDefault (audioConnectedPortColorKey, "#90EE90");
+        setDefault (audioDisconnectedPortColorKey, "#90EE90");
+        setDefault (midiConnectedPortColorKey, "#FFA500");
+        setDefault (midiDisconnectedPortColorKey, "#FFA500");
+        setDefault (audioConnectionCableColorKey, "#484848");
+        setDefault (midiConnectionCableColorKey, "#484848");
+        setDefault (connectionCableDragColorKey, "#484848");
+        setDefault (connectionCableHoverColorKey, "#666666");
+        setDefault (nearbyConnectHighlightColorKey, "#0C83FF");
+        setDefault (nearbyDisconnectHighlightColorKey, "#FF66B3");
+        setDefault (nearbySwapHighlightColorKey, "#FFFFFF");
+
+        if (changed)
+            props->saveIfNeeded();
+    }
 }
 
 Settings::~Settings() {}

@@ -56,6 +56,17 @@ public:
     static const char* authPreviewUpdatesKey;
     static const char* authAppcastUrlKey;
     static const char* transportStartStopContinue;
+    static const char* audioConnectedPortColorKey;
+    static const char* audioDisconnectedPortColorKey;
+    static const char* midiConnectedPortColorKey;
+    static const char* midiDisconnectedPortColorKey;
+    static const char* audioConnectionCableColorKey;
+    static const char* midiConnectionCableColorKey;
+    static const char* connectionCableDragColorKey;
+    static const char* connectionCableHoverColorKey;
+    static const char* nearbyConnectHighlightColorKey;
+    static const char* nearbyDisconnectHighlightColorKey;
+    static const char* nearbySwapHighlightColorKey;
 
     bool getBool (std::string_view key, bool fallback = false) const noexcept;
 

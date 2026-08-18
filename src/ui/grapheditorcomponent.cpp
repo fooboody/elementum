@@ -9,6 +9,8 @@
 
 #include <element/node.hpp>
 #include <element/plugins.hpp>
+#include <element/settings.hpp>
+
 #include <element/ui/content.hpp>
 #include <element/ui/navigation.hpp>
 
@@ -134,6 +136,14 @@ public:
     ~ConnectorComponent() {}
 
     bool isDragging() const { return dragging; }
+    void setDragging (const bool shouldDrag)
+    {
+        if (dragging != shouldDrag)
+        {
+            dragging = shouldDrag;
+            repaint();
+        }
+    }
     void setGraph (const Node& g) { graph = g; }
 
     void setInput (const uint32 sourceFilterID_, const int sourceFilterChannel_)
@@ -221,8 +231,27 @@ public:
     void paint (Graphics& g) override
     {
         auto c = Colours::black.brighter();
-        if (hover || dragging)
-            c = c.brighter (0.2f);
+        bool midi = false;
+        if (const auto sourceNode = graph.getNodeById (sourceFilterID); sourceNode.isValid())
+            midi = sourceNode.getPort (sourceFilterChannel).getType().isMidi();
+        else if (const auto destNode = graph.getNodeById (destFilterID); destNode.isValid())
+            midi = destNode.getPort (destFilterChannel).getType().isMidi();
+
+        if (auto* const world = ViewHelpers::getGlobals (this))
+        {
+            if (auto* const props = world->settings().getUserSettings())
+            {
+                const auto key = dragging ? Settings::connectionCableDragColorKey
+                                 : hover ? Settings::connectionCableHoverColorKey
+                                 : midi ? Settings::midiConnectionCableColorKey
+                                        : Settings::audioConnectionCableColorKey;
+                const auto value = props->getValue (key, "#484848").trim();
+                if (value.startsWithChar ('#') && value.substring (1).length() == 6)
+                    c = Colour (0xff000000u | value.substring (1).getHexValue32());
+                else
+                    c = Colour::fromString (value);
+            }
+        }
         g.setColour (c);
         g.fillPath (linePath);
     }
@@ -1404,6 +1433,9 @@ void GraphEditorComponent::updateComponents (const bool doNodePositions)
     }
 
     updateBlockComponents (doNodePositions);
+    for (int i = getNumChildComponents(); --i >= 0;)
+        if (auto* const block = dynamic_cast<BlockComponent*> (getChildComponent (i)))
+            block->repaint();
     updateConnectorComponents();
 }
 
@@ -1432,6 +1464,7 @@ void GraphEditorComponent::beginConnectorDrag (const uint32 sourceNode, const in
         draggingConnector.reset (new ConnectorComponent (graph));
 
     draggingConnector->setGraph (this->graph);
+    draggingConnector->setDragging (true);
     draggingConnector->setInput (sourceNode, sourceFilterChannel);
     draggingConnector->setOutput (destNode, destFilterChannel);
     draggingConnector->setAlwaysOnTop (true);

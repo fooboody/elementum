@@ -6,6 +6,7 @@
 #include <element/ui/content.hpp>
 #include <element/node.hpp>
 #include <element/context.hpp>
+#include <element/settings.hpp>
 
 #include "engine/midiengine.hpp"
 
@@ -29,6 +30,21 @@ inline static Context* context (juce::Component* comp)
     if (auto cc = ViewHelpers::findContentComponent (comp))
         return &cc->context();
     return nullptr;
+}
+
+static Colour configuredColour (juce::Component* comp, const char* key, const Colour fallback)
+{
+    if (auto* const world = context (comp))
+    {
+        if (auto* const props = world->settings().getUserSettings())
+        {
+            const auto value = props->getValue (key, fallback.toString()).trim();
+            if (value.startsWithChar ('#') && value.substring (1).length() == 6)
+                return Colour (0xff000000u | value.substring (1).getHexValue32());
+            return Colour::fromString (value);
+        }
+    }
+    return fallback;
 }
 
 static bool canResize (BlockComponent& block)
@@ -103,22 +119,35 @@ void PortComponent::setSwapHighlighted (const bool highlighted) noexcept
 
 Colour PortComponent::getColor() const noexcept
 {
+    bool connected = false;
+    for (int i = 0; i < graph.getNumConnections(); ++i)
+    {
+        const auto arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
+        if ((! input && arc.sourceNode == nodeID && arc.sourcePort == port)
+            || (input && arc.destNode == nodeID && arc.destPort == port))
+        {
+            connected = true;
+            break;
+        }
+    }
+
     switch (this->type)
     {
         case PortType::Audio:
-            return Colours::lightgreen;
-            break;
+            return detail::configuredColour (const_cast<PortComponent*> (this),
+                                             connected ? Settings::audioConnectedPortColorKey
+                                                       : Settings::audioDisconnectedPortColorKey,
+                                             Colours::lightgreen);
         case PortType::Control:
             return Colours::lightblue;
-            break;
         case PortType::Midi:
-            return Colours::orange;
-            break;
+            return detail::configuredColour (const_cast<PortComponent*> (this),
+                                             connected ? Settings::midiConnectedPortColorKey
+                                                       : Settings::midiDisconnectedPortColorKey,
+                                             Colours::orange);
         default:
-            break;
+            return Colours::red;
     }
-
-    return Colours::red;
 }
 
 void PortComponent::paint (Graphics& g)
@@ -130,7 +159,9 @@ void PortComponent::paint (Graphics& g)
 
         if (swapHighlighted)
         {
-            g.setColour (Colours::white);
+            g.setColour (detail::configuredColour (this,
+                                                    Settings::nearbySwapHighlightColorKey,
+                                                    Colours::white));
             g.drawRoundedRectangle (0.75f, 0.75f,
                                     (float) getWidth() - 1.5f,
                                     (float) getHeight() - 1.5f,
@@ -138,7 +169,9 @@ void PortComponent::paint (Graphics& g)
         }
         else if (disconnectHighlighted)
         {
-            g.setColour (Colour (0xFFFF66B3));
+            g.setColour (detail::configuredColour (this,
+                                                    Settings::nearbyDisconnectHighlightColorKey,
+                                                    Colour (0xFFFF66B3)));
             g.drawRoundedRectangle (0.75f, 0.75f,
                                     (float) getWidth() - 1.5f,
                                     (float) getHeight() - 1.5f,
@@ -146,7 +179,9 @@ void PortComponent::paint (Graphics& g)
         }
         else if (autoConnectHighlighted)
         {
-            g.setColour (Colour (0xFF0C83FF));
+            g.setColour (detail::configuredColour (this,
+                                                    Settings::nearbyConnectHighlightColorKey,
+                                                    Colour (0xFF0C83FF)));
             g.drawRoundedRectangle (0.75f, 0.75f,
                                     (float) getWidth() - 1.5f,
                                     (float) getHeight() - 1.5f,
