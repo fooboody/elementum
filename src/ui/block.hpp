@@ -294,6 +294,7 @@ private:
     Font font;
 
     Point<int> originalPos;
+    Point<double> originalNodePosition;
     Rectangle<int> originalBounds;
     int customWidth = 0,
         customHeight = 0;

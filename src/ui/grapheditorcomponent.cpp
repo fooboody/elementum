@@ -1026,7 +1026,7 @@ void GraphEditorComponent::updateAutoConnectPreview (const BlockComponent& moved
     }
 }
 
-void GraphEditorComponent::commitAutoConnect (const BlockComponent& movedBlock, const bool enabled)
+void GraphEditorComponent::commitAutoConnect (BlockComponent& movedBlock, const bool enabled)
 {
     if (! enabled)
     {
@@ -1102,6 +1102,36 @@ void GraphEditorComponent::commitAutoConnect (const BlockComponent& movedBlock, 
             }
             return false;
         };
+
+        for (const auto& swap : swaps)
+        {
+            auto* const firstBlock = getComponentForFilter (swap.first);
+            auto* const secondBlock = getComponentForFilter (swap.second);
+            if (firstBlock == nullptr || secondBlock == nullptr)
+                continue;
+
+            const auto movedNodeID = movedBlock.getNode().getNodeId();
+            if (movedNodeID != swap.first && movedNodeID != swap.second)
+                continue;
+
+            double otherX = 0.0, otherY = 0.0;
+            const auto original = movedBlock.originalNodePosition;
+            if (movedNodeID == swap.first)
+            {
+                secondBlock->node.getPosition (otherX, otherY);
+                movedBlock.node.setPosition (otherX, otherY);
+                secondBlock->node.setPosition (original.x, original.y);
+            }
+            else
+            {
+                firstBlock->node.getPosition (otherX, otherY);
+                movedBlock.node.setPosition (otherX, otherY);
+                firstBlock->node.setPosition (original.x, original.y);
+            }
+
+            firstBlock->updatePosition();
+            secondBlock->updatePosition();
+        }
 
         for (const auto& pair : pairs)
         {

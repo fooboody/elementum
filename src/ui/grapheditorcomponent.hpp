@@ -169,7 +169,7 @@ private:
 
     Array<AutoConnectPair> findAutoConnectPairs (const BlockComponent& movedBlock) const;
     void updateAutoConnectPreview (const BlockComponent& movedBlock, bool enabled);
-    void commitAutoConnect (const BlockComponent& movedBlock, bool enabled);
+    void commitAutoConnect (BlockComponent& movedBlock, bool enabled);
     void clearAutoConnectPreview();
 
     Array<AutoConnectPair> autoConnectPreviewPairs;

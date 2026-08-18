@@ -604,6 +604,7 @@ void BlockComponent::mouseDown (const MouseEvent& e)
         return;
 
     originalPos = localPointToGlobal (Point<int>());
+    node.getPosition (originalNodePosition.x, originalNodePosition.y);
     originalBounds = getBounds();
     toFront (true);
     dragging = false;
