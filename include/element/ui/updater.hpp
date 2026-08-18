@@ -1,4 +1,5 @@
 // Copyright 2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -8,22 +9,14 @@
 
 #include <element/element.hpp>
 
-#ifndef ELEMENT_UPDATES_HOST
-    #define ELEMENT_UPDATES_HOST "https://repo.kushview.net"
+// A Fooboody Studio release must provide its own authenticated update feed.
+// Preserve the legacy macro names while leaving the default endpoint unset.
+#ifndef ELEMENT_UPDATES_URL_BASE
+    #define ELEMENT_UPDATES_URL_BASE ""
 #endif
 
-#ifndef ELEMENT_UPDATES_PATH
-    #define ELEMENT_UPDATES_PATH "/element/1/stable"
-#endif
-
-#define ELEMENT_UPDATES_URL_BASE ELEMENT_UPDATES_HOST ELEMENT_UPDATES_PATH
-
-#if JUCE_MAC
-    #define ELEMENT_UPDATES_URL ELEMENT_UPDATES_URL_BASE "/osx"
-#elif JUCE_WINDOWS
-    #define ELEMENT_UPDATES_URL ELEMENT_UPDATES_URL_BASE "/windows"
-#else
-    #define ELEMENT_UPDATES_URL ELEMENT_UPDATES_URL_BASE "/linux"
+#ifndef ELEMENT_UPDATES_URL
+    #define ELEMENT_UPDATES_URL ""
 #endif
 
 namespace element {

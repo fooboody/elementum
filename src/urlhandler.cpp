@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) Kushview, LLC.
+// SPDX-FileCopyrightText: Copyright (C) 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <juce_core/system/juce_TargetPlatform.h>
@@ -27,13 +28,14 @@ void Application::registerURLSchemeHandler()
 
     HKEY hkey;
     DWORD disposition;
-    const wchar_t* keyPath = L"Software\\Classes\\element";
+    const wchar_t* keyPath = L"Software\\Classes\\elementum";
 
-    // Create the element key
+    // Create the elementum key
     if (::RegCreateKeyExW (HKEY_CURRENT_USER, keyPath, 0, nullptr, 0, KEY_WRITE, nullptr, &hkey, &disposition) == ERROR_SUCCESS)
     {
-        // Set default value to "URL:Element Protocol"
-        ::RegSetValueExW (hkey, nullptr, 0, REG_SZ, (const BYTE*) L"URL:Element Protocol", sizeof (wchar_t) * 20);
+        // Set default value to "URL:Elementum Protocol"
+        constexpr auto protocolName = L"URL:Elementum Protocol";
+        ::RegSetValueExW (hkey, nullptr, 0, REG_SZ, (const BYTE*) protocolName, sizeof (protocolName));
 
         // Set "URL Protocol" value to empty string
         ::RegSetValueExW (hkey, L"URL Protocol", 0, REG_SZ, (const BYTE*) L"", sizeof (wchar_t));
@@ -55,7 +57,7 @@ void Application::registerURLSchemeHandler()
 
 void Application::unregisterURLSchemeHandler()
 {
-    ::RegDeleteTreeW (HKEY_CURRENT_USER, L"Software\\Classes\\element");
+    ::RegDeleteTreeW (HKEY_CURRENT_USER, L"Software\\Classes\\elementum");
 }
 
 } // namespace element

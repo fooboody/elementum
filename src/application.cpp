@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: Copyright (C) Kushview, LLC.
+// SPDX-FileCopyrightText: Copyright (C) 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <atomic>
@@ -204,7 +205,7 @@ Application::Application()
 
 Application::~Application() {}
 
-const String Application::getApplicationName() { return "Element"; }
+const String Application::getApplicationName() { return Util::appName(); }
 
 const String Application::getApplicationVersion() { return ELEMENT_VERSION_STRING; }
 
@@ -232,9 +233,9 @@ void Application::initialise (const String& commandLine)
     launchApplication();
 
     // Handle URL scheme if passed on command line. On Windows the URL arrives as a
-    // quoted argument (element.exe "element://..."), so strip quotes before matching.
+    // quoted argument (elementum.exe "elementum://..."), so strip quotes before matching.
     const auto url = commandLine.unquoted().trim();
-    if (url.startsWith ("element://"))
+    if (url.startsWith ("elementum://"))
         handleURLSchemeCallback (url);
 }
 
@@ -377,7 +378,7 @@ void Application::anotherInstanceStarted (const String& commandLine)
     // Handle custom URL scheme callbacks (e.g., auth). On Windows the URL arrives as a
     // quoted argument forwarded from the launching instance, so strip quotes before matching.
     const auto url = commandLine.unquoted().trim();
-    if (url.startsWith ("element://"))
+    if (url.startsWith ("elementum://"))
     {
         handleURLSchemeCallback (url);
         return;
@@ -451,8 +452,10 @@ void Application::printCopyNotice()
     String appName = Util::appName();
     appName << " v" << getApplicationVersion() << " (GPL v3)";
     Logger::writeToLog (appName);
-    Logger::writeToLog (String ("Copyright (c) 2017-%YEAR% Kushview, LLC.  All rights reserved.\n")
+    Logger::writeToLog ("Elementum is a Fooboody Studio fork of Element.");
+    Logger::writeToLog (String ("Original work Copyright (c) 2017-%YEAR% Kushview, LLC.\n")
                             .replace ("%YEAR%", String (Time::getCurrentTime().getYear())));
+    Logger::writeToLog ("Fork modifications Copyright (c) 2026 Fooboody Studio.");
 }
 
 bool Application::maybeLaunchScannerWorker (const String& commandLine)
@@ -493,7 +496,7 @@ void Application::launchApplication()
 void Application::initializeModulePath()
 {
     const File path (File::getSpecialLocation (File::invokedExecutableFile));
-    File modDir = path.getParentDirectory().getParentDirectory().getChildFile ("lib/element").getFullPathName();
+    File modDir = path.getParentDirectory().getParentDirectory().getChildFile ("lib/elementum").getFullPathName();
 #if JUCE_DEBUG
     if (! modDir.exists())
     {
@@ -502,11 +505,11 @@ void Application::initializeModulePath()
 #endif
 
 #if JUCE_WINDOWS
-    String putEnv = "ELEMENT_MODULE_PATH=";
+    String putEnv = "ELEMENTUM_MODULE_PATH=";
     putEnv << modDir.getFullPathName();
     putenv (putEnv.toRawUTF8());
 #else
-    setenv ("ELEMENT_MODULE_PATH", modDir.getFullPathName().toRawUTF8(), 1);
+    setenv ("ELEMENTUM_MODULE_PATH", modDir.getFullPathName().toRawUTF8(), 1);
 #endif
 }
 

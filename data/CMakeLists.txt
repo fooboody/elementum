@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set(ELEMENT_RES
@@ -19,18 +20,18 @@ if(UNIX AND NOT APPLE)
     # Configure desktop file with CMake variables
     configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/element.desktop.in
-        ${CMAKE_CURRENT_BINARY_DIR}/element.desktop
+        ${CMAKE_CURRENT_BINARY_DIR}/elementum.desktop
         @ONLY
     )
 
     # Install desktop file
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/element.desktop
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/elementum.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
     )
 
     # Install icon
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/images/icon.png
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps
-        RENAME element.png
+        RENAME elementum.png
     )
 endif()

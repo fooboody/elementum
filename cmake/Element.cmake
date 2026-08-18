@@ -1,7 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-option(ELEMENT_BUILD_PLUGINS "Build the plugin versions of Element" OFF)
+option(ELEMENT_BUILD_PLUGINS "Build the plugin versions of Elementum" OFF)
 option(ELEMENT_BUILD_TESTS "Build the unit tests" ON)
 option(ELEMENT_ENABLE_ASIO "Build with ASIO support" OFF)
 option(ELEMENT_ENABLE_VST2 "Build with VST2 support" OFF)

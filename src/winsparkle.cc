@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Kushview, LLC
+// SPDX-FileCopyrightText: 2026 Fooboody Studio
 // SPDX-License-Identifier: ISC
 
 #include <winsparkle.h>
@@ -30,9 +31,9 @@ class WinSparkleUpdater : public Updater
 public:
     WinSparkleUpdater()
     {
-        const juce::String versionString (ELEMENT_VERSION_STRING);
+        const juce::String versionString (ELEMENT_BUILD_VERSION);
         const juce::String buildVersion (ELEMENT_BUILD_VERSION);
-        win_sparkle_set_app_details (L"Kushview", L"Element", versionString.toWideCharPointer());
+        win_sparkle_set_app_details (L"Fooboody Studio", L"Elementum", versionString.toWideCharPointer());
         win_sparkle_set_app_build_version (buildVersion.toWideCharPointer());
         win_sparkle_set_appcast_url (ELEMENT_APPCAST_URL);
         win_sparkle_set_automatic_check_for_updates (0);

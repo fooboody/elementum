@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Generate a version header in a specific path (build/include/element/version.h)
@@ -58,8 +59,12 @@ else()
 endif()
 
 set(ELEMENT_BUILD_NUMBER ${ELEMENT_BUILD_NUMBER} PARENT_SCOPE)
-set(ELEMENT_BUILD_VERSION "${PROJECT_VERSION}.${ELEMENT_BUILD_NUMBER}")
-set(ELEMENT_VERSION_STRING ${PROJECT_VERSION_FULL})
+# PROJECT_VERSION is synchronized from upstream. PROJECT_VERSION_FULL adds the
+# stable fork suffix configured by the top-level CMakeLists.txt.
+# Keep the updater/build version numeric for platform metadata and use the full
+# version string for user-visible text.
+set(ELEMENT_BUILD_VERSION "${PROJECT_VERSION}")
+set(ELEMENT_VERSION_STRING "${PROJECT_VERSION_FULL}")
 
 set(GENERATED_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include)
 set(GENERATED_INCLUDE_DIR ${CMAKE_BINARY_DIR}/include PARENT_SCOPE)

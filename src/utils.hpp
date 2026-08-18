@@ -1,4 +1,5 @@
 // Copyright 2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -93,9 +94,7 @@ inline static int noteValueFromString (const juce::String& text, int octaveForMi
     return -1;
 }
 
-/** Returns the application name depending on product.
-    Element Lite, Element Solo, or Element
- */
+/** Returns the Elementum application name. */
 inline static String appName (const String& beforeText = String(),
                               const String& afterText = String())
 {
@@ -103,7 +102,7 @@ inline static String appName (const String& beforeText = String(),
     if (beforeText.isNotEmpty())
         name << beforeText;
 
-    name << "Element";
+    name << "Elementum";
 
     if (afterText.isNotEmpty())
         name << afterText;

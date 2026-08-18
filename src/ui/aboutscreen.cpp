@@ -1,4 +1,5 @@
 // Copyright 2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <element/version.hpp>
@@ -9,7 +10,9 @@
 #include "binarydata.hpp"
 
 #define EL_LICENSE_TEXT                                                        \
-    "Copyright (C) 2014-@0@  Kushview, LLC.  All rights reserved.\r\n\r\n"     \
+    "Elementum is a Fooboody Studio fork of Element.\r\n\r\n"                         \
+    "Original work Copyright (C) 2014-@0@ Kushview, LLC.\r\n"                 \
+    "Fork modifications Copyright (C) 2026 Fooboody Studio.\r\n\r\n"                \
                                                                                \
     "This program is free software; you can redistribute it and/or modify\r\n" \
     "it under the terms of the GNU General Public License as published by\r\n" \
@@ -203,7 +206,7 @@ AboutScreen::AboutScreen()
 
     auto buildDate = Time::getCompilationDate();
     addAndMakeVisible (versionLabel);
-    versionLabel.setText (String ("Version: ") + Version::withGitHash()
+    versionLabel.setText (String ("Version: ") + ELEMENT_VERSION_STRING
                               + "\nBuild date: " + String (buildDate.getDayOfMonth())
                               + " " + Time::getMonthName (buildDate.getMonth(), true)
                               + " " + String (buildDate.getYear()),
@@ -215,10 +218,10 @@ AboutScreen::AboutScreen()
     addAndMakeVisible (copyrightLabel);
     copyrightLabel.setJustificationType (Justification::centred);
     copyrightLabel.setFont (Font (FontOptions (13.f)));
-    String copyrightText = "Copyright ";
-    copyrightText << String (CharPointer_UTF8 ("\xc2\xa9")) << " XXX Kushview, LLC.";
-    copyrightLabel.setText (copyrightText.replace ("XXX", String (buildDate.getYear())),
-                            dontSendNotification);
+    String copyrightText = String (CharPointer_UTF8 ("\xc2\xa9"))
+                         + " 2014-" + String (buildDate.getYear()) + " Kushview, LLC."
+                         + "  Fork " + String (CharPointer_UTF8 ("\xc2\xa9")) + " 2026 Fooboody Studio.";
+    copyrightLabel.setText (copyrightText, dontSendNotification);
 
     addAndMakeVisible (aboutButton);
     aboutButton.setTooltip ({});
@@ -230,8 +233,9 @@ AboutScreen::AboutScreen()
     const auto tabc = findColour (TextEditor::backgroundColourId);
 
     auto* authors = new AboutCreditsComponent();
-    authors->getPanel().addSection ("Lead Developer", { "Michael Fisher (mfisher31)" });
-    authors->getPanel().addSection ("Contributers", detail::developers());
+    authors->getPanel().addSection ("Fork Maintainer", { "Fooboody" });
+    authors->getPanel().addSection ("Original Lead Developer", { "Michael Fisher (mfisher31)" });
+    authors->getPanel().addSection ("Original Contributors", detail::developers());
     tabs.addTab ("Authors", tabc, authors, true);
 
     // auto* donors = new AboutCreditsComponent();
@@ -252,10 +256,10 @@ AboutScreen::AboutScreen()
 
     AboutInfo i;
     i.title = EL_APP_NAME;
-    i.copyright << "Copyright " << String (CharPointer_UTF8 ("\xc2\xa9")) << " XXX Kushview, LLC.";
-    i.copyright = i.copyright.replace ("XXX", String (buildDate.getYear()));
-    i.version = ("Version: ") + Version::withGitHash();
-    i.version << " (build " << ELEMENT_BUILD_NUMBER << ")";
+    i.copyright = copyrightText;
+    i.version = String ("Version: ") + ELEMENT_VERSION_STRING;
+    i.link = URL (EL_APP_URL);
+    i.linkText = EL_APP_URL;
     setAboutInfo (i);
 }
 
@@ -319,7 +323,7 @@ void AboutScreen::updateAboutInfo()
         aboutButton.setURL (info.link);
     }
 
-    if (! info.linkText.isNotEmpty())
+    if (info.linkText.isNotEmpty())
     {
         aboutButton.setButtonText (info.linkText);
     }

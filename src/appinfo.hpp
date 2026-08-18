@@ -1,4 +1,5 @@
 // Copyright 2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -9,15 +10,15 @@
 
 // clang-format off
 #ifndef EL_APP_AUTHOR
- #define EL_APP_AUTHOR "Kushview"
+ #define EL_APP_AUTHOR "Fooboody Studio"
 #endif
 
 #ifndef EL_APP_NAME
- #define EL_APP_NAME "Element"
+ #define EL_APP_NAME "Elementum"
 #endif
 
 #ifndef EL_APP_URL
- #define EL_APP_URL "https://kushview.net/element"
+ #define EL_APP_URL "https://github.com/fooboody/elementum"
 #endif
 
 #define EL_APP_DATA_SUBDIR EL_APP_AUTHOR "/" EL_APP_NAME

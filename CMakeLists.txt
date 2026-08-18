@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 cmake_minimum_required(VERSION 3.26.0)
-project(element VERSION 1.2.0)
-set(PROJECT_VERSION_SUFFIX "")
+project(elementum VERSION 1.2.0)
+# Keep PROJECT_VERSION synchronized with upstream; this suffix identifies the fork revision.
+set(PROJECT_VERSION_SUFFIX "-fooboody.1")
 set(PROJECT_VERSION_FULL "${PROJECT_VERSION}${PROJECT_VERSION_SUFFIX}")
 
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -25,10 +27,11 @@ include(cmake/FindSol2.cmake)
 include(cmake/FindJUCE.cmake)
 
 # Global JUCE properties
-set_directory_properties(PROPERTIES JUCE_COMPANY_NAME "Kushview")
-set_directory_properties(PROPERTIES JUCE_COMPANY_COPYRIGHT "Kushview, LLC")
-set_directory_properties(PROPERTIES JUCE_COMPANY_WEBSITE "https://kushview.net")
-set_directory_properties(PROPERTIES JUCE_COMPANY_EMAIL "support@kushview.net")
+set_directory_properties(PROPERTIES JUCE_COMPANY_NAME "Fooboody Studio")
+set_directory_properties(PROPERTIES JUCE_COMPANY_COPYRIGHT "Original work © Kushview, LLC; fork modifications © Fooboody Studio")
+set_directory_properties(PROPERTIES JUCE_COMPANY_WEBSITE "https://github.com/fooboody/elementum")
+# No dedicated support mailbox has been published for this fork.
+set_directory_properties(PROPERTIES JUCE_COMPANY_EMAIL "")
 
 # CLAP Setup
 set(CMAKE_POLICY_DEFAULT_CMP0177 OLD)
@@ -63,19 +66,20 @@ endif()
 if(NOT APPLE)
     # For backward compatibility with the old meson build, not-Mac installs 
     # expect the exe name to be all lower case.
-    set(ELEMENT_STANDALONE_PRODUCT_NAME "element")
+    set(ELEMENT_STANDALONE_PRODUCT_NAME "elementum")
 else()
-    set(ELEMENT_STANDALONE_PRODUCT_NAME "Element")
+    set(ELEMENT_STANDALONE_PRODUCT_NAME "Elementum")
 endif()
 
 juce_add_gui_app(element_app
     PRODUCT_NAME            "${ELEMENT_STANDALONE_PRODUCT_NAME}"
-    BUILD_VERSION           "${PROJECT_VERSION}.${ELEMENT_BUILD_NUMBER}"
+    # JUCE requires BUILD_VERSION to be major.minor.bugfix; use PROJECT_VERSION_FULL only for display and packaging.
+    BUILD_VERSION           "${PROJECT_VERSION}"
     DOCUMENT_EXTENSIONS     els elg
     ICON_BIG                data/images/icon.png
     ICON_SMALL              data/images/icon.png
 
-    BUNDLE_ID               "net.kushview.Element"
+    BUNDLE_ID               "io.github.fooboody.elementum"
     MICROPHONE_PERMISSION_ENABLED TRUE
 
     PLIST_TO_MERGE          "${ELEMENT_APP_PLIST_TO_MERGE}"
@@ -146,16 +150,17 @@ if(ELEMENT_BUILD_PLUGINS)
 
     ## Instrument Plugin
     juce_add_plugin(element_instrument
-        PLUGIN_NAME                 "Element"
-        PRODUCT_NAME                "KV-Element"
-        BUILD_VERSION               "${PROJECT_VERSION}.${ELEMENT_BUILD_NUMBER}"
-        PLUGIN_MANUFACTURER_CODE    KshV
-        PLUGIN_CODE                 Elmt
+        PLUGIN_NAME                 "Elementum"
+        PRODUCT_NAME                "Elementum"
+        # JUCE requires BUILD_VERSION to be major.minor.bugfix.
+        BUILD_VERSION               "${PROJECT_VERSION}"
+        PLUGIN_MANUFACTURER_CODE    Foob
+        PLUGIN_CODE                 Elum
 
-        BUNDLE_ID                   "net.kushview.plugins.Element"
+        BUNDLE_ID                   "io.github.fooboody.elementum.plugin"
         AU_MAIN_TYPE                kAudioUnitType_MusicDevice
 
-        LV2URI                      "https://kushview.net/plugins/element"
+        LV2URI                      "https://github.com/fooboody/elementum/plugins/elementum"
 
         IS_SYNTH                ON
         NEEDS_MIDI_INPUT        ON
@@ -164,7 +169,7 @@ if(ELEMENT_BUILD_PLUGINS)
         FORMATS                 ${ELEMENT_PLUGIN_FORMATS}
     )
     clap_juce_extensions_plugin(TARGET element_instrument
-        CLAP_ID "net.kushview.plugins.Element"
+        CLAP_ID "io.github.fooboody.elementum"
         CLAP_FEATURES instrument)
     target_sources(element_instrument PRIVATE src/plugins/instrument.cc)
     target_link_libraries(element_instrument PRIVATE kv::element)
@@ -173,16 +178,17 @@ if(ELEMENT_BUILD_PLUGINS)
     
     ## Effect Plugin
     juce_add_plugin(element_effect
-        PLUGIN_NAME                 "Element FX"
-        PRODUCT_NAME                "KV-Element-FX"
-        BUILD_VERSION               "${PROJECT_VERSION}.${ELEMENT_BUILD_NUMBER}"
-        PLUGIN_MANUFACTURER_CODE    KshV
-        PLUGIN_CODE                 ElFX
+        PLUGIN_NAME                 "Elementum FX"
+        PRODUCT_NAME                "Elementum FX"
+        # JUCE requires BUILD_VERSION to be major.minor.bugfix.
+        BUILD_VERSION               "${PROJECT_VERSION}"
+        PLUGIN_MANUFACTURER_CODE    Foob
+        PLUGIN_CODE                 EuFX
 
-        BUNDLE_ID                   "net.kushview.plugins.ElementFX"
+        BUNDLE_ID                   "io.github.fooboody.elementum.fx"
         AU_MAIN_TYPE                kAudioUnitType_Effect
 
-        LV2URI                      "https://kushview.net/plugins/element-fx"
+        LV2URI                      "https://github.com/fooboody/elementum/plugins/elementum-fx"
         
         IS_SYNTH                    OFF
         NEEDS_MIDI_INPUT            ON
@@ -191,7 +197,7 @@ if(ELEMENT_BUILD_PLUGINS)
         FORMATS                     ${ELEMENT_PLUGIN_FORMATS}
     )
     clap_juce_extensions_plugin(TARGET element_effect
-        CLAP_ID "net.kushview.ElementFX"
+        CLAP_ID "io.github.fooboody.elementum-fx"
         CLAP_FEATURES audio-effect)
 
     target_sources(element_effect PRIVATE src/plugins/effect.cc)
@@ -202,13 +208,14 @@ if(ELEMENT_BUILD_PLUGINS)
     if(APPLE)
         ## MIDI Effect Plugin
         juce_add_plugin(element_midi_effect
-            PLUGIN_NAME                 "Element MFX"
-            PRODUCT_NAME                "KV-Element-MFX"
-            BUILD_VERSION               "${PROJECT_VERSION}.${ELEMENT_BUILD_NUMBER}"
-            PLUGIN_MANUFACTURER_CODE    KshV
-            PLUGIN_CODE                 ElMX
+            PLUGIN_NAME                 "Elementum MFX"
+            PRODUCT_NAME                "Elementum MFX"
+            # JUCE requires BUILD_VERSION to be major.minor.bugfix.
+            BUILD_VERSION               "${PROJECT_VERSION}"
+            PLUGIN_MANUFACTURER_CODE    Foob
+            PLUGIN_CODE                 EuMX
             
-            BUNDLE_ID                   "net.kushview.plugins.ElementMFX"
+            BUNDLE_ID                   "io.github.fooboody.elementum.mfx"
             AU_MAIN_TYPE                kAudioUnitType_MIDIProcessor
 
             IS_SYNTH                    OFF
@@ -225,20 +232,20 @@ if(ELEMENT_BUILD_PLUGINS)
         # MFX version is AU only so function helper won't work here.
         install(TARGETS element_midi_effect_AU
             LIBRARY DESTINATION "Library/Audio/Plug-Ins/Components"
-            COMPONENT "Element MFX")
+            COMPONENT "Elementum MFX")
     endif()
 endif()
 
 # CPack configuration
-set(CPACK_PACKAGE_NAME "Element")
-set(CPACK_PACKAGE_VENDOR "Kushview")
-set(CPACK_PACKAGE_CONTACT "Kushview Support <support@kushview.net>")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Element - Audio Plugin Host and Modular Instrument")
+set(CPACK_PACKAGE_NAME "Elementum")
+set(CPACK_PACKAGE_VENDOR "Fooboody Studio")
+set(CPACK_PACKAGE_CONTACT "https://github.com/fooboody/elementum/issues")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Elementum - Audio Plugin Host and Modular Instrument (Fooboody Studio fork of Element)")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION_FULL}")
 set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
 set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "Element")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "Elementum")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/data/intro.txt")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSES/GPL-3.0-or-later.txt")
 
@@ -247,7 +254,7 @@ string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" ELEMENT_PROCESSOR)
 if(LINUX)
     set(ELEMENT_SYSTEM_NAME "linux")
     set(CPACK_GENERATOR "DEB")
-    set(CPACK_PACKAGE_NAME "element")
+    set(CPACK_PACKAGE_NAME "elementum")
     set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
     set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
     set(CPACK_DEBIAN_PACKAGE_DEPENDS "libasound2;libjack-jackd2-0;fonts-roboto;libfreetype6;libx11-6;libxext6;libxrandr2;libxinerama1;libxcursor1;libxrender1;libxcomposite1;libcurl4;libgl1;libstdc++6")

@@ -1,44 +1,84 @@
-[![REUSE status](https://api.reuse.software/badge/github.com/kushview/element)](https://api.reuse.software/info/github.com/kushview/element) [![Build and Test](https://github.com/kushview/element/actions/workflows/build.yml/badge.svg)](https://github.com/kushview/element/actions/workflows/build.yml) [![Generate Lua Documentation](https://github.com/kushview/element/actions/workflows/ldoc.yml/badge.svg)](https://github.com/kushview/element/actions/workflows/ldoc.yml)
+Language: [English](README.en.md)
 
-# Element
-![Element Screenshot](data/screenshot.png)
+# Elementum
 
-### ADVANCED AUDIO PLUGIN HOST
-This is the community version of Element, a modular AU/LV2/VST/VST3/CLAP audio plugin host. Create powerful effects, racks and instruments by connecting nodes to one another. Integrates with your existing hardware via standard protocols such as MIDI. See [kushview.net](https://kushview.net/element/) for more information and [pre-built binaries](https://kushview.net/element/download/). 
+> **Elementum は [Kushview Element](https://github.com/kushview/element) の非公式独立フォークです。**
+> Kushview, LLC とは提携・承認・サポート関係にありません。本リポジトリは、独自の実装方針とドキュメントを維持しつつ、アップストリームプロジェクトのライセンスとクレジット表記をそのまま引き継いでいます。
 
-_See also:_ [Element User Manual](https://element.readthedocs.io)
+Elementum は、Kushview Element から派生したモジュラー型オーディオプラグインホストです。スタンドアロンとして、またビルド設定によってはオーディオプラグインホストとして使用できます。オーディオとMIDIは編集可能なノードグラフを通じてルーティングされるため、エフェクトラック、バーチャルインストゥルメントの構成、再利用可能な処理グラフ、ライブパフォーマンス用途などに適しています。
 
-### Compatibility
-Element currently loads most major plugin formats.
+このフォークでは、利便性を追求したグラフ編集ワークフロー、ノード単位の負荷モニター、プロファイル対応のマルチインスタンス運用、設定ファイルの直接編集による各種カスタマイズなど、多くの機能が追加されています。現在、動作検証が行われているのはWindows環境ですが、変更にあたってはクロスプラットフォームでの動作をできる限り維持する方針です。
 
-| OS       | Version       | Formats         |
-| -------- |:-------------:| ---------------:|
-| Linux*   |       -       | LADSPA/LV2/VST3/CLAP |
-| macOS  | 10.13 and up   | AU/VST/VST3/LV2/CLAP |
-| Windows  | 10 and up     | VST/VST3/LV2/CLAP    |
+## アップストリームのElementとの関係
 
-_*Ubuntu is the most tested, but should run on any major distribution_
+Elementumは[Kushview Element](https://github.com/kushview/element)のクローンとして始まりました。コアアーキテクチャや過去の開発履歴、既存機能の大部分はアップストリームのElementに由来します。Elementum独自の変更点は本リポジトリで管理されており、アップストリームプロジェクトでは適合しない、あるいは受け入れられない可能性があります。
 
-### Features
-* Runs standalone or as a plugin in your DAW**
-* Route Audio and MIDI from anywhere to anywhere
-* Play virtual instruments and effects live
-* Create re-usable instruments and effect graphs
-* External Sync with MIDI Clock
-* Sub Graphing – Nest Graphs within each other
-* Custom Keyboard Shortcuts
-* Placeholder Nodes
-* Built In Virtual Keyboard
-* Multiple Undo/Redo
-* Scripting - Custom DSP and DSP UI's
-* Embed plugin UIs directly in Graphs
-* And more...
+問題を報告する際は、内容に応じて適切なプロジェクトへ報告してください。
 
-### Building 
-See [building.md](./docs/building.md) for instructions and dependency details.
+| 内容 | 報告先 |
+|---|---|
+| 無改造のアップストリームElementでも再現する挙動 | [Kushview Element の Issue トラッカー](https://gitlab.com/kushview/element/-/issues) |
+| Elementum固有の機能・不具合・ドキュメントに関する問題 | [本リポジトリの Issue トラッカー](https://github.com/fooboody/elementum/issues) |
 
-### Contributing
-If you'd like to contribute code please review the [code style](./docs/cppstyle.md) and [contributor notes](CONTRIBUTING.md) before submitting pull requests.  You may also want to join the [#element](https://discord.gg/fAsQ5fMuHy) channel on the Kushview [Discord](https://discord.gg/fAsQ5fMuHy) server.
+## 主な機能
 
-### Issue Reporting
-Please report bugs and feature requests on Gitlab. [Element issue tracker](https://gitlab.com/kushview/element/-/issues).
+Elementumは、AudioおよびMIDIノードを接続して再利用可能なグラフを構築するというElementのコアワークフローを踏襲しています。主な機能として、プラグインホスティング、グラフのネスト、MIDIルーティング、バーチャルキーボード入力、undo/redo、埋め込み型プラグインエディタ、スクリプティングサポートなどがあります。実際に利用可能なプラグイン形式は、OS、ビルド設定、インストール済みプラグイン、ホストのコンテキストによって異なります。
+
+このフォークでは、さらに以下のようなワークフロー志向の機能を追加しています。
+
+| 分野 | Elementumでの追加機能 |
+|---|---|
+| グラフ編集 | 近接するAudio/MIDI接続の作成・切断、近接するAudio接続の安全な差し替え、Altクリックによる有効/無効の切り替え |
+| MIDIワークフロー | `MIDI IN DEVICE`と`MIDI IN`両ノードから、新規追加したMIDI入力ノードへの自動配線(オプション) |
+| ノード制御 | 選択ノードの一括有効/無効化、Audio入力(サイドチェイン入力を含む)の実用的なミュート機能 |
+| プロファイルとUI | `--profile-dir`によるプロファイル単位での同時起動、非表示状態での起動の確実な復元、クリック可能なデータディレクトリ表示 |
+| カスタマイズ | 設定ファイルによるGraph Editorの配色、ノード状態の色、メニュー外観の制御 |
+
+## Elementumの起動
+
+スタンドアロンアプリケーションは、WindowsおよびLinuxビルドでは`elementum`、macOSアプリケーションバンドルでは`Elementum`という名称です。有効なプロファイルディレクトリが指定されていない限り、設定とプロファイルデータは標準のアプリケーションデータ格納場所に保存されます。
+
+### プロファイル単位でのインスタンス起動
+
+`--profile-dir`を使用すると、独立したデータプロファイルでElementumを起動できます。
+
+```text
+elementum --profile-dir "C:\Elementum Profiles\Live"
+```
+
+同一の実効データプロファイルを指定して2回目の起動を行った場合は、既存のインスタンスへ処理が転送されます。異なる有効なプロファイルであれば、複数インスタンスを同時に実行できます。セッションファイルなどの他の引数も、`--profile-dir`と併用可能です。
+
+## ソースからのビルド
+
+ElementumはCMakeを使用し、CMake 3.26以降が必要です。プラットフォームごとの詳細な手順は[docs/building.md](docs/building.md)を参照してください。
+
+以下は、Visual Studioジェネレータを使用したWindows向けのRelease構成のビルド例です。
+
+```bash
+cmake -S . -B build -A x64 -DELEMENT_BUILD_PLUGINS=ON -DELEMENT_ENABLE_ASIO=ON
+cmake --build build --config Release
+```
+
+このジェネレータの場合、ビルドされたスタンドアロン実行ファイルは通常以下の場所に生成されます。
+
+```text
+build\element_app_artefacts\Release\elementum.exe
+```
+
+出力ディレクトリの正確な場所は、選択したジェネレータやビルド構成によって異なります。LinuxおよびmacOSでのビルド手順については、[docs/building.md](docs/building.md)を参照してください。
+
+## 設定とカスタマイズ
+
+通常の設定項目の大部分はアプリケーションUIから変更できます。Graph Editorの配色まわりなど一部の高度なオプションは、意図的にプロファイルの`.conf`ファイルを直接編集する形になっています。設定ファイルを手動で編集する前に、対象のElementumインスタンスを終了させてください。
+
+## ライセンスとクレジット表記
+
+Elementumは**GNU General Public License v3.0以降**の下で配布されています。本リポジトリおよび同梱物のライセンス全文は[LICENSES](LICENSES)にあります。ソースファイルは元の著作権表記とSPDX識別子を保持しており、Elementumでの変更によってアップストリームのクレジット表記が削除・上書きされることはありません。
+
+アップストリームのElementの作者・コントリビューターについては[AUTHORS.md](AUTHORS.md)に記載しています。アップストリームのドキュメント、ソースの開発履歴、商標については、それぞれの権利者に帰属します。
+
+## プロジェクトの位置づけ
+
+本リポジトリは独立して維持されているカスタマイズフォークです。本リポジトリのビルドが公式のKushviewリリースであること、すべてのプラグインと互換性があること、Kushview, LLCによるサポート対象であることは、いずれも意図・保証していません。
+
+アップストリームElementの情報および公式ダウンロードについては、[Kushview Element](https://kushview.net/element/)をご覧ください。

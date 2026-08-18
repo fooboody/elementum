@@ -1,8 +1,11 @@
 // Copyright 2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
+#include <algorithm>
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -25,13 +28,13 @@ public:
 
     inline ~Version() = default;
 
-    /** Returns the version string with git hash appended */
+    /** Returns the distributable fork version without a source commit hash.
+
+        The function name is retained for source compatibility with upstream callers.
+     */
     inline static std::string withGitHash()
     {
-        std::string result (ELEMENT_VERSION_STRING);
-        if (strlen (ELEMENT_GIT_SHORT_HASH) > 0)
-            result += std::string ("-") + std::string (ELEMENT_GIT_SHORT_HASH);
-        return result;
+        return ELEMENT_VERSION_STRING;
     }
 
     /** Parse to segments */
@@ -59,7 +62,9 @@ public:
                     + (std::stoi (segs[2]) << 8);
         }
 
-        if (segs.size() >= 4)
+        if (segs.size() >= 4
+            && ! segs[3].empty()
+            && std::all_of (segs[3].begin(), segs[3].end(), [] (unsigned char c) { return std::isdigit (c) != 0; }))
             value += std::stoi (segs[3]);
 
         return value;
@@ -71,7 +76,9 @@ public:
     inline static int build (const std::string& version)
     {
         const auto segs (segments (version));
-        if (segs.size() >= 4)
+        if (segs.size() >= 4
+            && ! segs[3].empty()
+            && std::all_of (segs[3].begin(), segs[3].end(), [] (unsigned char c) { return std::isdigit (c) != 0; }))
             return std::stoi (segs[3]);
         return 0;
     }

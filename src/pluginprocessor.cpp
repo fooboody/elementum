@@ -731,13 +731,13 @@ void PluginProcessor::initialize()
     if (auto scanner = plugins.getBackgroundAudioPluginScanner())
     {
 #if JUCE_MAC
-        auto scannerExe = File ("/Applications/Element.app/Contents/MacOS/Element");
+        auto scannerExe = File ("/Applications/Elementum.app/Contents/MacOS/Elementum");
 #elif JUCE_WINDOWS
-        auto scannerExe = File ("c:\\Program Files\\Kushview\\Element\\bin\\element.exe");
+        auto scannerExe = File ("c:\\Program Files\\Fooboody\\Elementum\\bin\\elementum.exe");
 #else
-        auto scannerExe = File ("/usr/local/bin/element");
+        auto scannerExe = File ("/usr/local/bin/elementum");
         if (! scannerExe.existsAsFile())
-            scannerExe = File ("/usr/bin/element");
+            scannerExe = File ("/usr/bin/elementum");
 #endif
         scanner->setScannerExe (scannerExe);
     }

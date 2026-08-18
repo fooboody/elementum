@@ -1,12 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set(SPARKLE_VERSION "2.8.1" CACHE STRING "Sparkle version to download")
 
-set(SPARKLE_FEED_URL "https://cd.kushview.net/release/element/appcast-macos.xml"
-    CACHE STRING "The Sparkle feed url to use")
-set(SPARKLE_PUBLIC_KEY "fDx5MoKd4UR4nkYTU8OZyjGLxeaTe487l97WV3sEP7U="
-    CACHE STRING "The Sparkle eDSA public key to use")
+# A fork must supply its own signed update feed and public key before enabling updates.
+set(SPARKLE_FEED_URL ""
+    CACHE STRING "Fooboody Studio Sparkle feed URL")
+set(SPARKLE_PUBLIC_KEY ""
+    CACHE STRING "Fooboody Studio Sparkle EdDSA public key")
 
 FetchContent_Declare(
     sparkle
@@ -42,10 +44,10 @@ string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<key>CFBundleURLTypes</key>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<array>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<dict>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<key>CFBundleURLName</key>")
-string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<string>net.kushview.Element</string>")
+string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<string>io.github.fooboody.elementum</string>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<key>CFBundleURLSchemes</key>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<array>")
-string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<string>element</string>")
+string(APPEND ELEMENT_APP_PLIST_TO_MERGE "<string>elementum</string>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "</array>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "</dict>")
 string(APPEND ELEMENT_APP_PLIST_TO_MERGE "</array>")

@@ -163,6 +163,11 @@ BOOST_AUTO_TEST_CASE (VersionChecks)
     BOOST_REQUIRE (ver1 <= ver2);
     BOOST_REQUIRE (ver1 < ver2);
     BOOST_REQUIRE (ver2 > ver1);
+
+    const element::Version forkVersion ("1.2.3-fooboody.1");
+    const element::Version upstreamVersion ("1.2.3");
+    BOOST_REQUIRE (forkVersion == upstreamVersion);
+    BOOST_REQUIRE_EQUAL (forkVersion.build(), 0);
 }
 #endif
 

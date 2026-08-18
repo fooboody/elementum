@@ -486,7 +486,7 @@ void GuiService::showPreferencesDialog (const String& section)
     if (DialogWindow* dw = opts.create())
     {
         dw->setName (TRANS ("Preferences"));
-        dw->setComponentID ("net.kushview.element.PreferencesDialog");
+        dw->setComponentID ("io.github.fooboody.elementum.PreferencesDialog");
         windowManager->push (dw, true);
         if (section.isNotEmpty())
             (dynamic_cast<Preferences*> (dw->getContentComponent()))->setPage (section);
@@ -770,7 +770,7 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             result.setInfo ("Show About", "About this program", "Application", 0);
             break;
         case Commands::showPreferences:
-            result.setInfo ("Show Preferences", "Element Preferences", "Application", 0);
+            result.setInfo ("Show Preferences", "Elementum Preferences", "Application", 0);
             result.addDefaultKeypress (',', ModifierKeys::commandModifier);
             break;
         case Commands::showAllPluginWindows:

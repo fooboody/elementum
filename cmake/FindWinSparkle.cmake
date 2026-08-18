@@ -1,12 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set(WIN_SPARKLE_VERSION "0.9.2" CACHE STRING "WinSparkle version to download")
 
-set(WIN_SPARKLE_FEED_URL "https://cd.kushview.net/release/element/appcast-windows.xml"
-    CACHE STRING "The WinSparkle feed url to use")
-set(WIN_SPARKLE_PUBLIC_KEY "fDx5MoKd4UR4nkYTU8OZyjGLxeaTe487l97WV3sEP7U="
-    CACHE STRING "The WinSparkle eDSA public key to use")
+# A fork must supply its own signed update feed and public key before enabling updates.
+set(WIN_SPARKLE_FEED_URL ""
+    CACHE STRING "Fooboody Studio WinSparkle feed URL")
+set(WIN_SPARKLE_PUBLIC_KEY ""
+    CACHE STRING "Fooboody Studio WinSparkle EdDSA public key")
 
 FetchContent_Declare(
     winsparkle
