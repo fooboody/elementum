@@ -11,32 +11,33 @@ This fork adds many features, including convenience-focused graph-editing workfl
 
 ## Relationship to Upstream Element
 
-Elementum began as a clone of [Kushview Element](https://github.com/kushview/element). Upstream Element remains the source of the core architecture, prior history, and much of the original functionality. Elementum-specific changes are maintained in this repository and may not be suitable for, accepted by, or supported by the upstream project.
+Elementum began as a clone of [Kushview Element](https://github.com/kushview/element). Upstream Element remains the source of the core architecture, prior history, and much of the original functionality. Elementum-specific changes are maintained in this repository and may not be compatible with or accepted by the upstream project.
 
 Please use the appropriate project when reporting an issue:
 
 | Topic | Where to report it |
 |---|---|
 | Behavior reproducible in unmodified upstream Element | [Kushview Element issue tracker](https://gitlab.com/kushview/element/-/issues) |
-| Elementum-specific feature, regression, or documentation issue | [This repository's issue tracker](https://github.com/fooboody/elementum/issues) |
+| Elementum-specific feature, bug, or documentation issue | [This repository's issue tracker](https://github.com/fooboody/elementum/issues) |
 
-## Key Capabilities
+## Key Features
 
 Elementum retains the core Element workflow of connecting Audio and MIDI nodes into reusable graphs. Core capabilities include plug-in hosting, graph nesting, MIDI routing, virtual keyboard input, undo/redo, embedded plug-in editors, and scripting support. Actual available plug-in formats depend on the operating system, build configuration, installed plug-ins, and host context.
 
-The fork also adds workflow-oriented functionality including the following.
+This fork also adds UI, workflow, and other improvements. The core architecture has not been modified.
 
 | Area | Elementum additions |
 |---|---|
-| Graph editing | Nearby Audio/MIDI connection and disconnection, safe nearby Audio connection swapping, and Alt-click Enable/Disable toggling |
-| MIDI workflow | Optional automatic wiring from both `MIDI IN DEVICE` and `MIDI IN` nodes to newly added MIDI-input nodes |
-| Node control | Batch Enable/Disable for selected nodes and functional Audio input muting, including Audio sidechain inputs |
-| Profiles and UI | Profile-specific concurrent instances with `--profile-dir`, robust start-hidden restoration, and a clickable data-directory status segment |
-| Customization | Configuration-file control of Graph Editor colors, node-state colors, and menu appearance |
+| Customization | Configurable Graph Editor colors and menu appearance, including dark mode |
+| Graph editing | Nearby-port auto-connection and disconnection, bulk swapping of Audio connections, automatic node Enable/Disable, and Alt-click Enable/Disable toggling |
+| MIDI workflow | Automatic wiring from `MIDI IN DEVICE` and `MIDI IN` nodes to newly added MIDI-input nodes |
+| Real-time load monitoring | Process CPU usage, total DSP load, and per-node load |
+| Node control | Batch Enable/Disable for selected nodes and functional Audio input muting |
+| Profile management | Concurrent instances on a per-profile basis using `--profile-dir` |
 
 ## Running Elementum
 
-The standalone application is named `elementum` on Windows and Linux builds, and `Elementum` for the macOS application bundle. Its settings and profile data are stored in the standard application-data location unless a valid profile directory is selected.
+The standalone application is named `elementum` on Windows and Linux builds, and `Elementum` for the macOS application bundle. Its settings and profile data are stored in the standard application-data location unless a profile directory is specified.
 
 ### Profile-specific instances
 
@@ -46,7 +47,7 @@ Use `--profile-dir` to start Elementum with a separate data profile:
 elementum --profile-dir "C:\Elementum Profiles\Live"
 ```
 
-A second launch using the same effective data profile is forwarded to the existing instance; different valid profiles may run concurrently. Other arguments, including session files, can be used with `--profile-dir`.
+A second launch using the same data profile displays the existing instance's window. Different profiles can run concurrently. Other arguments, including session files, can be used with `--profile-dir`.
 
 ## Building from Source
 
@@ -69,16 +70,16 @@ The exact output directory can vary with the selected generator and build config
 
 ## Configuration and Customization
 
-Most normal settings are available from the application UI. Several advanced Graph Editor colors and related options are intentionally configurable by directly editing the profile `.conf` file. Shut down the relevant Elementum instance before manually editing its configuration file.
+Most normal settings are available from the application UI. Some advanced options, including Graph Editor colors, are intentionally configurable by directly editing the profile `.conf` file. Shut down the relevant Elementum instance before manually editing its configuration file.
 
 ## License and Attribution
 
 Elementum is distributed under the **GNU General Public License v3.0 or later**. License texts for this repository and bundled materials are available in [LICENSES](LICENSES). Source files retain their original copyright notices and SPDX identifiers; Elementum changes do not remove or supersede upstream attribution.
 
-The upstream Element authors and contributors are acknowledged in [AUTHORS.md](AUTHORS.md). Upstream documentation, source history, and trademarks remain the property of their respective owners.
+Upstream documentation, source history, and trademarks remain the property of their respective owners. Element authors and contributors are listed in [AUTHORS.md](AUTHORS.md).
 
 ## Project Status
 
-This repository is an independently maintained customization fork. No claim is made that builds from this repository are official Kushview releases, compatible with every plug-in, or supported by Kushview, LLC.
+This repository is an independently maintained customization fork. Builds from this repository are not official Kushview releases and are not supported by Kushview, LLC. Compatibility with every plug-in is not guaranteed.
 
 For upstream Element information and official upstream downloads, visit [Kushview Element](https://kushview.net/element/).
