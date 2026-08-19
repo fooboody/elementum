@@ -16,6 +16,7 @@
 #include "ui/buttons.hpp"
 #include "ui/contextmenus.hpp"
 #include "ui/grapheditorcomponent.hpp"
+#include "ui/grapheditorview.hpp"
 #include "ui/ioconfigurationwindow.hpp"
 #include "ui/nodeeditorfactory.hpp"
 #include "ui/viewhelpers.hpp"
@@ -682,6 +683,12 @@ void BlockComponent::mouseDown (const MouseEvent& e)
     auto* const panel = getGraphPanel();
 
     selectionMouseDownResult = panel->selectedNodes.addToSelectionOnMouseDown (node.getNodeId(), e.mods);
+
+    // The node click changes selection, but child controls may still own the
+    // keyboard focus. Return it to the view that handles Delete/Backspace.
+    if (auto* view = findParentComponentOfClass<GraphEditorView>())
+        view->grabKeyboardFocus();
+
     if (auto* cc = ViewHelpers::findContentComponent (this))
     {
         ScopedFlag block (panel->ignoreNodeSelected, true);
