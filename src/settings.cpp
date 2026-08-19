@@ -351,7 +351,7 @@ void Settings::setAskToSaveSession (const bool value)
 bool Settings::autoConnectNearbyPorts() const
 {
     if (auto* props = getProps())
-        return props->getBoolValue (autoConnectNearbyPortsKey, false);
+        return props->getBoolValue (autoConnectNearbyPortsKey, true);
     return false;
 }
 
@@ -364,7 +364,7 @@ void Settings::setAutoConnectNearbyPorts (const bool value)
 bool Settings::swapNearbyAudioConnections() const
 {
     if (auto* props = getProps())
-        return props->getBoolValue (swapNearbyAudioConnectionsKey, false);
+        return props->getBoolValue (swapNearbyAudioConnectionsKey, true);
     return false;
 }
 
@@ -377,7 +377,7 @@ void Settings::setSwapNearbyAudioConnections (const bool value)
 bool Settings::autoEnableNodesWithAudioConnections() const
 {
     if (auto* props = getProps())
-        return props->getBoolValue (autoEnableNodesWithAudioConnectionsKey, false);
+        return props->getBoolValue (autoEnableNodesWithAudioConnectionsKey, true);
     return false;
 }
 
