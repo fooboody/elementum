@@ -52,6 +52,7 @@ struct ParsedLaunchArguments
 {
     StringArray remaining;
     File applicationDataDirectory;
+    String profileDirectoryError;
 };
 
 String normaliseProfileIdentifier (const File& directory)
@@ -61,6 +62,34 @@ String normaliseProfileIdentifier (const File& directory)
     identifier = identifier.toLowerCase();
 #endif
     return identifier;
+}
+
+Result prepareProfileDirectory (const File& directory)
+{
+    if (! directory.isDirectory())
+        return Result::fail ("The requested profile directory does not exist:\n" + directory.getFullPathName());
+
+    const auto settingsFile = Settings::getSettingsFileForDataDirectory (directory);
+    if (settingsFile.exists() && ! settingsFile.existsAsFile())
+        return Result::fail ("The profile settings path is not a file:\n" + settingsFile.getFullPathName());
+
+    if (! settingsFile.existsAsFile())
+    {
+        if (! settingsFile.hasWriteAccess())
+            return Result::fail ("Elementum cannot create the profile settings file:\n" + settingsFile.getFullPathName());
+
+        const auto createResult = settingsFile.create();
+        if (createResult.failed() || ! settingsFile.existsAsFile())
+            return Result::fail ("Elementum could not create the profile settings file:\n"
+                                 + settingsFile.getFullPathName()
+                                 + "\n\n"
+                                 + createResult.getErrorMessage());
+    }
+
+    if (! settingsFile.hasWriteAccess())
+        return Result::fail ("Elementum cannot write to the profile settings file:\n" + settingsFile.getFullPathName());
+
+    return Result::ok();
 }
 
 ParsedLaunchArguments parseLaunchArguments (const String& commandLine)
@@ -74,26 +103,37 @@ ParsedLaunchArguments parseLaunchArguments (const String& commandLine)
         String value;
         bool isProfileDirectoryOption = false;
 
-        if (token == "--profile-dir" && i + 1 < tokens.size())
+        if (token == "--profile-dir")
         {
-            value = tokens[++i].unquoted();
             isProfileDirectoryOption = true;
+            if (i + 1 < tokens.size())
+                value = tokens[++i].unquoted();
         }
         else if (token.startsWith ("--profile-dir="))
         {
+            isProfileDirectoryOption = true;
             value = token.fromFirstOccurrenceOf ("=", false, false).unquoted();
-            isProfileDirectoryOption = value.isNotEmpty();
         }
 
         if (isProfileDirectoryOption)
         {
             parsed.applicationDataDirectory = File();
+            parsed.profileDirectoryError.clear();
+
+            if (value.isEmpty())
+            {
+                parsed.profileDirectoryError = "No directory was provided for --profile-dir.";
+                continue;
+            }
+
             const auto directory = File::isAbsolutePath (value)
                                        ? File (value)
                                        : File::getCurrentWorkingDirectory().getChildFile (value);
-            const auto settingsFile = Settings::getSettingsFileForDataDirectory (directory);
-            if (directory.isDirectory() && settingsFile.existsAsFile())
+            const auto profileResult = prepareProfileDirectory (directory);
+            if (profileResult.wasOk())
                 parsed.applicationDataDirectory = directory.getLinkedTarget();
+            else
+                parsed.profileDirectoryError = profileResult.getErrorMessage();
 
             continue;
         }
@@ -417,6 +457,15 @@ void Application::initialise (const String& commandLine)
     const auto parsed = parseLaunchArguments (commandLine);
     launchArguments = parsed.remaining;
 
+    const bool isScannerWorker = commandLine.contains (EL_PLUGIN_SCANNER_PROCESS_ID);
+    if (parsed.profileDirectoryError.isNotEmpty() && ! isScannerWorker)
+    {
+        AlertWindow::showMessageBox (AlertWindow::WarningIcon,
+                                     "Profile Directory Unavailable",
+                                     "The requested profile could not be used. Elementum will use the default profile instead.\n\n"
+                                         + parsed.profileDirectoryError);
+    }
+
     const auto applicationDataDirectory = parsed.applicationDataDirectory;
     if (applicationDataDirectory.isDirectory())
         DataPath::setApplicationDataDirOverride (applicationDataDirectory);
@@ -424,8 +473,6 @@ void Application::initialise (const String& commandLine)
     profileIdentifier = normaliseProfileIdentifier (applicationDataDirectory.isDirectory()
                                                         ? applicationDataDirectory
                                                         : DataPath::applicationDataDir());
-
-    const bool isScannerWorker = commandLine.contains (EL_PLUGIN_SCANNER_PROCESS_ID);
     if (! isScannerWorker && ! acquireProfileInstanceLock())
     {
         quit();
