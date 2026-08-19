@@ -23,7 +23,11 @@ public:
     void paint (Graphics&) override;
 
     /** Returns the text in the search box */
-    String getSearchText() { return search.getText(); }
+    String getSearchText() const { return search.getText().trim(); }
+    bool isFiltering() const { return getSearchText().isNotEmpty(); }
+
+    /** Opens or closes every category currently shown in the tree. */
+    void setAllCategoriesOpen (bool shouldOpen);
 
     /** @internal */
     void textEditorTextChanged (TextEditor&) override;

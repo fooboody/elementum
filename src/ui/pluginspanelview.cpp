@@ -6,6 +6,51 @@
 #include "ui/pluginspanelview.hpp"
 
 namespace element {
+namespace {
+
+bool pluginMatchesSearch (const PluginDescription& plugin, const String& searchText)
+{
+    return searchText.isEmpty() || plugin.name.containsIgnoreCase (searchText);
+}
+
+bool folderContainsSearchMatch (const KnownPluginList::PluginTree& folder,
+                                const String& searchText)
+{
+    for (const auto& plugin : folder.plugins)
+        if (pluginMatchesSearch (plugin, searchText))
+            return true;
+
+    for (const auto* subFolder : folder.subFolders)
+        if (folderContainsSearchMatch (*subFolder, searchText))
+            return true;
+
+    return false;
+}
+
+bool shouldIncludeFolder (const PluginsPanelView& panel,
+                          const KnownPluginList::PluginTree& folder)
+{
+    return ! panel.isFiltering()
+        || folderContainsSearchMatch (folder, panel.getSearchText());
+}
+
+void setCategoryOpennessRecursively (TreeViewItem& parent, const bool shouldOpen)
+{
+    for (int i = 0; i < parent.getNumSubItems(); ++i)
+    {
+        auto* const child = parent.getSubItem (i);
+        if (! child->mightContainSubItems())
+            continue;
+
+        child->setOpenness (shouldOpen ? TreeViewItem::Openness::opennessOpen
+                                       : TreeViewItem::Openness::opennessClosed);
+
+        if (shouldOpen)
+            setCategoryOpennessRecursively (*child, true);
+    }
+}
+
+} // namespace
 
 class PluginTreeViewItem : public TreeViewItem
 {
@@ -54,6 +99,12 @@ public:
 class PluginFolderTreeViewItem : public TreeViewItem
 {
 public:
+    enum MenuResult
+    {
+        expandAll = 1,
+        collapseAll
+    };
+
     PluginFolderTreeViewItem (PluginsPanelView& o, KnownPluginList::PluginTree& t)
         : tree (t), panel (o)
     {
@@ -68,21 +119,37 @@ public:
         g.drawText (tree.folder, 6, 0, width - 6, height, Justification::centredLeft);
     }
 
+    void itemClicked (const MouseEvent& event) override
+    {
+        if (! event.mods.isPopupMenu())
+            return;
+
+        PopupMenu menu;
+        menu.addItem (expandAll, TRANS ("Expand All"));
+        menu.addItem (collapseAll, TRANS ("Collapse All"));
+
+        switch (menu.show())
+        {
+            case expandAll: panel.setAllCategoriesOpen (true); break;
+            case collapseAll: panel.setAllCategoriesOpen (false); break;
+            default: break;
+        }
+    }
+
     void itemOpennessChanged (bool isNowOpen) override
     {
-        if (isNowOpen)
-        {
-            const auto text = panel.getSearchText();
-            for (auto* folder : tree.subFolders)
+        clearSubItems();
+        if (! isNowOpen)
+            return;
+
+        const auto text = panel.getSearchText();
+        for (auto* folder : tree.subFolders)
+            if (shouldIncludeFolder (panel, *folder))
                 addSubItem (new PluginFolderTreeViewItem (panel, *folder));
-            for (const auto& plugin : tree.plugins)
-                if (text.isEmpty() || plugin.name.containsIgnoreCase (text))
-                    addSubItem (new PluginTreeViewItem (plugin));
-        }
-        else
-        {
-            clearSubItems();
-        }
+
+        for (const auto& plugin : tree.plugins)
+            if (pluginMatchesSearch (plugin, text))
+                addSubItem (new PluginTreeViewItem (plugin));
     }
 };
 
@@ -101,15 +168,13 @@ public:
 
     void itemOpennessChanged (bool isNowOpen) override
     {
-        if (isNowOpen)
-        {
-            for (auto* folder : data->subFolders)
+        clearSubItems();
+        if (! isNowOpen)
+            return;
+
+        for (auto* folder : data->subFolders)
+            if (shouldIncludeFolder (owner, *folder))
                 addSubItem (new PluginFolderTreeViewItem (owner, *folder));
-        }
-        else
-        {
-            clearSubItems();
-        }
     }
 
     PluginsPanelView& owner;
@@ -129,8 +194,8 @@ PluginsPanelView::PluginsPanelView (PluginManager& p)
     tree.setRootItemVisible (false);
     tree.setOpenCloseButtonsVisible (true);
     tree.setIndentSize (10);
-    tree.setRootItem (new PluginsPanelTreeRootItem (*this, plugins));
     plugins.getKnownPlugins().addChangeListener (this);
+    updateTreeView();
 }
 
 PluginsPanelView::~PluginsPanelView()
@@ -159,9 +224,23 @@ void PluginsPanelView::updateTreeView()
 {
     tree.deleteRootItem();
     tree.setRootItem (new PluginsPanelTreeRootItem (*this, plugins));
-    auto* root = tree.getRootItem();
-    for (int i = 0; i < root->getNumSubItems(); ++i)
-        root->getSubItem (i)->setOpenness (TreeViewItem::Openness::opennessOpen);
+
+    auto* const root = tree.getRootItem();
+    root->setOpenness (TreeViewItem::Openness::opennessOpen);
+
+    if (isFiltering())
+        setAllCategoriesOpen (true);
+}
+
+void PluginsPanelView::setAllCategoriesOpen (const bool shouldOpen)
+{
+    auto* const root = tree.getRootItem();
+    if (root == nullptr)
+        return;
+
+    root->setOpenness (TreeViewItem::Openness::opennessOpen);
+    setCategoryOpennessRecursively (*root, shouldOpen);
+    tree.repaint();
 }
 
 void PluginsPanelView::timerCallback()
@@ -170,16 +249,16 @@ void PluginsPanelView::timerCallback()
     stopTimer();
 }
 
-void PluginsPanelView::textEditorReturnKeyPressed (TextEditor& e)
+void PluginsPanelView::textEditorReturnKeyPressed (TextEditor&)
 {
     stopTimer();
     updateTreeView();
 }
 
-void PluginsPanelView::changeListenerCallback (ChangeBroadcaster* src)
+void PluginsPanelView::changeListenerCallback (ChangeBroadcaster*)
 {
-    tree.deleteRootItem();
-    tree.setRootItem (new PluginsPanelTreeRootItem (*this, plugins));
+    stopTimer();
+    updateTreeView();
 }
 
 } // namespace element
