@@ -122,6 +122,9 @@ public:
     /** Get the look and feel used by this instance */
     element::LookAndFeel_E1& getLookAndFeel();
 
+    /** Reapplies the PopupMenu theme and highlight colours from Settings. */
+    void refreshPopupMenuTheme();
+
     /** Clears the current content component */
     void clearContentComponent();
 

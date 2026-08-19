@@ -31,6 +31,9 @@ public:
     static const char* openLastUsedSessionKey;
     static const char* askToSaveSessionKey;
     static const char* menuAppearanceKey;
+    static const char* popupMenuHighlightedBackgroundColorKey;
+    static const char* popupMenuHighlightedTextColorKey;
+
     static const char* autoConnectNearbyPortsKey;
     static const char* swapNearbyAudioConnectionsKey;
     static const char* autoEnableNodesWithAudioConnectionsKey;
@@ -77,6 +80,12 @@ public:
     static const char* nodeDisabledSelectedColorKey;
 
     bool getBool (std::string_view key, bool fallback = false) const noexcept;
+
+    /** Returns the validated PopupMenu highlight background colour. */
+    juce::Colour getPopupMenuHighlightedBackgroundColor() const;
+
+    /** Returns the validated PopupMenu highlight text colour. */
+    juce::Colour getPopupMenuHighlightedTextColor() const;
 
     void set (std::string_view key, const juce::var& value);
 

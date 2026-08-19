@@ -19,6 +19,9 @@ const char* Settings::showPluginWindowsKey = "showPluginWindows";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
 const char* Settings::menuAppearanceKey = "menuAppearance";
+const char* Settings::popupMenuHighlightedBackgroundColorKey = "popupMenuHighlightedBackgroundColor";
+const char* Settings::popupMenuHighlightedTextColorKey = "popupMenuHighlightedTextColor";
+
 const char* Settings::autoConnectNearbyPortsKey = "autoConnectNearbyPorts";
 const char* Settings::swapNearbyAudioConnectionsKey = "swapNearbyAudioConnections";
 const char* Settings::autoEnableNodesWithAudioConnectionsKey = "autoEnableNodesWithAudioConnections";
@@ -144,6 +147,30 @@ PropertiesFile::Options makeSettingsOptions (const File& applicationDataDirector
 
     return opts;
 }
+
+Colour getColourSetting (const PropertiesFile* props, const char* key, const Colour fallback)
+{
+    if (props == nullptr)
+        return fallback;
+
+    auto value = props->getValue (key).trim();
+    if (value.startsWithChar ('#'))
+        value = value.substring (1);
+
+    if (value.length() != 6 && value.length() != 8)
+        return fallback;
+
+    constexpr auto hexDigits = "0123456789abcdefABCDEF";
+    for (int i = 0; i < value.length(); ++i)
+        if (! String (hexDigits).containsChar (value[i]))
+            return fallback;
+
+    auto argb = static_cast<uint32> (value.getHexValue64());
+    if (value.length() == 6)
+        argb |= 0xff000000;
+
+    return Colour (argb);
+}
 } // namespace
 
 File Settings::getSettingsFileForDataDirectory (const File& directory)
@@ -183,6 +210,9 @@ Settings::Settings (const File& applicationDataDirectory)
         }
 
         setDefault (menuAppearanceKey, "auto");
+        setDefault (popupMenuHighlightedBackgroundColorKey, "#4765a0");
+        setDefault (popupMenuHighlightedTextColorKey, "#ffffff");
+
         setDefault (audioConnectedPortColorKey, "#90EE90");
         setDefault (audioDisconnectedPortColorKey, "#90EE90");
         setDefault (midiConnectedPortColorKey, "#FFA500");
@@ -232,6 +262,18 @@ bool Settings::getBool (std::string_view key, bool fallback) const noexcept
 {
     auto p = getProps();
     return p != nullptr ? p->getBoolValue (key.data(), fallback) : fallback;
+}
+
+Colour Settings::getPopupMenuHighlightedBackgroundColor() const
+{
+    return getColourSetting (getProps(), popupMenuHighlightedBackgroundColorKey,
+                             Colour (0xff4765a0));
+}
+
+Colour Settings::getPopupMenuHighlightedTextColor() const
+{
+    return getColourSetting (getProps(), popupMenuHighlightedTextColorKey,
+                             Colours::white);
 }
 
 void Settings::set (std::string_view key, const var& value)

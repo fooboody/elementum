@@ -458,7 +458,7 @@ public:
                                                                                               : "auto";
             settings.getUserSettings()->setValue (Settings::menuAppearanceKey, mode);
             settings.saveIfNeeded();
-            gui.getLookAndFeel().setPopupMenuTheme (mode);
+            gui.refreshPopupMenuTheme();
             gui.refreshMainMenu();
         };
 

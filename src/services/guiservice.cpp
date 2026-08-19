@@ -314,8 +314,7 @@ GuiService::GuiService (Context& w, Services& a)
     if (sGlobalLookAndFeel == nullptr)
         sGlobalLookAndFeel = std::make_unique<GlobalLookAndFeel>();
 
-    sGlobalLookAndFeel->look.setPopupMenuTheme (
-        w.settings().getUserSettings()->getValue (Settings::menuAppearanceKey, "auto"));
+    refreshPopupMenuTheme();
     sGuiControllerInstances.add (this);
 }
 
@@ -331,6 +330,20 @@ element::LookAndFeel_E1& GuiService::getLookAndFeel()
 {
     jassert (sGlobalLookAndFeel);
     return sGlobalLookAndFeel->look;
+}
+
+void GuiService::refreshPopupMenuTheme()
+{
+    auto& settings = world.settings();
+    const auto* const props = settings.getUserSettings();
+    const auto mode = props != nullptr
+                          ? props->getValue (Settings::menuAppearanceKey, "auto")
+                          : "auto";
+
+    getLookAndFeel().setPopupMenuTheme (
+        mode,
+        settings.getPopupMenuHighlightedBackgroundColor(),
+        settings.getPopupMenuHighlightedTextColor());
 }
 
 void GuiService::saveProperties (PropertiesFile* props)

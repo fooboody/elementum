@@ -258,7 +258,7 @@ LookAndFeel_E1::LookAndFeel_E1()
     setColour (TextButton::textColourOnId, Colours::white);
 
     // PopupMenu Styling
-    setPopupMenuTheme ("auto");
+    setPopupMenuTheme ("auto", Colour (0xff4765a0), Colours::white);
 
     // ComboBox Styling
     setColour (ComboBox::backgroundColourId, Colours::black);
@@ -452,7 +452,9 @@ LookAndFeel_E1::LookAndFeel_E1()
 
 LookAndFeel_E1::~LookAndFeel_E1() {}
 
-void LookAndFeel_E1::setPopupMenuTheme (const String& mode)
+void LookAndFeel_E1::setPopupMenuTheme (const String& mode,
+                                           const Colour highlightedBackground,
+                                           const Colour highlightedText)
 {
     const bool dark = mode == "dark"
                           ? true
@@ -465,8 +467,8 @@ void LookAndFeel_E1::setPopupMenuTheme (const String& mode)
     setColour (PopupMenu::backgroundColourId, menuBackground);
     setColour (PopupMenu::textColourId, menuText);
     setColour (PopupMenu::headerTextColourId, menuText);
-    setColour (PopupMenu::highlightedBackgroundColourId, Colors::elemental);
-    setColour (PopupMenu::highlightedTextColourId, menuBackground);
+    setColour (PopupMenu::highlightedBackgroundColourId, highlightedBackground);
+    setColour (PopupMenu::highlightedTextColourId, highlightedText);
 }
 
 Typeface::Ptr LookAndFeel_E1::getTypefaceForFont (const Font& font)
