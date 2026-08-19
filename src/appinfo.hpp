@@ -21,7 +21,7 @@
  #define EL_APP_URL "https://github.com/fooboody/elementum"
 #endif
 
-#define EL_APP_DATA_SUBDIR EL_APP_AUTHOR "/" EL_APP_NAME
+#define EL_APP_DATA_SUBDIR "FooboodyStudio/" EL_APP_NAME
 // clang-format on
 
 namespace element {

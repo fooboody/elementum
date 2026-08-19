@@ -368,7 +368,8 @@ public:
         }
 
         const auto dataDirectory = DataPath::applicationDataDir().getFullPathName();
-        dataDirectoryLabel.setText (dataDirectory, dontSendNotification);
+        dataDirectoryLabel.setText (String ("Profile Location: ") + dataDirectory,
+                                     dontSendNotification);
         dataDirectoryLabel.setTooltip (dataDirectory);
 
         if (plugins.isScanningAudioPlugins())
