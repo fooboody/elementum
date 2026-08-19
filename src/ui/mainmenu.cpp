@@ -114,6 +114,10 @@ void MainMenu::menuItemSelected (int index, int menu)
     {
         URL (ELEMENT_URL_DISCUSSIONS).launchInDefaultBrowser();
     }
+    else if (index == 6003 && menu == Help)
+    {
+        URL (ELEMENTUM_URL_HOME).launchInDefaultBrowser();
+    }
     else if (index == 7000 && menu == Help)
     {
         URL (ELEMENT_URL_BUG_TRACKER).launchInDefaultBrowser();
@@ -251,7 +255,7 @@ void MainMenu::buildFileMenu (PopupMenu& menu)
 
 #if ! JUCE_MAC
     menu.addSeparator();
-    menu.addCommandItem (&cmd, Commands::showPreferences, "Preferences..");
+    menu.addCommandItem (&cmd, Commands::showPreferences, "Preferences...");
     menu.addSeparator();
     menu.addCommandItem (&cmd, StandardApplicationCommandIDs::quit);
 #endif
@@ -305,19 +309,21 @@ void MainMenu::buildDebugMenu (PopupMenu& menu)
 void MainMenu::buildHelpMenu (PopupMenu& menu)
 {
 #if ! JUCE_MAC
-    menu.addCommandItem (&cmd, Commands::showAbout, TRANS ("About Element"));
+    menu.addCommandItem (&cmd, Commands::showAbout, "About Elementum");
     menu.addSeparator();
 #endif
-    menu.addItem (6000, TRANS ("User's manual..."));
-    menu.addItem (6002, TRANS ("Discussion forum..."));
-    menu.addItem (6001, TRANS ("Scripting API..."));
+    menu.addItem (6003, "Elementum GitHub...");
     menu.addSeparator();
-    menu.addItem (7002, TRANS ("Log files..."));
-    menu.addItem (7000, TRANS ("Issue tracking..."));
-    menu.addItem (7003, TRANS ("Change log..."));
+    menu.addItem (6000, "Element User's Manual...");
+    menu.addItem (6002, "Element Discussion Forum...");
+    menu.addItem (6001, "Element Scripting API...");
+    menu.addSeparator();
+    menu.addItem (7002, "Log Files...");
+    menu.addItem (7000, "Element Issue Tracker...");
+    menu.addItem (7003, "Element Change Log...");
 #if ! ELEMENT_UPDATER
     menu.addSeparator();
-    menu.addItem (7001, TRANS ("Donate..."));
+    menu.addItem (7001, "Donate to Kushview...");
 #endif
 }
 
@@ -378,13 +384,13 @@ void MainMenu::buildPluginMainMenu (Commands& cmd, PopupMenu& menu)
     menu.addSeparator();
     buildViewMenu (cmd, menu);
 
-    menu.addCommandItem (&cmd, Commands::showAbout, "About Element");
+    menu.addCommandItem (&cmd, Commands::showAbout, "About Elementum");
     menu.addSeparator();
     menu.addItem (99999, "Close all plugin windows...");
 
 #if 0
     menu.addSeparator();
-    menu.addCommandItem (&cmd, Commands::showPreferences, "Preferences..");
+    menu.addCommandItem (&cmd, Commands::showPreferences, "Preferences...");
 #endif
 }
 } // namespace element

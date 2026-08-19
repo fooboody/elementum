@@ -5,6 +5,8 @@
 
 // clang-format off
 //==============================================================================
+#define ELEMENTUM_URL_HOME "https://github.com/fooboody/elementum"
+
 #define ELEMENT_URL_HOME "https://kushview.net"
 #define ELEMENT_URL_DONATE ELEMENT_URL_HOME "/donate/"
 
