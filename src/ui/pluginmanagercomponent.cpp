@@ -722,8 +722,14 @@ void PluginListComponent::removePluginItem (int index)
 
 void PluginListComponent::optionsMenuStaticCallback (int result, PluginListComponent* pluginList)
 {
-    if (pluginList != nullptr)
-        pluginList->optionsMenuCallback (result);
+    if (pluginList == nullptr)
+        return;
+
+    const auto safePluginList = Component::SafePointer<PluginListComponent> (pluginList);
+    MessageManager::callAsync ([safePluginList, result] {
+        if (safePluginList != nullptr)
+            safePluginList->optionsMenuCallback (result);
+    });
 }
 
 static void removeNonElementPlugins (KnownPluginList& list)
