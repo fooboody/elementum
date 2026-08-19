@@ -114,7 +114,7 @@ public:
     void setPlayConfig (double sampleRate, int blockSize);
 
     /** Give a properties file to be used when settings aren't available. FIXME */
-    void setPropertiesFile (juce::PropertiesFile* pf) { props = pf; }
+    void setPropertiesFile (juce::PropertiesFile* pf);
 
     /** Search for unverified plugins in background thread */
     void searchUnverifiedPlugins();

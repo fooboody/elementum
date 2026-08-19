@@ -1118,6 +1118,21 @@ private:
     float progress = -1.0;
 };
 
+#if JUCE_WINDOWS && JUCE_PLUGINHOST_LV2
+static FileSearchPath windowsLV2DefaultSearchPath()
+{
+    FileSearchPath paths;
+    const auto environmentPath = SystemStats::getEnvironmentVariable ("LV2_PATH", String()).trim();
+
+    if (environmentPath.isNotEmpty())
+        paths = FileSearchPath (environmentPath);
+
+    paths.add (File::getSpecialLocation (File::userApplicationDataDirectory).getChildFile ("LV2"));
+    paths.add (File::getSpecialLocation (File::globalApplicationsDirectory).getChildFile ("Common Files").getChildFile ("LV2"));
+    return paths;
+}
+#endif
+
 PluginManager::PluginManager()
 {
     priv.reset (new Private (*this));
@@ -1175,8 +1190,34 @@ void PluginManager::addFormat (std::unique_ptr<juce::AudioPluginFormat> fmt)
 
 NodeFactory& PluginManager::getNodeFactory() { return priv->nodes; }
 
+void PluginManager::setPropertiesFile (PropertiesFile* pf)
+{
+    props = pf;
+
+#if JUCE_WINDOWS && JUCE_PLUGINHOST_LV2
+    if (props != nullptr)
+    {
+        const auto key = String (Settings::lastPluginScanPathPrefix) + "LV2";
+        const auto configuredPath = props->getValue (key).trim();
+        const bool hasUnexpandedWindowsVariables = configuredPath.contains ("%APPDATA%")
+                                                || configuredPath.contains ("%COMMONPROGRAMFILES%");
+
+        if (configuredPath.isEmpty() || hasUnexpandedWindowsVariables)
+        {
+            props->setValue (key, windowsLV2DefaultSearchPath().toString());
+            props->saveIfNeeded();
+        }
+    }
+#endif
+}
+
 FileSearchPath PluginManager::defaultSearchPath (juce::StringRef formatName) const noexcept
 {
+#if JUCE_WINDOWS && JUCE_PLUGINHOST_LV2
+    if (String (formatName) == "LV2")
+        return windowsLV2DefaultSearchPath();
+#endif
+
     if (auto apf = getAudioPluginFormat (formatName))
         return apf->getDefaultLocationsToSearch();
 
