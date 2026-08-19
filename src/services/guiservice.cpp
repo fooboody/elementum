@@ -748,7 +748,6 @@ void GuiService::getAllCommands (Array<CommandID>& ids)
                     Commands::panic,
                     Commands::transportSeekZero,
                     //======================================================================
-                    Commands::checkNewerVersion,
                     //======================================================================
                     Commands::recentsClear,
                     //======================================================================
@@ -862,9 +861,6 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             result.setInfo ("Seek Start", "Seek to Beginning", "Engine", 0);
             break;
         //======================================================================
-        case Commands::checkNewerVersion:
-            result.setInfo ("Check For Updates", "Check newer version", "Application", 0);
-            break;
         //======================================================================
         case Commands::recentsClear:
             result.setInfo ("Clear Recent Files", "Clears the recently opened files list", "Application", 0);
@@ -1109,10 +1105,6 @@ bool GuiService::perform (const InvocationInfo& info)
         }
 
         //======================================================================
-        case Commands::checkNewerVersion:
-            updates->showAlertWhenNoUpdatesReady = true;
-            checkUpdates (false);
-            break;
         //======================================================================
         case Commands::recentsClear: {
             impl->recents.clear();

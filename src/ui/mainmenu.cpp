@@ -39,9 +39,6 @@ void MainMenu::setupMenu()
 #if JUCE_MAC
     macMenu.reset (new PopupMenu());
     macMenu->addCommandItem (&cmd, Commands::showAbout, Util::appName ("About "));
-#if ELEMENT_UPDATER
-    macMenu->addCommandItem (&cmd, Commands::checkNewerVersion, "Check For Updates...");
-#endif
     macMenu->addSeparator();
     macMenu->addCommandItem (&cmd, Commands::showPreferences, "Preferences...");
     MenuBarModel::setMacMainMenu (this, macMenu.get());
@@ -244,7 +241,6 @@ void MainMenu::addRecentFiles (PopupMenu& menu)
 void MainMenu::buildFileMenu (PopupMenu& menu)
 {
     menu.addCommandItem (&cmd, Commands::sessionNew, "New Session");
-    menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::sessionOpen, "Open Session...");
     addRecentFiles (menu);
     menu.addCommandItem (&cmd, Commands::sessionSave, "Save Session");
@@ -255,9 +251,6 @@ void MainMenu::buildFileMenu (PopupMenu& menu)
 
 #if ! JUCE_MAC
     menu.addSeparator();
-#if ELEMENT_UPDATER
-    menu.addCommandItem (&cmd, Commands::checkNewerVersion, "Check For Updates..");
-#endif
     menu.addCommandItem (&cmd, Commands::showPreferences, "Preferences..");
     menu.addSeparator();
     menu.addCommandItem (&cmd, StandardApplicationCommandIDs::quit);
@@ -331,7 +324,6 @@ void MainMenu::buildHelpMenu (PopupMenu& menu)
 void MainMenu::buildSessionMenu (Commands& cmd, PopupMenu& menu)
 {
     menu.addCommandItem (&cmd, Commands::sessionNew, "New Session");
-    menu.addSeparator();
 
     menu.addCommandItem (&cmd, Commands::sessionOpen, "Open Session...");
     menu.addCommandItem (&cmd, Commands::sessionSave, "Save Session");

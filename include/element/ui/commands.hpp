@@ -62,8 +62,6 @@ public:
         panic,
         importSession,
 
-        checkNewerVersion = 0x0500,
-
         transportRewind = 0x0600,
         transportForward,
         transportPlay,
@@ -141,8 +139,6 @@ public:
 
             panic,
             importSession,
-
-            checkNewerVersion,
 
             transportRewind,
             transportForward,

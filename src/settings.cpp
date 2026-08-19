@@ -724,8 +724,6 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
     auto& midi (world.midi());
     PopupMenu sub;
 
-    sub.addItem (CheckForUpdatesOnStart, "Check Updates at Startup", true, checkForUpdates());
-
     sub.addSeparator(); // plugins items
 
     sub.addItem (ScanFormPluginsOnStart, "Scan Plugins at Startup", true, scanForPluginsOnStartup());
@@ -832,9 +830,6 @@ bool Settings::performMenuResult (Context& world, const int result)
 
     switch (result)
     {
-        case CheckForUpdatesOnStart:
-            setCheckForUpdates (! checkForUpdates());
-            break;
         case ScanFormPluginsOnStart:
             setScanForPluginsOnStartup (! scanForPluginsOnStartup());
             break;

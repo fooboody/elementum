@@ -350,15 +350,6 @@ public:
         clockSourceBox.addItem ("Internal", ClockSourceInternal);
         clockSourceBox.addItem ("MIDI Clock", ClockSourceMidiClock);
         clockSource.referTo (clockSourceBox.getSelectedIdAsValue());
-#if ELEMENT_UPDATER
-        addAndMakeVisible (checkForUpdatesLabel);
-        checkForUpdatesLabel.setText ("Check for updates on startup", dontSendNotification);
-        checkForUpdatesLabel.setFont (Font (FontOptions (12.0, Font::bold)));
-        addAndMakeVisible (checkForUpdates);
-        checkForUpdates.setClickingTogglesState (true);
-        checkForUpdates.setToggleState (settings.checkForUpdates(), dontSendNotification);
-        checkForUpdates.getToggleStateValue().addListener (this);
-#endif
         addAndMakeVisible (scanForPlugsLabel);
         scanForPlugsLabel.setText ("Scan plugins on startup", dontSendNotification);
         scanForPlugsLabel.setFont (Font (FontOptions (12.0, Font::bold)));
@@ -568,7 +559,6 @@ public:
 #if ELEMENT_UPDATER
         r.removeFromTop (spacingBetweenSections);
         r2 = r.removeFromTop (settingHeight);
-        checkForUpdatesLabel.setBounds (r2.removeFromLeft (getWidth() / 2));
         checkForUpdates.setBounds (r2.removeFromLeft (toggleWidth)
                                        .withSizeKeepingCentre (toggleWidth, toggleHeight));
 #endif
@@ -701,7 +691,6 @@ private:
     ComboBox clockSourceBox;
     Value clockSource;
 
-    Label checkForUpdatesLabel;
     SettingButton checkForUpdates;
 
     Label scanForPlugsLabel;
@@ -1483,12 +1472,6 @@ Component* Preferences::createPageForName (const String& name)
     {
         return new OSCSettingsPage (_context, _ui);
     }
-#if ELEMENT_UPDATER
-    else if (name == ELEMENT_REPOSITORY_PREFERENCE_NAME)
-    {
-        return new UpdatesSettingsPage (_context);
-    }
-#endif
     return nullptr;
 }
 
@@ -1502,9 +1485,6 @@ void Preferences::addDefaultPages()
     addPage (ELEMENT_MIDI_SETTINGS_NAME);
 #if ! ELEMENT_SE
     addPage (ELEMENT_OSC_SETTINGS_NAME);
-#endif
-#if ELEMENT_UPDATER
-    addPage (ELEMENT_REPOSITORY_PREFERENCE_NAME);
 #endif
 
     setPage (ELEMENT_GENERAL_SETTINGS_NAME);
