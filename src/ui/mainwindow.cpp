@@ -154,6 +154,9 @@ void MainWindow::refreshMenu()
 {
     if (mainMenu)
         mainMenu->menuItemsChanged();
+
+    if (auto* const menuBar = getMenuBarComponent())
+        menuBar->repaint();
 }
 
 Services& MainWindow::services()
