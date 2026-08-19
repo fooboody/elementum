@@ -825,7 +825,7 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             break;
         }
         case Commands::toggleUserInterface:
-            result.setInfo ("Show UI", "Show the main UI", "UI", 0);
+            result.setInfo ("Hide UI", "Hide the main UI", "UI", 0);
             break;
         //======================================================================
         case Commands::sessionOpen:
