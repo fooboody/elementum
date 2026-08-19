@@ -350,9 +350,11 @@ void GuiService::saveProperties (PropertiesFile* props)
 {
     jassert (props);
 
-    if (auto maps = commands().getKeyMappings())
-        if (auto xml = maps->createXml (true))
-            props->setValue (Settings::keymappingsKey, xml.get());
+    if (keyMappingsDirty)
+        if (auto maps = commands().getKeyMappings())
+            if (auto xml = maps->createXml (true))
+                props->setValue (Settings::keymappingsKey, xml.get());
+    keyMappingsDirty = false;
 
     if (mainWindow)
     {
@@ -370,6 +372,8 @@ void GuiService::activate()
 {
     SystemTray::init (*this);
     context().devices().addChangeListener (this);
+    if (auto maps = commands().getKeyMappings())
+        maps->addChangeListener (this);
     impl->restoreRecents();
 
     // Apply the saved release channel to the updater on launch.
@@ -379,6 +383,8 @@ void GuiService::activate()
 void GuiService::deactivate()
 {
     context().devices().removeChangeListener (this);
+    if (auto maps = commands().getKeyMappings())
+        maps->removeChangeListener (this);
     nodeSelected.disconnect_all_slots();
 
     saveProperties (settings().getUserSettings());
@@ -1278,6 +1284,12 @@ void GuiService::saveSettings()
 
 void GuiService::changeListenerCallback (juce::ChangeBroadcaster* broadcaster)
 {
+    if (broadcaster == commands().getKeyMappings())
+    {
+        keyMappingsDirty = true;
+        return;
+    }
+
     if (broadcaster == &context().devices())
         if (auto* win = mainWindow.get())
             win->refreshMenu();

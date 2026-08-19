@@ -81,6 +81,9 @@ public:
 
     bool getBool (std::string_view key, bool fallback = false) const noexcept;
 
+    /** Returns a validated colour for a registered settings-file colour key. */
+    juce::Colour getColour (std::string_view key) const;
+
     /** Returns the validated PopupMenu highlight background colour. */
     juce::Colour getPopupMenuHighlightedBackgroundColor() const;
 

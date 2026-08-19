@@ -163,6 +163,7 @@ private:
     std::unique_ptr<WindowManager> windowManager;
     std::unique_ptr<MainWindow> mainWindow;
     bool restoreMainWindowStateOnShow { false };
+    bool keyMappingsDirty { false };
     std::unique_ptr<Content> _content;
     std::unique_ptr<juce::DialogWindow> about;
     std::unique_ptr<ContentFactory> factory;

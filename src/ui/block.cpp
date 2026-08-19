@@ -38,15 +38,8 @@ inline static Context* context (juce::Component* comp)
 static Colour configuredColour (juce::Component* comp, const char* key, const Colour fallback)
 {
     if (auto* const world = context (comp))
-    {
-        if (auto* const props = world->settings().getUserSettings())
-        {
-            const auto value = props->getValue (key, fallback.toString()).trim();
-            if (value.startsWithChar ('#') && value.substring (1).length() == 6)
-                return Colour (0xff000000u | value.substring (1).getHexValue32());
-            return Colour::fromString (value);
-        }
-    }
+        return world->settings().getColour (key);
+
     return fallback;
 }
 

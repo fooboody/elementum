@@ -148,15 +148,52 @@ PropertiesFile::Options makeSettingsOptions (const File& applicationDataDirector
     return opts;
 }
 
+struct ColourSettingDefault
+{
+    const char* key;
+    const char* value;
+    Colour fallback;
+};
+
+const ColourSettingDefault colourSettingDefaults[] {
+    { Settings::popupMenuHighlightedBackgroundColorKey, "#4765a0", Colour (0xff4765a0) },
+    { Settings::popupMenuHighlightedTextColorKey, "#ffffff", Colours::white },
+    { Settings::audioConnectedPortColorKey, "#90EE90", Colour (0xff90ee90) },
+    { Settings::audioDisconnectedPortColorKey, "#90EE90", Colour (0xff90ee90) },
+    { Settings::midiConnectedPortColorKey, "#FFA500", Colour (0xffffa500) },
+    { Settings::midiDisconnectedPortColorKey, "#FFA500", Colour (0xffffa500) },
+    { Settings::audioConnectionCableColorKey, "#484848", Colour (0xff484848) },
+    { Settings::midiConnectionCableColorKey, "#484848", Colour (0xff484848) },
+    { Settings::connectionCableDragColorKey, "#484848", Colour (0xff484848) },
+    { Settings::connectionCableHoverColorKey, "#666666", Colour (0xff666666) },
+    { Settings::nearbyConnectHighlightColorKey, "#0C83FF", Colour (0xff0c83ff) },
+    { Settings::nearbyDisconnectHighlightColorKey, "#FF66B3", Colour (0xffff66b3) },
+    { Settings::nearbySwapHighlightColorKey, "#FFFFFF", Colours::white },
+    { Settings::nodeEnabledColorKey, "#9BA2AB", Colour (0xff9ba2ab) },
+    { Settings::nodeEnabledSelectedColorKey, "#4A83C7", Colour (0xff4a83c7) },
+    { Settings::nodeDisabledColorKey, "#454A52", Colour (0xff454a52) },
+    { Settings::nodeDisabledSelectedColorKey, "#3D2470", Colour (0xff3d2470) },
+};
+
+const ColourSettingDefault* findColourSettingDefault (const std::string_view key)
+{
+    for (const auto& setting : colourSettingDefaults)
+        if (key == setting.key)
+            return &setting;
+
+    return nullptr;
+}
+
 Colour getColourSetting (const PropertiesFile* props, const char* key, const Colour fallback)
 {
     if (props == nullptr)
         return fallback;
 
     auto value = props->getValue (key).trim();
-    if (value.startsWithChar ('#'))
-        value = value.substring (1);
+    if (! value.startsWithChar ('#'))
+        return fallback;
 
+    value = value.substring (1);
     if (value.length() != 6 && value.length() != 8)
         return fallback;
 
@@ -210,24 +247,8 @@ Settings::Settings (const File& applicationDataDirectory)
         }
 
         setDefault (menuAppearanceKey, "auto");
-        setDefault (popupMenuHighlightedBackgroundColorKey, "#4765a0");
-        setDefault (popupMenuHighlightedTextColorKey, "#ffffff");
-
-        setDefault (audioConnectedPortColorKey, "#90EE90");
-        setDefault (audioDisconnectedPortColorKey, "#90EE90");
-        setDefault (midiConnectedPortColorKey, "#FFA500");
-        setDefault (midiDisconnectedPortColorKey, "#FFA500");
-        setDefault (audioConnectionCableColorKey, "#484848");
-        setDefault (midiConnectionCableColorKey, "#484848");
-        setDefault (connectionCableDragColorKey, "#484848");
-        setDefault (connectionCableHoverColorKey, "#666666");
-        setDefault (nearbyConnectHighlightColorKey, "#0C83FF");
-        setDefault (nearbyDisconnectHighlightColorKey, "#FF66B3");
-        setDefault (nearbySwapHighlightColorKey, "#FFFFFF");
-        setDefault (nodeEnabledColorKey, "#9BA2AB");
-        setDefault (nodeEnabledSelectedColorKey, "#4A83C7");
-        setDefault (nodeDisabledColorKey, "#454A52");
-        setDefault (nodeDisabledSelectedColorKey, "#3D2470");
+        for (const auto& setting : colourSettingDefaults)
+            setDefault (setting.key, setting.value);
 
         if (changed)
             props->saveIfNeeded();
@@ -264,16 +285,23 @@ bool Settings::getBool (std::string_view key, bool fallback) const noexcept
     return p != nullptr ? p->getBoolValue (key.data(), fallback) : fallback;
 }
 
+Colour Settings::getColour (const std::string_view key) const
+{
+    if (const auto* const setting = findColourSettingDefault (key))
+        return getColourSetting (getProps(), setting->key, setting->fallback);
+
+    jassertfalse;
+    return Colours::black;
+}
+
 Colour Settings::getPopupMenuHighlightedBackgroundColor() const
 {
-    return getColourSetting (getProps(), popupMenuHighlightedBackgroundColorKey,
-                             Colour (0xff4765a0));
+    return getColour (popupMenuHighlightedBackgroundColorKey);
 }
 
 Colour Settings::getPopupMenuHighlightedTextColor() const
 {
-    return getColourSetting (getProps(), popupMenuHighlightedTextColorKey,
-                             Colours::white);
+    return getColour (popupMenuHighlightedTextColorKey);
 }
 
 void Settings::set (std::string_view key, const var& value)

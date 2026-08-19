@@ -239,24 +239,15 @@ public:
 
     void paint (Graphics& g) override
     {
-        auto c = Colours::black.brighter();
         const bool midi = isMidiConnection();
+        const auto key = dragging ? Settings::connectionCableDragColorKey
+                         : hover ? Settings::connectionCableHoverColorKey
+                         : midi ? Settings::midiConnectionCableColorKey
+                                : Settings::audioConnectionCableColorKey;
+        auto c = hover ? Colour (0xff666666) : Colour (0xff484848);
 
         if (auto* const world = ViewHelpers::getGlobals (this))
-        {
-            if (auto* const props = world->settings().getUserSettings())
-            {
-                const auto key = dragging ? Settings::connectionCableDragColorKey
-                                 : hover ? Settings::connectionCableHoverColorKey
-                                 : midi ? Settings::midiConnectionCableColorKey
-                                        : Settings::audioConnectionCableColorKey;
-                const auto value = props->getValue (key, "#484848").trim();
-                if (value.startsWithChar ('#') && value.substring (1).length() == 6)
-                    c = Colour (0xff000000u | value.substring (1).getHexValue32());
-                else
-                    c = Colour::fromString (value);
-            }
-        }
+            c = world->settings().getColour (key);
         g.setColour (c);
         g.fillPath (linePath);
     }
