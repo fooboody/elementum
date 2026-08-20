@@ -531,39 +531,66 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
 
     if (e.mods.isPopupMenu())
     {
-        PluginsPopupMenu menu (this);
-        if (graph.isGraph())
+        const auto popupAnchor = e.getScreenPosition().roundToInt();
+        const auto popupTarget = Rectangle<int> (popupAnchor.x, popupAnchor.y - 1, 1, 1);
+        const auto popupOptions = PopupMenu::Options()
+                                      .withTargetScreenArea (popupTarget)
+                                      .withPreferredPopupDirection (PopupMenu::Options::PopupDirection::downwards)
+                                      .withDeletionCheck (*this);
+
+        std::unique_ptr<PluginsPopupMenu> menu;
+        int result = 0;
+        for (;;)
         {
+            menu = std::make_unique<PluginsPopupMenu> (this);
+            auto& popup = *menu;
+            if (graph.isGraph())
+            {
 #if 1
-            menu.addSectionHeader ("Graph I/O");
-            menu.addItem (1, "Audio Inputs", true, graph.hasAudioInputNode());
-            menu.addItem (2, "Audio Outputs", true, graph.hasAudioOutputNode());
-            menu.addItem (3, "MIDI Input", true, graph.hasMidiInputNode());
-            menu.addItem (4, "MIDI Output", true, graph.hasMidiOutputNode());
-            menu.addSeparator();
+                popup.addSectionHeader ("Graph I/O");
+                popup.addItem (1, "Audio Inputs", true, graph.hasAudioInputNode());
+                popup.addItem (2, "Audio Outputs", true, graph.hasAudioOutputNode());
+                popup.addItem (3, "MIDI Input", true, graph.hasMidiInputNode());
+                popup.addItem (4, "MIDI Output", true, graph.hasMidiOutputNode());
+                popup.addSeparator();
 #endif
-            PopupMenu submenu;
-            addMidiDevicesToMenu (submenu, true, 80000);
-            menu.addSubMenu ("MIDI Input Device", submenu);
-            submenu.clear();
-            addMidiDevicesToMenu (submenu, false, 90000);
-            menu.addSubMenu ("MIDI Output Device", submenu);
+                PopupMenu submenu;
+                addMidiDevicesToMenu (submenu, true, 80000);
+                popup.addSubMenu ("MIDI Input Device", submenu);
+                submenu.clear();
+                addMidiDevicesToMenu (submenu, false, 90000);
+                popup.addSubMenu ("MIDI Output Device", submenu);
+            }
+
+            popup.addSeparator();
+            popup.addItem (5, "Change Orientation");
+            popup.addItem (7, "Fix Out-of-Bounds Nodes");
+            popup.addItem (8, "Reload Colors from Conf File");
+
+            popup.addSeparator();
+            popup.addSectionHeader ("Plugins");
+            popup.addPluginItems();
+            result = popup.showMenu (popupOptions);
+
+            if (! popup.isGroupManufacturersByInitialResult (result))
+                break;
+
+            if (auto* const world = ViewHelpers::getGlobals (this))
+            {
+                auto& settings = world->settings();
+                settings.setGroupPluginManufacturersByInitial (! settings.groupPluginManufacturersByInitial());
+                if (! settings.saveIfNeeded())
+                    DBG ("[element] Failed to save plugin manufacturer index setting");
+                continue;
+            }
+
+            return;
         }
 
-        menu.addSeparator();
-        menu.addItem (5, "Change Orientation");
-        menu.addItem (7, "Fix Out-of-Bounds Nodes");
-        menu.addItem (8, "Reload Colors from Conf File");
-
-        menu.addSeparator();
-        menu.addSectionHeader ("Plugins");
-        menu.addPluginItems();
-        const int result = menu.show();
-
-        if (menu.isPluginResultCode (result))
+        if (menu->isPluginResultCode (result))
         {
             bool verified = false;
-            const auto desc = menu.getPluginDescription (result, verified);
+            const auto desc = menu->getPluginDescription (result, verified);
             if (desc.fileOrIdentifier.isNotEmpty() && desc.pluginFormatName.isNotEmpty())
                 ViewHelpers::postMessageFor (this, new AddPluginMessage (graph, desc, verified));
         }

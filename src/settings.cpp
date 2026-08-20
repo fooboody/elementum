@@ -43,6 +43,7 @@ const char* Settings::midiOutLatencyKey = "midiOutLatency";
 const char* Settings::desktopScaleKey = "desktopScale";
 const char* Settings::mainContentTypeKey = "mainContentType";
 const char* Settings::pluginListHeaderKey = "pluginListHeader";
+const char* Settings::groupPluginManufacturersByInitialKey = "groupPluginManufacturersByInitial";
 const char* Settings::devicesKey = "devices";
 const char* Settings::keymappingsKey = "keymappings";
 const char* Settings::clockSourceKey = "clockSource";
@@ -555,6 +556,19 @@ void Settings::setAutoEnableNodesWithAudioConnections (const bool value)
 {
     if (auto* props = getProps())
         props->setValue (autoEnableNodesWithAudioConnectionsKey, value);
+}
+
+bool Settings::groupPluginManufacturersByInitial() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (groupPluginManufacturersByInitialKey, false);
+    return false;
+}
+
+void Settings::setGroupPluginManufacturersByInitial (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (groupPluginManufacturersByInitialKey, value);
 }
 
 bool Settings::autoConnectMidiInputNodes() const

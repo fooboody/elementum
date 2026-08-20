@@ -69,6 +69,8 @@ add_test(NAME "BytesTest" COMMAND test_element --run_test=BytesTest)
 add_test(NAME "JuceIntegrationTests" COMMAND test_element --run_test=JuceIntegrationTests)
 add_test(NAME "DataPathTests" COMMAND test_element --run_test=DataPathTests)
 add_test(NAME "SettingsColourTests" COMMAND test_element --run_test=SettingsColourTests)
+add_test(NAME "SettingsPluginTests" COMMAND test_element --run_test=SettingsPluginTests)
+add_test(NAME "PluginMenuTests" COMMAND test_element --run_test=PluginMenuTests)
 
 add_test(NAME "DSPScriptTest" COMMAND test_element --run_test=DSPScriptTest)
 add_test(NAME "Element" COMMAND test_element --run_test=Element)

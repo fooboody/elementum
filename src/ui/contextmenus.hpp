@@ -3,8 +3,11 @@
 
 #pragma once
 
+#include <algorithm>
+
 #include <element/plugins.hpp>
 #include <element/processor.hpp>
+#include <element/settings.hpp>
 
 #include "engine/graphnode.hpp"
 #include "ui/guicommon.hpp"
@@ -17,13 +20,16 @@ namespace element {
 class PluginsPopupMenu : public PopupMenu
 {
 public:
+    static constexpr int groupManufacturersByInitialResult = 60000;
+
     PluginsPopupMenu (Component* sender)
     {
         jassert (sender != nullptr);
         auto* cc = ViewHelpers::findContentComponent (sender);
         jassert (cc != nullptr);
         plugins = &cc->context().plugins();
-        jassert (plugins != nullptr);
+        settings = &cc->context().settings();
+        jassert (plugins != nullptr && settings != nullptr);
         available = plugins->getVisiblePluginTypes();
         favorites = plugins->getFavoritePluginTypes();
     }
@@ -32,16 +38,21 @@ public:
     {
         // clang-format off
         return (isPositiveAndBelow (int (resultCode - favoriteResultOffset), favorites.size())) ||
-               (plugins->getKnownPlugins().getIndexChosenByMenu (available, resultCode) >= 0) ||
-               (isPositiveAndBelow (int (resultCode - 20000), unverified.size()));
+               (isPositiveAndBelow (int (resultCode - pluginResultOffset), available.size())) ||
+               (isPositiveAndBelow (int (resultCode - unverifiedResultOffset), unverified.size()));
         // clang-format on
+    }
+
+    bool isGroupManufacturersByInitialResult (const int resultCode) const
+    {
+        return resultCode == groupManufacturersByInitialResult;
     }
 
     PluginDescription getPluginDescription (int resultCode, bool& verified)
     {
         jassert (plugins != nullptr);
 
-        // Favorites submenu — a subset of the visible/known plugins, so verified.
+        // Favorites are a subset of the visible/known plugins, so they are verified.
         int index = resultCode - favoriteResultOffset;
         if (isPositiveAndBelow (index, favorites.size()))
         {
@@ -49,7 +60,7 @@ public:
             return favorites.getReference (index);
         }
 
-        index = plugins->getKnownPlugins().getIndexChosenByMenu (available, resultCode);
+        index = resultCode - pluginResultOffset;
         if (isPositiveAndBelow (index, available.size()))
         {
             verified = true;
@@ -57,10 +68,26 @@ public:
         }
 
         verified = false;
-        index = resultCode - 20000;
+        index = resultCode - unverifiedResultOffset;
         return isPositiveAndBelow (index, unverified.size())
                    ? *unverified.getUnchecked (index)
                    : PluginDescription();
+    }
+
+    static String getManufacturerInitialIndex (const String& manufacturer)
+    {
+        const auto name = manufacturer.trimStart();
+        if (name.isEmpty())
+            return "Other";
+
+        const auto firstCharacter = name[0];
+        if (CharacterFunctions::isDigit (firstCharacter))
+            return "0-9";
+
+        const auto upper = CharacterFunctions::toUpperCase (firstCharacter);
+        return upper >= 'A' && upper <= 'Z'
+                   ? String::charToString (upper)
+                   : String ("Other");
     }
 
     void addPluginItems()
@@ -69,7 +96,10 @@ public:
             return;
         hasAddedPlugins = true;
 
-        if (! favorites.isEmpty())
+        const auto hasFavorites = ! favorites.isEmpty();
+        const auto hasAvailablePlugins = ! available.isEmpty();
+
+        if (hasFavorites)
         {
             PopupMenu favMenu;
             for (int i = 0; i < favorites.size(); ++i)
@@ -78,45 +108,169 @@ public:
             addSeparator();
         }
 
-        plugins->getKnownPlugins().addToMenu (*this, available, KnownPluginList::sortByManufacturer);
+        addUnverifiedPluginsMenu();
+        addSeparator();
 
-        PopupMenu unvMenu;
+        addItem (groupManufacturersByInitialResult,
+                 "Group Manufacturers by Initial",
+                 true,
+                 settings != nullptr && settings->groupPluginManufacturersByInitial());
+
+        if (hasAvailablePlugins)
+        {
+            addSeparator();
+            addManufacturerPluginMenus();
+        }
+    }
+
+private:
+    struct ManufacturerGroup
+    {
+        String name;
+        String index;
+        Array<int> pluginIndices;
+    };
+
+    // These ranges are private to this menu and do not overlap Graph Editor,
+    // MIDI device, or unverified-plugin result IDs.
+    static constexpr int favoriteResultOffset = 10000;
+    static constexpr int unverifiedResultOffset = 20000;
+    static constexpr int pluginResultOffset = 100000;
+
+    Array<ManufacturerGroup> getManufacturerGroups() const
+    {
+        Array<ManufacturerGroup> groups;
+
+        for (int pluginIndex = 0; pluginIndex < available.size(); ++pluginIndex)
+        {
+            const auto& plugin = available.getReference (pluginIndex);
+            const auto manufacturer = plugin.manufacturerName.trim();
+            const auto displayName = manufacturer.isNotEmpty() ? manufacturer : String ("Other");
+            const auto index = getManufacturerInitialIndex (manufacturer);
+
+            auto* group = [&] () -> ManufacturerGroup*
+            {
+                for (auto& candidate : groups)
+                    if (candidate.name.equalsIgnoreCase (displayName) && candidate.index == index)
+                        return &candidate;
+
+                return nullptr;
+            }();
+
+            if (group == nullptr)
+            {
+                ManufacturerGroup newGroup;
+                newGroup.name = displayName;
+                newGroup.index = index;
+                groups.add (std::move (newGroup));
+                group = &groups.getReference (groups.size() - 1);
+            }
+
+            group->pluginIndices.add (pluginIndex);
+        }
+
+        std::stable_sort (groups.begin(), groups.end(), [] (const auto& lhs, const auto& rhs)
+        {
+            return lhs.name.compareIgnoreCase (rhs.name) < 0;
+        });
+
+        for (auto& group : groups)
+        {
+            std::stable_sort (group.pluginIndices.begin(), group.pluginIndices.end(), [this] (const int lhs, const int rhs)
+            {
+                return available.getReference (lhs).name.compareIgnoreCase (available.getReference (rhs).name) < 0;
+            });
+        }
+
+        return groups;
+    }
+
+    void addPluginDescriptions (PopupMenu& menu, const ManufacturerGroup& group) const
+    {
+        for (const auto pluginIndex : group.pluginIndices)
+        {
+            const auto& plugin = available.getReference (pluginIndex);
+            auto name = plugin.name;
+            int nameMatches = 0;
+            for (const auto otherIndex : group.pluginIndices)
+                if (available.getReference (otherIndex).name == plugin.name && ++nameMatches > 1)
+                    break;
+
+            if (nameMatches > 1)
+                name << " (" << plugin.pluginFormatName << ')';
+
+            menu.addItem (pluginResultOffset + pluginIndex, name);
+        }
+    }
+
+    void addManufacturerPluginMenus()
+    {
+        const auto groups = getManufacturerGroups();
+        if (settings == nullptr || ! settings->groupPluginManufacturersByInitial())
+        {
+            for (const auto& group : groups)
+            {
+                PopupMenu manufacturerMenu;
+                addPluginDescriptions (manufacturerMenu, group);
+                addSubMenu (group.name, manufacturerMenu);
+            }
+            return;
+        }
+
+        StringArray indexes { "Other", "0-9" };
+        for (juce_wchar character = 'A'; character <= 'Z'; ++character)
+            indexes.add (String::charToString (character));
+
+        for (const auto& index : indexes)
+        {
+            PopupMenu indexMenu;
+            for (const auto& group : groups)
+            {
+                if (group.index != index)
+                    continue;
+
+                PopupMenu manufacturerMenu;
+                addPluginDescriptions (manufacturerMenu, group);
+                indexMenu.addSubMenu (group.name, manufacturerMenu);
+            }
+
+            if (indexMenu.getNumItems() > 0)
+                addSubMenu (index, indexMenu);
+        }
+    }
+
+    void addUnverifiedPluginsMenu()
+    {
+        PopupMenu unverifiedMenu;
         unverified.clearQuick (true);
         for (const auto& name : Util::compiledAudioPluginFormats())
         {
-            PopupMenu menu;
+            PopupMenu formatMenu;
             const int lastSize = unverified.size();
             plugins->getUnverifiedPlugins (name, unverified);
             if (auto* format = plugins->getAudioPluginFormat (name))
             {
                 for (int i = lastSize; i < unverified.size(); ++i)
-                    menu.addItem (i + 20000, format->getNameOfPluginFromIdentifier (unverified.getUnchecked (i)->fileOrIdentifier));
+                    formatMenu.addItem (unverifiedResultOffset + i,
+                                        format->getNameOfPluginFromIdentifier (unverified.getUnchecked (i)->fileOrIdentifier));
             }
             else if (name == "LV2")
             {
                 for (int i = lastSize; i < unverified.size(); ++i)
-                    menu.addItem (i + 20000, unverified[i]->name);
+                    formatMenu.addItem (unverifiedResultOffset + i, unverified[i]->name);
             }
 
-            if (menu.getNumItems() > 0)
-                unvMenu.addSubMenu (name, menu);
+            if (formatMenu.getNumItems() > 0)
+                unverifiedMenu.addSubMenu (name, formatMenu);
         }
 
-        if (unvMenu.getNumItems() > 0)
-        {
-            addSeparator();
-            addSubMenu ("Unverified", unvMenu);
-        }
+        addSubMenu ("Unverified", unverifiedMenu);
     }
 
-private:
-    // Favorites use a private menu-id range so they never collide with the
-    // main list (which uses KnownPluginList's large menuIdBase) or the
-    // unverified submenu (which uses the 20000 range).
-    static constexpr int favoriteResultOffset = 10000;
     Array<PluginDescription> available, favorites;
     OwnedArray<PluginDescription> unverified;
     PluginManager* plugins { nullptr };
+    Settings* settings { nullptr };
     bool hasAddedPlugins = false;
 };
 

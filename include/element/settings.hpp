@@ -55,6 +55,7 @@ public:
     static const char* desktopScaleKey;
     static const char* mainContentTypeKey;
     static const char* pluginListHeaderKey;
+    static const char* groupPluginManufacturersByInitialKey;
     static const char* devicesKey;
     static const char* keymappingsKey;
     static const char* clockSourceKey;
@@ -141,6 +142,10 @@ public:
     void setSwapNearbyAudioConnections (const bool);
     bool autoEnableNodesWithAudioConnections() const;
     void setAutoEnableNodesWithAudioConnections (const bool);
+
+    /** True if plugin manufacturers should be grouped by their leading character in the Graph Editor menu. */
+    bool groupPluginManufacturersByInitial() const;
+    void setGroupPluginManufacturersByInitial (const bool);
 
     /** True if MIDI input sources should be connected to new plugins automatically */
     bool autoConnectMidiInputNodes() const;
