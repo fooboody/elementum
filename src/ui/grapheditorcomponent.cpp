@@ -667,6 +667,7 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                         world->settings().reloadColourSettings();
                         if (auto* const gui = ViewHelpers::getGuiController (this))
                             gui->refreshPopupMenuTheme();
+                        repaintComponentTree();
                         if (auto* const topLevel = getTopLevelComponent())
                             topLevel->repaint();
                     }
@@ -1454,6 +1455,19 @@ void GraphEditorComponent::stabilizeNodes()
             block->update (false);
             block->repaint();
         }
+}
+
+void GraphEditorComponent::repaintComponentTree()
+{
+    auto repaintTree = [] (Component& component, auto&& self) -> void
+    {
+        component.repaint();
+        for (int i = 0; i < component.getNumChildComponents(); ++i)
+            if (auto* const child = component.getChildComponent (i))
+                self (*child, self);
+    };
+
+    repaintTree (*this, repaintTree);
 }
 
 void GraphEditorComponent::updateComponents (const bool doNodePositions)
