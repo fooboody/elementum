@@ -225,9 +225,10 @@ File Settings::getSettingsFileForDataDirectory (const File& directory)
     return makeSettingsOptions (directory).getDefaultFile();
 }
 
-Settings::Settings (const File& applicationDataDirectory)
+Settings::Settings (const File& applicationDataDirectory_)
+    : applicationDataDirectory (applicationDataDirectory_)
 {
-    const auto opts = makeSettingsOptions (applicationDataDirectory);
+    const auto opts = makeSettingsOptions (applicationDataDirectory_);
     setStorageParameters (opts);
 
     if (auto* const props = getUserSettings())
@@ -312,6 +313,30 @@ Colour Settings::getPopupMenuHighlightedBackgroundColor() const
 Colour Settings::getPopupMenuHighlightedTextColor() const
 {
     return getColour (popupMenuHighlightedTextColorKey);
+}
+
+void Settings::reloadColourSettings()
+{
+    auto* const props = getProps();
+    if (props == nullptr)
+        return;
+
+    const auto options = makeSettingsOptions (applicationDataDirectory);
+    const auto file = options.getDefaultFile();
+    if (! file.existsAsFile())
+        return;
+
+    PropertiesFile external (file, options);
+    for (const auto& setting : colourSettingDefaults)
+    {
+        const auto value = external.getValue (setting.key);
+        if (value.isNotEmpty())
+            props->setValue (setting.key, value);
+        else
+            props->removeValue (setting.key);
+    }
+
+    sendChangeMessage();
 }
 
 void Settings::set (std::string_view key, const var& value)

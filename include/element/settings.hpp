@@ -96,6 +96,9 @@ public:
     /** Returns the validated PopupMenu highlight text colour. */
     juce::Colour getPopupMenuHighlightedTextColor() const;
 
+    /** Reloads only registered colour values from the current conf file. */
+    void reloadColourSettings();
+
     void set (std::string_view key, const juce::var& value);
 
     std::unique_ptr<juce::XmlElement> getLastGraph() const;
@@ -230,6 +233,7 @@ public:
 
 private:
     juce::PropertiesFile* getProps() const;
+    juce::File applicationDataDirectory;
 };
 
 } // namespace element
