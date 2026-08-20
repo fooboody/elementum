@@ -309,8 +309,8 @@ Settings::Settings (const File& applicationDataDirectory_)
 
         setDefault (menuAppearanceKey, "auto");
         changed = ensureColourSettings (props) || changed;
-        if (changed)
-            props->saveIfNeeded();
+        if (changed && ! props->saveIfNeeded())
+            DBG ("[element] Failed to save repaired colour settings during startup");
     }
 }
 
@@ -398,8 +398,8 @@ void Settings::reloadColourSettings()
     }
 
     changed = ensureColourSettings (props) || changed;
-    if (changed)
-        props->saveIfNeeded();
+    if (changed && ! props->saveIfNeeded())
+        DBG ("[element] Failed to save repaired colour settings during reload");
 
     sendChangeMessage();
 }
