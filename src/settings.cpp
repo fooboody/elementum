@@ -162,6 +162,7 @@ struct ColourSettingDefault
     Colour fallback;
 };
 
+
 const ColourSettingDefault colourSettingDefaults[] {
     { Settings::popupMenuHighlightedBackgroundColorKey, "#4765a0", Colour (0xff4765a0) },
     { Settings::popupMenuHighlightedTextColorKey, "#ffffff", Colours::white },

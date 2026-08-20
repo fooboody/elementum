@@ -1051,8 +1051,19 @@ Font LookAndFeel_E1::getPopupMenuFont() {
 void LookAndFeel_E1::drawPopupMenuBackground (Graphics& g, int width, int height)
 {
     const Rectangle<float> r (0.f, 0.f, (float) width, (float) height);
-    g.setColour (findColour (PopupMenu::backgroundColourId));
+    const auto background = findColour (PopupMenu::backgroundColourId);
+
+    g.setColour (background);
     g.fillRoundedRectangle (r, 0.0f);
+
+    // JUCE's desktop popup shadow is rendered by the platform window and remains
+    // black on dark themes. A visible edge keeps nested menus distinguishable
+    // where that shadow blends into the dark background.
+    if (background.getBrightness() < 0.5f)
+    {
+        g.setColour (Colour (0xff999999));
+        g.drawRect (r.reduced (0.25f), 0.5f);
+    }
 }
 
 void LookAndFeel_E1::getIdealPopupMenuItemSize (const String& text, 

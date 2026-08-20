@@ -97,6 +97,7 @@ public:
     /** Returns the validated PopupMenu highlight text colour. */
     juce::Colour getPopupMenuHighlightedTextColor() const;
 
+
     /** Reloads only registered colour values from the current conf file. */
     void reloadColourSettings();
 
