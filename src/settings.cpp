@@ -915,7 +915,7 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
 
     sub.addSeparator();
     sub.addItem (AutoConnectNearbyPorts,
-                 "Auto-Connect Nearby Ports",
+                 "Auto-Connect/Disconnect Nearby Ports",
                  true,
                  autoConnectNearbyPorts());
     sub.addItem (SwapNearbyAudioConnections,
@@ -923,7 +923,7 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  true,
                  swapNearbyAudioConnections());
     sub.addItem (AutoEnableNodesWithAudioConnections,
-                 "Auto-Enable Nodes with Audio Connections",
+                 "Auto-Enable/Disable Nodes with Audio Connections",
                  true,
                  autoEnableNodesWithAudioConnections());
     sub.addItem (AutoConnectMidiInputNodes,
