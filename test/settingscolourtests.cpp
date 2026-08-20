@@ -98,6 +98,41 @@ BOOST_AUTO_TEST_CASE (ThreeDigitHexColoursAreExpandedAndPersisted)
     directory.deleteRecursively();
 }
 
+BOOST_AUTO_TEST_CASE (ReloadRestoresMissingColourValues)
+{
+    const auto directory = makeSettingsDirectory();
+    const auto settingsFile = Settings::getSettingsFileForDataDirectory (directory);
+
+    juce::PropertiesFile::Options options;
+    options.applicationName = "Elementum";
+    options.filenameSuffix = "conf";
+    options.storageFormat = juce::PropertiesFile::storeAsXML;
+
+    {
+        Settings settings (directory);
+        auto* const props = settings.getUserSettings();
+        BOOST_REQUIRE (props != nullptr);
+        props->setValue (Settings::audioConnectedPortColorKey, "#123456");
+        BOOST_REQUIRE (props->saveIfNeeded());
+
+        {
+            juce::PropertiesFile external (settingsFile, options);
+            external.removeValue (Settings::audioConnectedPortColorKey);
+            BOOST_REQUIRE (external.saveIfNeeded());
+        }
+
+        settings.reloadColourSettings();
+        BOOST_CHECK_EQUAL (props->getValue (Settings::audioConnectedPortColorKey), "#02de23");
+    }
+
+    {
+        juce::PropertiesFile repaired (settingsFile, options);
+        BOOST_CHECK_EQUAL (repaired.getValue (Settings::audioConnectedPortColorKey), "#02de23");
+    }
+
+    directory.deleteRecursively();
+}
+
 BOOST_AUTO_TEST_CASE (SixAndEightDigitHexColoursAreParsed)
 {
     const auto directory = makeSettingsDirectory();

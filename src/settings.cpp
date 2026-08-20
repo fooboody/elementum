@@ -223,7 +223,7 @@ String normaliseColourSettingValue (String value)
     return "#" + hex;
 }
 
-bool normaliseColourSettings (PropertiesFile* props)
+bool ensureColourSettings (PropertiesFile* props)
 {
     if (props == nullptr)
         return false;
@@ -231,11 +231,19 @@ bool normaliseColourSettings (PropertiesFile* props)
     bool changed = false;
     for (const auto& setting : colourSettingDefaults)
     {
+        if (! props->containsKey (setting.key))
+        {
+            props->setValue (setting.key, setting.value);
+            changed = true;
+            continue;
+        }
+
         const auto value = props->getValue (setting.key);
         const auto normalised = normaliseColourSettingValue (value);
-        if (normalised.isNotEmpty() && normalised != value)
+        const auto repaired = normalised.isNotEmpty() ? normalised : String (setting.value);
+        if (repaired != value)
         {
-            props->setValue (setting.key, normalised);
+            props->setValue (setting.key, repaired);
             changed = true;
         }
     }
@@ -300,10 +308,7 @@ Settings::Settings (const File& applicationDataDirectory_)
         }
 
         setDefault (menuAppearanceKey, "auto");
-        for (const auto& setting : colourSettingDefaults)
-            setDefault (setting.key, setting.value);
-
-        changed = normaliseColourSettings (props) || changed;
+        changed = ensureColourSettings (props) || changed;
         if (changed)
             props->saveIfNeeded();
     }
@@ -392,7 +397,7 @@ void Settings::reloadColourSettings()
         }
     }
 
-    changed = normaliseColourSettings (props) || changed;
+    changed = ensureColourSettings (props) || changed;
     if (changed)
         props->saveIfNeeded();
 
