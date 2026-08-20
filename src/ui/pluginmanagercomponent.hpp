@@ -113,6 +113,7 @@ private:
     static void optionsMenuStaticCallback (int, PluginListComponent*);
     void optionsMenuCallback (int);
     void updateList();
+    void clearPluginListAfterConfirmation();
     void showSelectedFolder();
     bool canShowSelectedFolder() const;
     void removeMissingPlugins();

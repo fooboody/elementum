@@ -433,8 +433,7 @@ public:
             case 0:
                 break;
             case 1:
-                removeNonElementPlugins (owner.list);
-                owner.saveListToSettings();
+                owner.clearPluginListAfterConfirmation();
                 break;
             case 2:
                 owner.removeSelectedPlugins();
@@ -462,10 +461,10 @@ public:
                 hidden = owner.plugins.isPluginHidden (list.getTypes().getReference (row));
 
             PopupMenu menu;
-            menu.addItem (3, hidden ? TRANS ("Show plugin") : TRANS ("Hide plugin"), onPlugin);
+            menu.addItem (3, hidden ? TRANS ("Show Plugin") : TRANS ("Hide Plugin"), onPlugin);
             menu.addSeparator();
-            menu.addItem (1, "Clear list");
-            menu.addItem (2, "Remove selected");
+            menu.addItem (1, TRANS ("Clear List"));
+            menu.addItem (2, TRANS ("Remove Selected"));
             cellPopup (menu.show(), row);
         }
         else if (col == favoriteCol && isPositiveAndBelow (row, list.getNumTypes()))
@@ -785,6 +784,21 @@ void PluginListComponent::editPluginPath (const String& f)
     }
 }
 
+void PluginListComponent::clearPluginListAfterConfirmation()
+{
+    if (! AlertWindow::showOkCancelBox (AlertWindow::WarningIcon,
+                                        TRANS ("Clear Plugin List"),
+                                        TRANS ("This will remove all scanned third-party plug-ins from the list. "
+                                               "Built-in Element plug-ins will be kept. Are you sure you want to continue?"),
+                                        TRANS ("Clear List"),
+                                        TRANS ("Cancel")))
+        return;
+
+    removeNonElementPlugins (list);
+    saveListToSettings();
+    updateList();
+}
+
 void PluginListComponent::optionsMenuCallback (int result)
 {
     switch (result)
@@ -792,8 +806,7 @@ void PluginListComponent::optionsMenuCallback (int result)
         case 0:
             break;
         case 1:
-            removeNonElementPlugins (list);
-            saveSettings (this);
+            clearPluginListAfterConfirmation();
             break;
         case 2:
             removeSelectedPlugins();
@@ -870,7 +883,7 @@ void PluginListComponent::buttonClicked (Button* button)
     {
         PopupMenu menu;
 
-        menu.addItem (1, TRANS ("Clear list"));
+        menu.addItem (1, TRANS ("Clear List"));
         menu.addSeparator();
 
         PopupMenu paths;
@@ -888,17 +901,17 @@ void PluginListComponent::buttonClicked (Button* button)
             menu.addSeparator();
         }
 
-        menu.addItem (2, TRANS ("Remove selected plug-in from list"), table.getNumSelectedRows() > 0);
-        menu.addItem (3, TRANS ("Show folder containing selected plug-in"), canShowSelectedFolder());
-        menu.addItem (4, TRANS ("Remove any plug-ins whose files no longer exist"));
-        menu.addItem (5, TRANS ("Clear blacklisted plug-ins"), plugins.getKnownPlugins().getBlacklistedFiles().size() > 0);
+        menu.addItem (2, TRANS ("Remove Selected Plug-in from List"), table.getNumSelectedRows() > 0);
+        menu.addItem (3, TRANS ("Show Folder Containing Selected Plug-in"), canShowSelectedFolder());
+        menu.addItem (4, TRANS ("Remove Plug-ins Whose Files No Longer Exist"));
+        menu.addItem (5, TRANS ("Clear Blacklisted Plug-ins"), plugins.getKnownPlugins().getBlacklistedFiles().size() > 0);
         menu.addSeparator();
-        menu.addItem (8, "Scan for new or updated CLAP plugins");
+        menu.addItem (8, TRANS ("Scan for New or Updated CLAP Plug-ins"));
         for (int i = 0; i < formatManager.getNumFormats(); ++i)
         {
             auto* const format = formatManager.getFormat (i);
             if (format->canScanForPlugins())
-                menu.addItem (10 + i, "Scan for new or updated " + format->getName() + " plugins");
+                menu.addItem (10 + i, TRANS ("Scan for New or Updated ") + format->getName() + TRANS (" Plug-ins"));
         }
 
         menu.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
