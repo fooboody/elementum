@@ -1097,6 +1097,7 @@ void BlockComponent::paint (Graphics& g)
                                                    : detail::contrastingTextColour (bgc);
     const auto titleTextColor = node.isMissing() ? Colors::toggleRed
                                                  : detail::contrastingTextColour (colorize ? barColor : bgc);
+    const auto subTextColor = (colorize && displayMode == Small) ? titleTextColor : normalTextColor;
 
     g.setColour (titleTextColor);
 
@@ -1114,7 +1115,7 @@ void BlockComponent::paint (Graphics& g)
 
                 if (subName.isNotEmpty())
                 {
-                    g.setColour (normalTextColor);
+                    g.setColour (subTextColor);
                     g.setFont (Font (FontOptions (9.f)));
                     y += colorBarHeight;
                     g.drawFittedText (subName, box.getX(), y, box.getWidth(), 9, Justification::centred, 2);
@@ -1138,7 +1139,7 @@ void BlockComponent::paint (Graphics& g)
 
                 if (subName.isNotEmpty())
                 {
-                    g.setColour (normalTextColor);
+                    g.setColour (subTextColor);
                     g.setFont (Font (FontOptions (9.f)));
                     y += colorBarHeight;
                     g.drawFittedText (subName, box.getX(), y, box.getWidth(), 13, Justification::centred, 2);
