@@ -244,7 +244,7 @@ public:
                          : hover ? Settings::connectionCableHoverColorKey
                          : midi ? Settings::midiConnectionCableColorKey
                                 : Settings::audioConnectionCableColorKey;
-        auto c = hover ? Colour (0xff666666) : Colour (0xff484848);
+        auto c = (dragging || hover) ? Colour (0xffdddddd) : Colour (0xff484848);
 
         if (auto* const world = ViewHelpers::getGlobals (this))
             c = world->settings().getColour (key);

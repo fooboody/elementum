@@ -155,17 +155,20 @@ Colour PortComponent::getColor() const noexcept
             return detail::configuredColour (const_cast<PortComponent*> (this),
                                              connected ? Settings::audioConnectedPortColorKey
                                                        : Settings::audioDisconnectedPortColorKey,
-                                             Colours::lightgreen);
+                                             connected ? Colour (0xff02de23)
+                                                       : Colour (0xff2b9e05));
         case PortType::Control:
             return detail::configuredColour (const_cast<PortComponent*> (this),
                                              connected ? Settings::controlConnectedPortColorKey
                                                        : Settings::controlDisconnectedPortColorKey,
-                                             Colours::lightblue);
+                                             connected ? Colour (0xffadd8e6)
+                                                       : Colour (0xff7e9ea8));
         case PortType::Midi:
             return detail::configuredColour (const_cast<PortComponent*> (this),
                                              connected ? Settings::midiConnectedPortColorKey
                                                        : Settings::midiDisconnectedPortColorKey,
-                                             Colours::orange);
+                                             connected ? Colour (0xffffa200)
+                                                       : Colour (0xffc26c02));
         default:
             return detail::configuredColour (const_cast<PortComponent*> (this),
                                              connected ? Settings::otherConnectedPortColorKey
@@ -195,7 +198,7 @@ void PortComponent::paint (Graphics& g)
         {
             g.setColour (detail::configuredColour (this,
                                                     Settings::nearbyDisconnectHighlightColorKey,
-                                                    Colour (0xFFFF66B3)));
+                                                    Colour (0xffff0000)));
             g.drawRoundedRectangle (0.75f, 0.75f,
                                     (float) getWidth() - 1.5f,
                                     (float) getHeight() - 1.5f,
@@ -205,7 +208,7 @@ void PortComponent::paint (Graphics& g)
         {
             g.setColour (detail::configuredColour (this,
                                                     Settings::nearbyConnectHighlightColorKey,
-                                                    Colour (0xFF0C83FF)));
+                                                    Colours::white));
             g.drawRoundedRectangle (0.75f, 0.75f,
                                     (float) getWidth() - 1.5f,
                                     (float) getHeight() - 1.5f,
@@ -1035,10 +1038,10 @@ void BlockComponent::paint (Graphics& g)
     const auto bgc = enabled
                          ? getNodeBackground (selected ? Settings::nodeEnabledSelectedColorKey
                                                         : Settings::nodeEnabledColorKey,
-                                               selected ? Colour (0xFF4A83C7) : Colour (0xFF9BA2AB))
+                                               selected ? Colour (0xff7eb9fb) : Colour (0xff4b65a4))
                          : getNodeBackground (selected ? Settings::nodeDisabledSelectedColorKey
                                                         : Settings::nodeDisabledColorKey,
-                                               selected ? Colour (0xFF3D2470) : Colour (0xFF454A52));
+                                               selected ? Colour (0xff707380) : Colour (0xff454a52));
 
     auto barColor = isEnabled() && node.isEnabled() ? color : color.darker (.1f);
 
