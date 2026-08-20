@@ -378,7 +378,7 @@ public:
         PopupMenu menu;
         if (node.isGraph())
         {
-            menu.addItem (5, "Add graph...");
+            menu.addItem (5, "Add Graph");
             menu.addSeparator();
         }
 
@@ -393,7 +393,7 @@ public:
         PopupMenu menu;
         if (node.isGraph())
         {
-            menu.addItem (5, "Add graph...");
+            menu.addItem (5, "Add Graph");
             menu.addSeparator();
         }
 
@@ -804,7 +804,7 @@ public:
     void showPopupMenu() override
     {
         PopupMenu menu;
-        menu.addItem (5, "Add graph...");
+        menu.addItem (5, "Add Graph");
         PopupMenu scripts;
 #if 0
         // TODO enable script types at the graph level.

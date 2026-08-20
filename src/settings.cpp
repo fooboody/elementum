@@ -798,8 +798,8 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
 
     sub.addItem (ScanFormPluginsOnStart, "Scan Plugins at Startup", true, scanForPluginsOnStartup());
     sub.addItem (AutomaticallyShowPluginWindows, "Automatically Show Plugin Windows", true, showPluginWindowsWhenAdded());
-    sub.addItem (PluginWindowsOnTop, "Plugins On Top By Default", true, pluginWindowsOnTop());
-    sub.addItem (HidePluginWindowsWhenFocusLost, "Hide Plugin Windows When App Inactive", true, hidePluginWindowsWhenFocusLost());
+    sub.addItem (PluginWindowsOnTop, "Plugins on Top by Default", true, pluginWindowsOnTop());
+    sub.addItem (HidePluginWindowsWhenFocusLost, "Hide Plugin Windows when App Inactive", true, hidePluginWindowsWhenFocusLost());
 
     sub.addSeparator(); // session items
 
@@ -814,7 +814,7 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  true,
                  openLastUsedSession());
     sub.addItem (AskToSaveSessions,
-                 String ("Ask To Save ") + sessTxt,
+                 String ("Ask to Save ") + sessTxt,
                  true,
                  askToSaveSession());
 
@@ -828,7 +828,7 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  true,
                  swapNearbyAudioConnections());
     sub.addItem (AutoEnableNodesWithAudioConnections,
-                 "Auto-Enable Nodes With Audio Connections",
+                 "Auto-Enable Nodes with Audio Connections",
                  true,
                  autoEnableNodesWithAudioConnections());
     sub.addItem (AutoConnectMidiInputNodes,

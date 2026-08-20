@@ -250,8 +250,8 @@ void MainMenu::buildFileMenu (PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::sessionSave, "Save Session");
     menu.addCommandItem (&cmd, Commands::sessionSaveAs, "Save Session As...");
     menu.addSeparator();
-    menu.addCommandItem (&cmd, Commands::importGraph, "Import...");
-    menu.addCommandItem (&cmd, Commands::exportGraph, "Export graph...");
+    menu.addCommandItem (&cmd, Commands::importGraph, "Import Graph...");
+    menu.addCommandItem (&cmd, Commands::exportGraph, "Export Graph...");
 
 #if ! JUCE_MAC
     menu.addSeparator();
@@ -271,9 +271,9 @@ void MainMenu::buildViewMenu (PopupMenu& menu)
 
 void MainMenu::buildWindowMenu (PopupMenu& menu)
 {
-    menu.addCommandItem (&cmd, Commands::hideAllPluginWindows, "Close plugin windows...");
-    menu.addCommandItem (&cmd, Commands::showAllPluginWindows, "Show plugin windows...");
-    menu.addCommandItem (&cmd, Commands::resetPluginWindows, "Reset plugin windows");
+    menu.addCommandItem (&cmd, Commands::hideAllPluginWindows, "Close Plugin Windows...");
+    menu.addCommandItem (&cmd, Commands::showAllPluginWindows, "Show Plugin Windows...");
+    menu.addCommandItem (&cmd, Commands::resetPluginWindows, "Reset Plugin Windows");
 }
 
 void MainMenu::buildWorkspaceMenu (PopupMenu& menu)
@@ -293,7 +293,7 @@ void MainMenu::buildDebugMenu (PopupMenu& menu)
     menu.addItem (1112, "Send MIDI Program 2 ch 1");
     menu.addItem (1113, "Send MIDI Program 3 ch 1");
     menu.addItem (1114, "Send MIDI Program 4 ch 1");
-    menu.addItem (2222, "Show changed status");
+    menu.addItem (2222, "Show Changed Status");
     menu.addItem (3333, "Quick Map");
     menu.addItem (4444, "Refresh Mapping Engine");
     menu.addItem (6666, "Show Workspace Window");
@@ -336,15 +336,15 @@ void MainMenu::buildSessionMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::sessionSaveAs, "Save Session As...");
 
     menu.addSeparator();
-    menu.addCommandItem (&cmd, Commands::importGraph, "Import...");
-    menu.addCommandItem (&cmd, Commands::exportGraph, "Export graph...");
+    menu.addCommandItem (&cmd, Commands::importGraph, "Import Graph...");
+    menu.addCommandItem (&cmd, Commands::exportGraph, "Export Graph...");
 }
 
 void MainMenu::buildEditMenu (Commands& cmd, PopupMenu& menu)
 {
-    menu.addCommandItem (&cmd, Commands::sessionAddGraph, "New graph");
-    menu.addCommandItem (&cmd, Commands::sessionDuplicateGraph, "Duplicate current graph");
-    menu.addCommandItem (&cmd, Commands::sessionDeleteGraph, "Delete current graph");
+    menu.addCommandItem (&cmd, Commands::sessionAddGraph, "New Graph");
+    menu.addCommandItem (&cmd, Commands::sessionDuplicateGraph, "Duplicate Current Graph");
+    menu.addCommandItem (&cmd, Commands::sessionDeleteGraph, "Delete Current Graph");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::undo, "Undo");
     menu.addCommandItem (&cmd, Commands::redo, "Redo");
@@ -353,7 +353,7 @@ void MainMenu::buildEditMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::copy, "Copy");
     menu.addCommandItem (&cmd, Commands::paste, "Paste");
     menu.addSeparator();
-    menu.addCommandItem (&cmd, Commands::sessionInsertPlugin, "Insert plugin...");
+    menu.addCommandItem (&cmd, Commands::sessionInsertPlugin, "Insert Plugin...");
 }
 
 void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
@@ -386,7 +386,7 @@ void MainMenu::buildPluginMainMenu (Commands& cmd, PopupMenu& menu)
 
     menu.addCommandItem (&cmd, Commands::showAbout, "About Elementum");
     menu.addSeparator();
-    menu.addItem (99999, "Close all plugin windows...");
+    menu.addItem (99999, "Close All Plugin Windows...");
 
 #if 0
     menu.addSeparator();

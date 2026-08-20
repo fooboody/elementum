@@ -351,7 +351,7 @@ public:
         clockSourceBox.addItem ("MIDI Clock", ClockSourceMidiClock);
         clockSource.referTo (clockSourceBox.getSelectedIdAsValue());
         addAndMakeVisible (scanForPlugsLabel);
-        scanForPlugsLabel.setText ("Scan plugins on startup", dontSendNotification);
+        scanForPlugsLabel.setText ("Scan Plugins on Startup", dontSendNotification);
         scanForPlugsLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (scanForPlugins);
         scanForPlugins.setClickingTogglesState (true);
@@ -359,7 +359,7 @@ public:
         scanForPlugins.getToggleStateValue().addListener (this);
 
         addAndMakeVisible (showPluginWindowsLabel);
-        showPluginWindowsLabel.setText ("Automatically show plugin windows", dontSendNotification);
+        showPluginWindowsLabel.setText ("Automatically Show Plugin Windows", dontSendNotification);
         showPluginWindowsLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (showPluginWindows);
         showPluginWindows.setClickingTogglesState (true);
@@ -367,7 +367,7 @@ public:
         showPluginWindows.getToggleStateValue().addListener (this);
 
         addAndMakeVisible (pluginWindowsOnTopLabel);
-        pluginWindowsOnTopLabel.setText ("Plugin windows on top by default", dontSendNotification);
+        pluginWindowsOnTopLabel.setText ("Plugin Windows on Top by Default", dontSendNotification);
         pluginWindowsOnTopLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (pluginWindowsOnTop);
         pluginWindowsOnTop.setClickingTogglesState (true);
@@ -375,7 +375,7 @@ public:
         pluginWindowsOnTop.getToggleStateValue().addListener (this);
 
         addAndMakeVisible (hidePluginWindowsLabel);
-        hidePluginWindowsLabel.setText ("Hide plugin windows when app inactive", dontSendNotification);
+        hidePluginWindowsLabel.setText ("Hide Plugin Windows when App Inactive", dontSendNotification);
         hidePluginWindowsLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (hidePluginWindows);
         hidePluginWindows.setClickingTogglesState (true);
@@ -390,7 +390,7 @@ public:
         const String sessionStr = "graph";
 #endif
 
-        openLastSessionLabel.setText (String ("Open last used XXX").replace ("XXX", sessionStr),
+        openLastSessionLabel.setText (String ("Open Last Used XXX").replace ("XXX", sessionStr),
                                       dontSendNotification);
         openLastSessionLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (openLastSession);
@@ -399,7 +399,7 @@ public:
         openLastSession.getToggleStateValue().addListener (this);
 
         addAndMakeVisible (askToSaveSessionLabel);
-        askToSaveSessionLabel.setText (String ("Ask to save XXXs on exit").replace ("XXX", sessionStr),
+        askToSaveSessionLabel.setText (String ("Ask to Save XXXs on Exit").replace ("XXX", sessionStr),
                                        dontSendNotification);
         askToSaveSessionLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (askToSaveSession);
@@ -408,7 +408,7 @@ public:
         askToSaveSession.getToggleStateValue().addListener (this);
 
         addAndMakeVisible (systrayLabel);
-        systrayLabel.setText ("Show system tray", dontSendNotification);
+        systrayLabel.setText ("Show System Tray", dontSendNotification);
         systrayLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (systray);
         systray.setClickingTogglesState (true);
@@ -416,11 +416,11 @@ public:
         systray.getToggleStateValue().addListener (this);
 
         addAndMakeVisible (mainWindowVisibilityLabel);
-        mainWindowVisibilityLabel.setText ("Main window visibility", dontSendNotification);
+        mainWindowVisibilityLabel.setText ("Main Window Visibility", dontSendNotification);
         mainWindowVisibilityLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (mainWindowVisibilityBox);
-        mainWindowVisibilityBox.addItem ("Start visible", MainWindowStartVisible);
-        mainWindowVisibilityBox.addItem ("Start hidden", MainWindowStartHidden);
+        mainWindowVisibilityBox.addItem ("Start Visible", MainWindowStartVisible);
+        mainWindowVisibilityBox.addItem ("Start Hidden", MainWindowStartHidden);
         const int savedVisibility = settings.getUserSettings()->getIntValue ("mainWindowVisible", 1);
         const int visibility = savedVisibility == 0 ? 0 : 1;
         if (savedVisibility != visibility)
@@ -440,7 +440,7 @@ public:
         };
 
         addAndMakeVisible (menuAppearanceLabel);
-        menuAppearanceLabel.setText ("Menu appearance", dontSendNotification);
+        menuAppearanceLabel.setText ("Menu Appearance", dontSendNotification);
         menuAppearanceLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (menuAppearanceBox);
         menuAppearanceBox.addItem ("Auto", MenuAppearanceAuto);
@@ -463,7 +463,7 @@ public:
         };
 
         addAndMakeVisible (desktopScaleLabel);
-        desktopScaleLabel.setText ("Desktop scale", dontSendNotification);
+        desktopScaleLabel.setText ("Desktop Scale", dontSendNotification);
         desktopScaleLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (desktopScale);
         desktopScale.textFromValueFunction = [] (double value) -> String {
@@ -485,7 +485,7 @@ public:
         };
 
         addAndMakeVisible (defaultSessionFileLabel);
-        defaultSessionFileLabel.setText ("Default new Session", dontSendNotification);
+        defaultSessionFileLabel.setText ("Default New Session", dontSendNotification);
         defaultSessionFileLabel.setFont (Font (FontOptions (12.0, Font::bold)));
         addAndMakeVisible (defaultSessionFile);
         defaultSessionFile.setCurrentFile (settings.getDefaultNewSessionFile(), dontSendNotification);
@@ -786,7 +786,7 @@ public:
 
         addAndMakeVisible (midiOutLatencyLabel);
         midiOutLatencyLabel.setFont (Font (FontOptions (12.0, Font::bold)));
-        midiOutLatencyLabel.setText ("Output latency (ms)", dontSendNotification);
+        midiOutLatencyLabel.setText ("Output Latency (ms)", dontSendNotification);
         addAndMakeVisible (midiOutLatencyLabel);
 
         addAndMakeVisible (midiOutLatency);
