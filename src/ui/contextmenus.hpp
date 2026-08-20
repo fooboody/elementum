@@ -105,7 +105,6 @@ public:
             for (int i = 0; i < favorites.size(); ++i)
                 favMenu.addItem (favoriteResultOffset + i, favorites.getReference (i).name);
             addSubMenu ("Favorites", favMenu);
-            addSeparator();
         }
 
         addUnverifiedPluginsMenu();
