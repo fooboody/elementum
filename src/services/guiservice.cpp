@@ -249,6 +249,21 @@ public:
         lastExportedGraph = DataPath::defaultGraphDir();
     }
 
+    void initializeGraphPath()
+    {
+        lastExportedGraph = DataPath::defaultGraphDir();
+
+        if (auto* props = gui.context().settings().getUserSettings())
+        {
+            const File savedDirectory (props->getValue (Settings::lastGraphSaveDirectoryKey));
+            if (savedDirectory.isDirectory())
+                lastExportedGraph = savedDirectory;
+        }
+
+        if (! lastExportedGraph.isDirectory())
+            lastExportedGraph.createDirectory();
+    }
+
     void restoreRecents()
     {
         const auto recentList = DataPath::applicationDataDir().getChildFile ("recents.txt");
@@ -370,6 +385,7 @@ void GuiService::saveProperties (PropertiesFile* props)
 
 void GuiService::activate()
 {
+    impl->initializeGraphPath();
     SystemTray::init (*this);
     context().devices().addChangeListener (this);
     if (auto maps = commands().getKeyMappings())
@@ -1103,7 +1119,15 @@ bool GuiService::perform (const InvocationInfo& info)
             {
                 FileChooser chooser (TRANS ("Export Graph"), impl->lastExportedGraph, "*.elg");
                 if (chooser.browseForFileToSave (true))
-                    sibling<SessionService>()->exportGraph (node, chooser.getResult());
+                {
+                    const auto file = chooser.getResult();
+                    sibling<SessionService>()->exportGraph (node, file);
+                    impl->lastExportedGraph = file.getParentDirectory();
+
+                    if (auto* props = context().settings().getUserSettings())
+                        props->setValue (Settings::lastGraphSaveDirectoryKey,
+                                         impl->lastExportedGraph.getFullPathName());
+                }
                 if (auto* gui = sibling<GuiService>())
                     gui->stabilizeContent();
             }

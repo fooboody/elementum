@@ -44,6 +44,8 @@ public:
     static const char* hidePluginWindowsWhenFocusLostKey;
     static const char* lastGraphKey;
     static const char* lastSessionKey;
+    static const char* lastSessionSaveDirectoryKey;
+    static const char* lastGraphSaveDirectoryKey;
     static const char* legacyInterfaceKey;
     static const char* midiEngineKey;
     static const char* oscHostPortKey;

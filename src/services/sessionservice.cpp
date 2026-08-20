@@ -40,6 +40,16 @@ void SessionService::activate()
     currentSession = context().session();
     document.reset (new SessionDocument (currentSession));
     changeResetter.reset (new ChangeResetter (*this));
+
+    auto preferredSaveAsDirectory = DataPath::defaultSessionDir();
+    if (auto* props = context().settings().getUserSettings())
+    {
+        const File savedDirectory (props->getValue (Settings::lastSessionSaveDirectoryKey));
+        if (savedDirectory.isDirectory())
+            preferredSaveAsDirectory = savedDirectory;
+    }
+
+    document->setPreferredSaveAsDirectory (preferredSaveAsDirectory);
     document->setFile (DataPath::defaultSessionDir());
 }
 
@@ -230,7 +240,17 @@ void SessionService::saveSession (const bool saveAs, const bool askForFile, cons
         document->setChangedFlag (false);
         jassert (! hasSessionChanged());
         if (auto* us = context().settings().getUserSettings())
+        {
             us->setValue (Settings::lastSessionKey, document->getFile().getFullPathName());
+
+            if (saveAs)
+            {
+                const auto directory = document->getFile().getParentDirectory();
+                if (directory.isDirectory())
+                    us->setValue (Settings::lastSessionSaveDirectoryKey,
+                                  directory.getFullPathName());
+            }
+        }
 
         if (saveAs)
         {

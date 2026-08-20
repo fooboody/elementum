@@ -19,9 +19,22 @@ public:
     Result saveDocument (const File& file) override;
     File getLastDocumentOpened() override;
     void setLastDocumentOpened (const File& file) override;
-    File getSuggestedSaveAsFile (const File&) override
+    File getSuggestedSaveAsFile (const File& defaultFile) override
     {
-        return getFile().getNonexistentSibling (true);
+        if (getFile().existsAsFile())
+            return getFile().getNonexistentSibling (true);
+
+        auto directory = preferredSaveAsDirectory;
+        if (! directory.isDirectory())
+            directory.createDirectory();
+
+        return directory.isDirectory() ? directory.getChildFile (defaultFile.getFileName())
+                                        : defaultFile;
+    }
+
+    void setPreferredSaveAsDirectory (const File& directory)
+    {
+        preferredSaveAsDirectory = directory;
     }
 
     void changeListenerCallback (ChangeBroadcaster*) override;
@@ -29,6 +42,7 @@ public:
 private:
     SessionPtr session;
     File lastSession;
+    File preferredSaveAsDirectory;
     friend class Session;
     void onSessionChanged();
 };
