@@ -71,6 +71,29 @@ BOOST_AUTO_TEST_CASE (InvalidHexColoursUseTheirRegisteredDefaults)
     directory.deleteRecursively();
 }
 
+BOOST_AUTO_TEST_CASE (ThreeDigitHexColoursAreExpandedAndPersisted)
+{
+    const auto directory = makeSettingsDirectory();
+
+    {
+        Settings settings (directory);
+        auto* const props = settings.getUserSettings();
+        BOOST_REQUIRE (props != nullptr);
+        props->setValue (Settings::audioConnectionCableColorKey, "#abc");
+        BOOST_REQUIRE (props->saveIfNeeded());
+    }
+
+    {
+        Settings settings (directory);
+        auto* const props = settings.getUserSettings();
+        BOOST_REQUIRE (props != nullptr);
+        BOOST_CHECK_EQUAL (settings.getColour (Settings::audioConnectionCableColorKey).getARGB(), 0xffaabbcc);
+        BOOST_CHECK_EQUAL (props->getValue (Settings::audioConnectionCableColorKey), "#aabbcc");
+    }
+
+    directory.deleteRecursively();
+}
+
 BOOST_AUTO_TEST_CASE (SixAndEightDigitHexColoursAreParsed)
 {
     const auto directory = makeSettingsDirectory();

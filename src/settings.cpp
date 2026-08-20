@@ -194,30 +194,72 @@ const ColourSettingDefault* findColourSettingDefault (const std::string_view key
     return nullptr;
 }
 
+String normaliseColourSettingValue (String value)
+{
+    value = value.trim();
+    if (! value.startsWithChar ('#'))
+        return {};
+
+    auto hex = value.substring (1);
+    if (hex.length() == 3)
+    {
+        String expanded;
+        for (int i = 0; i < hex.length(); ++i)
+        {
+            const auto digit = String::charToString (hex[i]);
+            expanded << digit << digit;
+        }
+        hex = expanded;
+    }
+
+    if (hex.length() != 6 && hex.length() != 8)
+        return {};
+
+    constexpr auto hexDigits = "0123456789abcdefABCDEF";
+    for (int i = 0; i < hex.length(); ++i)
+        if (! String (hexDigits).containsChar (hex[i]))
+            return {};
+
+    return "#" + hex;
+}
+
+bool normaliseColourSettings (PropertiesFile* props)
+{
+    if (props == nullptr)
+        return false;
+
+    bool changed = false;
+    for (const auto& setting : colourSettingDefaults)
+    {
+        const auto value = props->getValue (setting.key);
+        const auto normalised = normaliseColourSettingValue (value);
+        if (normalised.isNotEmpty() && normalised != value)
+        {
+            props->setValue (setting.key, normalised);
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+
 Colour getColourSetting (const PropertiesFile* props, const char* key, const Colour fallback)
 {
     if (props == nullptr)
         return fallback;
 
-    auto value = props->getValue (key).trim();
-    if (! value.startsWithChar ('#'))
+    const auto normalised = normaliseColourSettingValue (props->getValue (key));
+    if (normalised.isEmpty())
         return fallback;
 
-    value = value.substring (1);
-    if (value.length() != 6 && value.length() != 8)
-        return fallback;
-
-    constexpr auto hexDigits = "0123456789abcdefABCDEF";
-    for (int i = 0; i < value.length(); ++i)
-        if (! String (hexDigits).containsChar (value[i]))
-            return fallback;
-
+    auto value = normalised.substring (1);
     auto argb = static_cast<uint32> (value.getHexValue64());
     if (value.length() == 6)
         argb |= 0xff000000;
 
     return Colour (argb);
 }
+
 } // namespace
 
 File Settings::getSettingsFileForDataDirectory (const File& directory)
@@ -261,6 +303,7 @@ Settings::Settings (const File& applicationDataDirectory_)
         for (const auto& setting : colourSettingDefaults)
             setDefault (setting.key, setting.value);
 
+        changed = normaliseColourSettings (props) || changed;
         if (changed)
             props->saveIfNeeded();
     }
@@ -327,14 +370,31 @@ void Settings::reloadColourSettings()
         return;
 
     PropertiesFile external (file, options);
+    bool changed = false;
     for (const auto& setting : colourSettingDefaults)
     {
-        const auto value = external.getValue (setting.key);
+        const auto rawValue = external.getValue (setting.key);
+        const auto normalised = normaliseColourSettingValue (rawValue);
+        const auto value = normalised.isNotEmpty() ? normalised : rawValue;
+
         if (value.isNotEmpty())
-            props->setValue (setting.key, value);
-        else
+        {
+            if (props->getValue (setting.key) != value)
+            {
+                props->setValue (setting.key, value);
+                changed = true;
+            }
+        }
+        else if (props->containsKey (setting.key))
+        {
             props->removeValue (setting.key);
+            changed = true;
+        }
     }
+
+    changed = normaliseColourSettings (props) || changed;
+    if (changed)
+        props->saveIfNeeded();
 
     sendChangeMessage();
 }
