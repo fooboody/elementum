@@ -551,8 +551,8 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
         }
 
         menu.addSeparator();
-        menu.addItem (5, "Change orientation...");
-        menu.addItem (7, "Gather nodes...");
+        menu.addItem (5, "Change Orientation");
+        menu.addItem (7, "Fix Out-of-Bounds Nodes");
 
         menu.addSeparator();
         menu.addSectionHeader ("Plugins");
