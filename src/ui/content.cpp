@@ -10,6 +10,7 @@
 #include <element/plugins.hpp>
 #include <element/ui/commands.hpp>
 #include <element/ui/content.hpp>
+#include <element/ui/preferences.hpp>
 #include <element/ui/style.hpp>
 
 #include "services/mappingservice.hpp"
@@ -255,6 +256,21 @@ class Content::StatusBar : public Component,
                            private Timer
 {
 public:
+    /** Label that invokes a handler when double-clicked. */
+    class ClickableLabel : public Label
+    {
+    public:
+        std::function<void()> onDoubleClicked;
+
+        void mouseDoubleClick (const MouseEvent& ev) override
+        {
+            if (onDoubleClicked)
+                onDoubleClicked();
+            else
+                Label::mouseDoubleClick (ev);
+        }
+    };
+
     StatusBar (Context& g)
         : world (g),
           devices (world.devices()),
@@ -263,9 +279,20 @@ public:
         sampleRate.addListener (this);
         streamingStatus.addListener (this);
 
+        if (auto* const deviceService = world.services().find<DeviceService>())
+            deviceStatusConnection = deviceService->sigAudioDeviceStatus.connect (
+                [this] (const AudioDeviceMonitor::Status&) { updateLabels(); });
+
         addAndMakeVisible (sampleRateLabel);
         addAndMakeVisible (streamingStatusLabel);
         addAndMakeVisible (statusLabel);
+
+        statusLabel.setMouseCursor (MouseCursor::PointingHandCursor);
+        statusLabel.setTooltip ("Double-click to open audio settings");
+        statusLabel.onDoubleClicked = [this]() {
+            if (auto* const ui = world.services().find<UI>())
+                ui->showPreferencesDialog (ELEMENT_AUDIO_SETTINGS_NAME);
+        };
         addAndMakeVisible (dataDirectoryLabel);
         addMouseListener (this, true);
         dataDirectoryLabel.setMouseCursor (MouseCursor::PointingHandCursor);
@@ -288,6 +315,7 @@ public:
 
     ~StatusBar()
     {
+        deviceStatusConnection.disconnect();
         latencySamplesChangedConnection.disconnect();
         sampleRate.removeListener (this);
         streamingStatus.removeListener (this);
@@ -363,7 +391,20 @@ public:
         {
             sampleRateLabel.setText ("N/A", dontSendNotification);
             streamingStatusLabel.setText ("N/A", dontSendNotification);
+            AudioDeviceMonitor::Status deviceStatus;
+            if (auto* const deviceService = world.services().find<DeviceService>())
+                deviceStatus = deviceService->audioDeviceStatus();
+
+            if (deviceStatus.state == AudioDeviceMonitor::State::waiting
+                && deviceStatus.deviceName.isNotEmpty())
+            {
+                statusLabel.setText (String ("Disconnected - waiting for ") + deviceStatus.deviceName,
+                                     dontSendNotification);
+            }
+            else
+            {
             statusLabel.setText ("No Device", dontSendNotification);
+            }
             statusLabel.setColour (Label::textColourId, Colors::toggleRed);
         }
 
@@ -389,11 +430,13 @@ private:
     DeviceManager& devices;
     PluginManager& plugins;
 
-    Label sampleRateLabel, streamingStatusLabel, statusLabel, dataDirectoryLabel;
+    Label sampleRateLabel, streamingStatusLabel, dataDirectoryLabel;
+    ClickableLabel statusLabel;
     ValueTree node;
     Value sampleRate, streamingStatus, status;
 
     SignalConnection latencySamplesChangedConnection;
+    SignalConnection deviceStatusConnection;
 
     double getProcessCpuUsage()
     {

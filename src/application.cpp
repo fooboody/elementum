@@ -25,6 +25,7 @@
 #include "engine/midiengine.hpp"
 #include "scripting.hpp"
 #include <element/datapath.hpp>
+#include "services/deviceservice.hpp"
 #include "services/sessionservice.hpp"
 #include "log.hpp"
 #include "messages.hpp"
@@ -593,23 +594,20 @@ private:
 
         auto* props = settings.getUserSettings();
 
-        String error = "No device found at startup";
-        if (auto dxml = props->getXmlValue ("devices"))
+        String error;
+        if (auto dxml = props->getXmlValue (Settings::devicesKey))
         {
+            // Never substitute another device for the saved one: if it isn't
+            // connected right now, stay silent and let the device monitor
+            // restore it when it comes back (see AudioDeviceMonitor).
             error = devices.initialise (DeviceManager::maxAudioChannels,
                                         DeviceManager::maxAudioChannels,
                                         dxml.get(),
-                                        true,
+                                        false,
                                         "*",
                                         nullptr);
-            if (error.isNotEmpty())
-            {
-                auto setup = devices.getAudioDeviceSetup();
-                error = devices.setAudioDeviceSetup (setup, true);
-            }
         }
-
-        if (error.isNotEmpty())
+        else
         {
 #if JUCE_WINDOWS
             devices.setCurrentAudioDeviceType ("Windows Audio (Low Latency Mode)", true);
@@ -620,7 +618,7 @@ private:
 
         if (error.isNotEmpty())
         {
-            Logger::writeToLog (error);
+            Logger::writeToLog (String ("[element] audio device not opened at startup: ") + error);
         }
     }
 
@@ -1028,6 +1026,8 @@ void Application::resumed()
 {
     auto& devices (world->devices());
     devices.restartLastAudioDevice();
+    if (auto* const deviceService = world->services().find<DeviceService>())
+        deviceService->onResume();
 }
 
 void Application::finishLaunching()
