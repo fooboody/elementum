@@ -157,14 +157,20 @@ Colour PortComponent::getColor() const noexcept
                                                        : Settings::audioDisconnectedPortColorKey,
                                              Colours::lightgreen);
         case PortType::Control:
-            return Colours::lightblue;
+            return detail::configuredColour (const_cast<PortComponent*> (this),
+                                             connected ? Settings::controlConnectedPortColorKey
+                                                       : Settings::controlDisconnectedPortColorKey,
+                                             Colours::lightblue);
         case PortType::Midi:
             return detail::configuredColour (const_cast<PortComponent*> (this),
                                              connected ? Settings::midiConnectedPortColorKey
                                                        : Settings::midiDisconnectedPortColorKey,
                                              Colours::orange);
         default:
-            return Colours::red;
+            return detail::configuredColour (const_cast<PortComponent*> (this),
+                                             connected ? Settings::otherConnectedPortColorKey
+                                                       : Settings::otherDisconnectedPortColorKey,
+                                             Colours::red);
     }
 }
 

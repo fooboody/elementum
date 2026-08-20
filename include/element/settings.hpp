@@ -67,6 +67,10 @@ public:
     static const char* transportStartStopContinue;
     static const char* audioConnectedPortColorKey;
     static const char* audioDisconnectedPortColorKey;
+    static const char* controlConnectedPortColorKey;
+    static const char* controlDisconnectedPortColorKey;
+    static const char* otherConnectedPortColorKey;
+    static const char* otherDisconnectedPortColorKey;
     static const char* midiConnectedPortColorKey;
     static const char* midiDisconnectedPortColorKey;
     static const char* audioConnectionCableColorKey;

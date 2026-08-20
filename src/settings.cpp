@@ -55,6 +55,10 @@ const char* Settings::authAppcastUrlKey = "authAppcastUrl";
 const char* Settings::transportStartStopContinue = "transportStartStopContinueKey";
 const char* Settings::audioConnectedPortColorKey = "audioConnectedPortColor";
 const char* Settings::audioDisconnectedPortColorKey = "audioDisconnectedPortColor";
+const char* Settings::controlConnectedPortColorKey = "controlConnectedPortColor";
+const char* Settings::controlDisconnectedPortColorKey = "controlDisconnectedPortColor";
+const char* Settings::otherConnectedPortColorKey = "otherConnectedPortColor";
+const char* Settings::otherDisconnectedPortColorKey = "otherDisconnectedPortColor";
 const char* Settings::midiConnectedPortColorKey = "midiConnectedPortColor";
 const char* Settings::midiDisconnectedPortColorKey = "midiDisconnectedPortColor";
 const char* Settings::audioConnectionCableColorKey = "audioConnectionCableColor";
@@ -162,6 +166,10 @@ const ColourSettingDefault colourSettingDefaults[] {
     { Settings::popupMenuHighlightedTextColorKey, "#ffffff", Colours::white },
     { Settings::audioConnectedPortColorKey, "#90EE90", Colour (0xff90ee90) },
     { Settings::audioDisconnectedPortColorKey, "#90EE90", Colour (0xff90ee90) },
+    { Settings::controlConnectedPortColorKey, "#ADD8E6", Colour (0xffadd8e6) },
+    { Settings::controlDisconnectedPortColorKey, "#ADD8E6", Colour (0xffadd8e6) },
+    { Settings::otherConnectedPortColorKey, "#FF0000", Colour (0xffff0000) },
+    { Settings::otherDisconnectedPortColorKey, "#FF0000", Colour (0xffff0000) },
     { Settings::midiConnectedPortColorKey, "#FFA500", Colour (0xffffa500) },
     { Settings::midiDisconnectedPortColorKey, "#FFA500", Colour (0xffffa500) },
     { Settings::audioConnectionCableColorKey, "#484848", Colour (0xff484848) },
