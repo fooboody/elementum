@@ -1032,7 +1032,7 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
             int flags = 0;
             if (getMainViewName() == EL_VIEW_KEYMAP_EDITOR)
                 flags |= Info::isTicked;
-            result.setInfo ("Keymappings", "Show the session's controllers", "UI", flags);
+            result.setInfo ("Key Mappings", "Show the session's controllers", "UI", flags);
             break;
         }
         case Commands::showPluginManager: {
@@ -1047,7 +1047,8 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
             int flags = 0;
             if (getMainViewName() == EL_VIEW_SESSION_SETTINGS)
                 flags |= Info::isTicked;
-            result.setInfo ("Session Settings", "Session Settings", "Session", flags);
+                        result.setInfo ("Session Settings", "Session Settings", "Session", flags);
+            break;
         }
         //=====
         case Commands::showGraphConfig: {
@@ -1105,7 +1106,7 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
             int flags = 0;
             if (isMeterBridgeVisible())
                 flags |= Info::isTicked;
-            result.setInfo ("MeterBridge", "Toggle the Meter Bridge", "UI", flags);
+            result.setInfo ("Meter Bridge", "Toggle the Meter Bridge", "UI", flags);
             break;
         }
         case Commands::toggleChannelStrip: {
@@ -1125,7 +1126,7 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
         }
         case Commands::selectAll: {
             int flags = 0;
-            result.setInfo ("Select all", "Select all nodes", "UI", flags);
+            result.setInfo ("Select All", "Select all nodes", "UI", flags);
             result.addDefaultKeypress ('a', ModifierKeys::commandModifier);
             break;
         }

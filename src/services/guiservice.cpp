@@ -807,14 +807,14 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             break;
         case Commands::showAllPluginWindows:
             result.addDefaultKeypress ('w', ModifierKeys::commandModifier | ModifierKeys::altModifier | ModifierKeys::shiftModifier);
-            result.setInfo ("Show all plugin windows", "Show all plugins for the current graph.", "Session", 0);
+            result.setInfo ("Show All Plugin Windows", "Show all plugins for the current graph.", "Session", 0);
             break;
         case Commands::hideAllPluginWindows:
             result.addDefaultKeypress ('w', ModifierKeys::commandModifier | ModifierKeys::altModifier);
-            result.setInfo ("Hide all plugin windows", "Hides all plugins on the current graph.", "Session", 0);
+            result.setInfo ("Hide All Plugin Windows", "Hides all plugins on the current graph.", "Session", 0);
             break;
         case Commands::resetPluginWindows:
-            result.setInfo ("Reset plugin windows", "Move off-screen plugin windows back on screen.", "Session", 0);
+            result.setInfo ("Reset Plugin Windows", "Move off-screen plugin windows back on screen.", "Session", 0);
             break;
         case Commands::toggleMidiLearn: {
             int flags = 0;
@@ -849,26 +849,26 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             break;
         case Commands::sessionAddGraph:
             result.addDefaultKeypress ('n', ModifierKeys::shiftModifier | ModifierKeys::commandModifier);
-            result.setInfo ("Add graph", "Add a new graph to the session", "Session", 0);
+            result.setInfo ("Add Graph", "Add a new graph to the session", "Session", 0);
             break;
         case Commands::sessionDuplicateGraph:
             result.addDefaultKeypress ('d', ModifierKeys::shiftModifier | ModifierKeys::commandModifier);
-            result.setInfo ("Duplicate current graph", "Duplicates the currently active graph", "Session", 0);
+            result.setInfo ("Duplicate Current Graph", "Duplicates the currently active graph", "Session", 0);
             break;
         case Commands::sessionDeleteGraph:
             result.addDefaultKeypress (KeyPress::backspaceKey, ModifierKeys::commandModifier);
-            result.setInfo ("Delete current graph", "Deletes the current graph", "Session", 0);
+            result.setInfo ("Delete Current Graph", "Deletes the current graph", "Session", 0);
             break;
         case Commands::sessionInsertPlugin:
             result.addDefaultKeypress ('p', ModifierKeys::commandModifier);
-            result.setInfo ("Insert plugin", "Add a plugin in the current graph", "Session", Info::isDisabled);
+            result.setInfo ("Insert Plugin", "Add a plugin in the current graph", "Session", Info::isDisabled);
             break;
         //======================================================================
         case Commands::importGraph:
-            result.setInfo ("Import graph", "Import a graph into current session", "Session", 0);
+            result.setInfo ("Import Graph", "Import a graph into current session", "Session", 0);
             break;
         case Commands::exportGraph:
-            result.setInfo ("Export current graph", "Export the current graph to file", "Session", 0);
+            result.setInfo ("Export Current Graph", "Export the current graph to file", "Session", 0);
             break;
         //======================================================================
         case Commands::panic:
