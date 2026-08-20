@@ -714,7 +714,7 @@ void BlockComponent::mouseDown (const MouseEvent& e)
         auto* const world = ViewHelpers::getGlobals (this);
         auto& plugins (world->plugins());
         NodePopupMenu menu (node);
-        menu.addReplaceSubmenu (plugins);
+        menu.addReplaceSubmenu (plugins, world->settings());
 
         if (! node.isMidiIONode() && ! node.isMidiDevice())
         {
@@ -800,6 +800,11 @@ void BlockComponent::mouseDown (const MouseEvent& e)
                     }
                 }
             }
+        }
+        else if (menu.isReplacePluginResultCode (result))
+        {
+            ViewHelpers::postMessageFor (this,
+                                         new ReplaceNodeMessage (node, menu.getReplacePluginDescription (result)));
         }
         else if (KnownPluginList::getIndexChosenByMenu (types, result) >= 0)
         {

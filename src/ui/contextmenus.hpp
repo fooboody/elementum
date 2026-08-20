@@ -400,16 +400,35 @@ public:
         menuToAddTo.addSubMenu ("Oversample", osMenu);
     }
 
-    inline void addReplaceSubmenu (PluginManager& plugins)
+        inline void addReplaceSubmenu (PluginManager& plugins, const Settings& settings)
     {
 #if ! ELEMENT_SE
         PopupMenu menu;
-        KnownPluginList::addToMenu (menu,
-                                    plugins.getVisiblePluginTypes(),
-                                    KnownPluginList::sortByManufacturer,
-                                    node.getFileOrIdentifier().toString());
+        replaceTypes = plugins.getVisiblePluginTypes();
+
+        if (settings.groupPluginManufacturersByInitial())
+            addIndexedReplacePluginItems (menu);
+        else
+            KnownPluginList::addToMenu (menu,
+                                        replaceTypes,
+                                        KnownPluginList::sortByManufacturer,
+                                        node.getFileOrIdentifier().toString());
+
         addSubMenu ("Replace", menu);
 #endif
+    }
+
+    bool isReplacePluginResultCode (const int resultCode) const
+    {
+        return isPositiveAndBelow (resultCode - replacePluginResultOffset, replaceTypes.size());
+    }
+
+    PluginDescription getReplacePluginDescription (const int resultCode) const
+    {
+        const auto index = resultCode - replacePluginResultOffset;
+        return isPositiveAndBelow (index, replaceTypes.size())
+                   ? replaceTypes.getReference (index)
+                   : PluginDescription();
     }
 
     inline void addProgramsMenu (const String& subMenuName = "Factory Presets")
@@ -595,6 +614,107 @@ public:
     }
 
 private:
+    struct ReplaceManufacturerGroup
+    {
+        String name;
+        String index;
+        Array<int> pluginIndices;
+    };
+
+    static constexpr int replacePluginResultOffset = 200000;
+
+    Array<ReplaceManufacturerGroup> getReplaceManufacturerGroups() const
+    {
+        Array<ReplaceManufacturerGroup> groups;
+
+        for (int pluginIndex = 0; pluginIndex < replaceTypes.size(); ++pluginIndex)
+        {
+            const auto& plugin = replaceTypes.getReference (pluginIndex);
+            const auto manufacturer = plugin.manufacturerName.trim();
+            const auto displayName = manufacturer.isNotEmpty() ? manufacturer : String ("Other");
+            const auto index = PluginsPopupMenu::getManufacturerInitialIndex (manufacturer);
+
+            auto* group = [&] () -> ReplaceManufacturerGroup*
+            {
+                for (auto& candidate : groups)
+                    if (candidate.name.equalsIgnoreCase (displayName) && candidate.index == index)
+                        return &candidate;
+
+                return nullptr;
+            }();
+
+            if (group == nullptr)
+            {
+                ReplaceManufacturerGroup newGroup;
+                newGroup.name = displayName;
+                newGroup.index = index;
+                groups.add (std::move (newGroup));
+                group = &groups.getReference (groups.size() - 1);
+            }
+
+            group->pluginIndices.add (pluginIndex);
+        }
+
+        std::stable_sort (groups.begin(), groups.end(), [] (const auto& lhs, const auto& rhs)
+        {
+            return lhs.name.compareIgnoreCase (rhs.name) < 0;
+        });
+
+        for (auto& group : groups)
+        {
+            std::stable_sort (group.pluginIndices.begin(), group.pluginIndices.end(), [this] (const int lhs, const int rhs)
+            {
+                return replaceTypes.getReference (lhs).name.compareIgnoreCase (replaceTypes.getReference (rhs).name) < 0;
+            });
+        }
+
+        return groups;
+    }
+
+    void addReplacePluginDescriptions (PopupMenu& menu, const ReplaceManufacturerGroup& group) const
+    {
+        for (const auto pluginIndex : group.pluginIndices)
+        {
+            const auto& plugin = replaceTypes.getReference (pluginIndex);
+            auto name = plugin.name;
+            int nameMatches = 0;
+            for (const auto otherIndex : group.pluginIndices)
+                if (replaceTypes.getReference (otherIndex).name == plugin.name && ++nameMatches > 1)
+                    break;
+
+            if (nameMatches > 1)
+                name << " (" << plugin.pluginFormatName << ')';
+
+            menu.addItem (replacePluginResultOffset + pluginIndex, name);
+        }
+    }
+
+    void addIndexedReplacePluginItems (PopupMenu& menu) const
+    {
+        const auto groups = getReplaceManufacturerGroups();
+
+        StringArray indexes { "Other", "0-9" };
+        for (juce_wchar character = 'A'; character <= 'Z'; ++character)
+            indexes.add (String::charToString (character));
+
+        for (const auto& index : indexes)
+        {
+            PopupMenu indexMenu;
+            for (const auto& group : groups)
+            {
+                if (group.index != index)
+                    continue;
+
+                PopupMenu manufacturerMenu;
+                addReplacePluginDescriptions (manufacturerMenu, group);
+                indexMenu.addSubMenu (group.name, manufacturerMenu);
+            }
+
+            if (indexMenu.getNumItems() > 0)
+                menu.addSubMenu (index, indexMenu);
+        }
+    }
+
     Node node;
     OwnedArray<PresetInfo> presetItems;
     Port port;
@@ -796,6 +916,7 @@ private:
     };
 
     HashMap<int, ResultOp*> resultMap;
+    Array<PluginDescription> replaceTypes;
     OwnedArray<ResultOp> deleter;
 
     void addMainItems (const bool showHeader)
