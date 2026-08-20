@@ -238,6 +238,36 @@ private:
         }
     }
 
+    String getUnverifiedDisplayName (const String& formatName, const String& label) const
+    {
+        if (settings == nullptr || ! File::isAbsolutePath (label))
+            return label;
+
+        auto* const properties = settings->getUserSettings();
+        if (properties == nullptr)
+            return label;
+
+        const File pluginFile (File::createFileWithoutCheckingPath (label));
+        const FileSearchPath searchPaths (properties->getValue (Settings::lastPluginScanPathPrefix + formatName));
+        String shortestRelativePath;
+
+        for (int i = 0; i < searchPaths.getNumPaths(); ++i)
+        {
+            const File searchPath (searchPaths[i]);
+            if (! pluginFile.isAChildOf (searchPath))
+                continue;
+
+            const auto relativePath = pluginFile.getRelativePathFrom (searchPath);
+            if (File::isAbsolutePath (relativePath) || relativePath.isEmpty())
+                continue;
+
+            if (shortestRelativePath.isEmpty() || relativePath.length() < shortestRelativePath.length())
+                shortestRelativePath = relativePath;
+        }
+
+        return shortestRelativePath.isNotEmpty() ? shortestRelativePath : label;
+    }
+
     void addUnverifiedPluginsMenu()
     {
         PopupMenu unverifiedMenu;
@@ -250,8 +280,12 @@ private:
             if (auto* format = plugins->getAudioPluginFormat (name))
             {
                 for (int i = lastSize; i < unverified.size(); ++i)
+                {
+                    const auto& description = *unverified.getUnchecked (i);
+                    const auto label = format->getNameOfPluginFromIdentifier (description.fileOrIdentifier);
                     formatMenu.addItem (unverifiedResultOffset + i,
-                                        format->getNameOfPluginFromIdentifier (unverified.getUnchecked (i)->fileOrIdentifier));
+                                        getUnverifiedDisplayName (name, label));
+                }
             }
             else if (name == "LV2")
             {
