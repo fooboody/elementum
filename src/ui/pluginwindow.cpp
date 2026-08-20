@@ -145,7 +145,7 @@ public:
         else if (button == &nodeButton)
         {
             auto* const world = ViewHelpers::getGlobals (this);
-            auto* callback = new MenuCallback (this, node);
+            auto* callback = new MenuCallback (this, node, world != nullptr ? &world->plugins() : nullptr);
             NodePopupMenu& menu (callback->menu);
             menu.addSeparator();
             menu.addOptionsSubmenu();
@@ -217,8 +217,8 @@ private:
     class MenuCallback : public ModalComponentManager::Callback
     {
     public:
-        MenuCallback (PluginWindowContent* c, const Node& n)
-            : content (c), menu (n)
+        MenuCallback (PluginWindowContent* c, const Node& n, PluginManager* plugins)
+            : content (c), menu (n, nullptr, plugins)
         {
         }
 

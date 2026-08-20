@@ -191,7 +191,7 @@ public:
     {
         auto* const world = ViewHelpers::getGlobals (this);
 
-        NodePopupMenu menu (node);
+        NodePopupMenu menu (node, nullptr, world != nullptr ? &world->plugins() : nullptr);
 
         if (world)
             menu.addPresetsMenu (world->presets());
@@ -209,7 +209,7 @@ public:
     {
         auto* const world = ViewHelpers::getGlobals (this);
 
-        NodePopupMenu menu (n, p);
+        NodePopupMenu menu (n, p, world != nullptr ? &world->plugins() : nullptr);
 
         if (world)
             menu.addPresetsMenu (world->presets());

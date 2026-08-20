@@ -713,7 +713,7 @@ void BlockComponent::mouseDown (const MouseEvent& e)
     {
         auto* const world = ViewHelpers::getGlobals (this);
         auto& plugins (world->plugins());
-        NodePopupMenu menu (node);
+        NodePopupMenu menu (node, nullptr, &plugins);
         menu.addReplaceSubmenu (plugins, world->settings());
 
         if (! node.isMidiIONode() && ! node.isMidiDevice())

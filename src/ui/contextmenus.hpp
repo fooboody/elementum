@@ -294,8 +294,10 @@ public:
 
     explicit NodePopupMenu() {}
 
-    NodePopupMenu (const Node& n, std::function<void (NodePopupMenu&)> beforeMainItems = nullptr)
-        : node (n)
+    NodePopupMenu (const Node& n,
+                   std::function<void (NodePopupMenu&)> beforeMainItems = nullptr,
+                   PluginManager* pluginManager = nullptr)
+        : node (n), plugins (pluginManager)
     {
         if (beforeMainItems)
         {
@@ -305,8 +307,8 @@ public:
         addMainItems (false);
     }
 
-    NodePopupMenu (const Node& n, const Port& p)
-        : node (n), port (p)
+    NodePopupMenu (const Node& n, const Port& p, PluginManager* pluginManager = nullptr)
+        : node (n), plugins (pluginManager), port (p)
     {
         addMainItems (false);
         NodeArray siblings;
@@ -716,6 +718,7 @@ private:
     }
 
     Node node;
+    PluginManager* plugins = nullptr;
     OwnedArray<PresetInfo> presetItems;
     Port port;
     const int firstResultOpId = 1024;
@@ -915,6 +918,42 @@ private:
         }
     };
 
+    struct FavoriteNodeOp : public ResultOp
+    {
+        FavoriteNodeOp (PluginManager& manager, const PluginDescription& plugin)
+            : plugins (manager), description (plugin) {}
+
+        PluginManager& plugins;
+        PluginDescription description;
+
+        bool isTicked() override { return plugins.isPluginFavorite (description); }
+
+        bool perform() override
+        {
+            plugins.setPluginFavorite (description, ! plugins.isPluginFavorite (description));
+            return true;
+        }
+    };
+
+    bool getPluginDescriptionForFavorite (PluginDescription& description) const
+    {
+        if (plugins == nullptr || ! node.isValid() || node.isGraph() || node.isIONode()
+            || node.isMidiInputDevice() || node.isMidiOutputDevice())
+            return false;
+
+        description = plugins->findDescriptionFor (node);
+        if (description.pluginFormatName.isEmpty() || description.pluginFormatName == "Internal")
+            return false;
+
+        if (auto knownDescription = plugins->getKnownPlugins().getTypeForIdentifierString (description.createIdentifierString()))
+        {
+            description = *knownDescription;
+            return true;
+        }
+
+        return false;
+    }
+
     HashMap<int, ResultOp*> resultMap;
     Array<PluginDescription> replaceTypes;
     OwnedArray<ResultOp> deleter;
@@ -926,6 +965,11 @@ private:
 
         addItemInternal (*this, node.isEnabled() ? "Disable" : "Enable", new EnableNodeOp (node));
         addItemInternal (*this, "Rename", new RenameNodeOp (node));
+
+        PluginDescription description;
+        if (getPluginDescriptionForFavorite (description))
+            addItemInternal (*this, "Favorite", new FavoriteNodeOp (*plugins, description));
+
         addSeparator();
 
         {
