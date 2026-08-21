@@ -565,6 +565,7 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
             popup.addSeparator();
             popup.addItem (5, "Change Orientation");
             popup.addItem (7, "Fix Out-of-Bounds Nodes");
+            popup.addItem (8, "Fit Canvas to Nodes");
 
             popup.addSeparator();
             popup.addSectionHeader ("Plugins");
@@ -687,7 +688,12 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                         setSize (width, height);
                     return;
                 }
+                case 8:
+                    if (auto* const editor = findParentComponentOfClass<GraphEditor>())
+                        editor->fitCanvasToNodes();
+                    return;
                 // Zoom options (commented don't look right yet)
+
                 // case 50: setZoomScale (0.25); return; break;
                 // case 51: setZoomScale (0.50); return; break;
                 case 52:

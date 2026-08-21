@@ -273,7 +273,40 @@ public:
     void setNode (const Node& node) { _editor.setNode (node); }
     void deleteSelectedNodes() { _editor.deleteSelectedNodes(); }
 
+    void fitCanvasToNodes()
+    {
+        const auto requiredSpace = _editor.getRequiredSpace();
+        const int viewportWidth = _viewport.getWidth();
+        const int viewportHeight = _viewport.getHeight();
+        const int scrollbarThickness = _viewport.getScrollBarThickness();
+
+        bool horizontalScrollbarNeeded = requiredSpace.getWidth() > viewportWidth;
+        bool verticalScrollbarNeeded = requiredSpace.getHeight() > viewportHeight;
+
+        // A scrollbar consumes space in the other axis, so converge on the same
+        // visibility conditions that the viewport will use for the resized canvas.
+        for (int i = 3; --i >= 0;)
+        {
+            const int availableWidth = jmax (0, viewportWidth - (verticalScrollbarNeeded ? scrollbarThickness : 0));
+            const int availableHeight = jmax (0, viewportHeight - (horizontalScrollbarNeeded ? scrollbarThickness : 0));
+            const bool needsHorizontal = requiredSpace.getWidth() > availableWidth;
+            const bool needsVertical = requiredSpace.getHeight() > availableHeight;
+
+            if (needsHorizontal == horizontalScrollbarNeeded && needsVertical == verticalScrollbarNeeded)
+                break;
+
+            horizontalScrollbarNeeded = needsHorizontal;
+            verticalScrollbarNeeded = needsVertical;
+        }
+
+        const int availableWidth = jmax (0, viewportWidth - (verticalScrollbarNeeded ? scrollbarThickness : 0));
+        const int availableHeight = jmax (0, viewportHeight - (horizontalScrollbarNeeded ? scrollbarThickness : 0));
+        _editor.setSize (jmax (requiredSpace.getWidth(), availableWidth),
+                         jmax (requiredSpace.getHeight(), availableHeight));
+    }
+
     void paint (juce::Graphics& g) override
+
     {
         g.fillAll (findColour (Style::widgetBackgroundColorId).darker());
     }
