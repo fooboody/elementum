@@ -512,6 +512,8 @@ public:
 
         const String format = node.getProperty (tags::format).toString();
         addItemInternal (menu, TRANS ("Save Node..."), new AddPresetOp (node));
+        addItemInternal (menu, "Open Nodes Folder", new OpenNodesFolderOp());
+        menu.addSeparator();
         addItemInternal (menu, "Save as Default", new SaveDefaultNodeOp (node));
         addItemInternal (menu, "Reset Default", new ResetDefaultNodeOp (node));
 
@@ -816,7 +818,20 @@ private:
         }
     };
 
+    struct OpenNodesFolderOp : public ResultOp
+    {
+        bool perform() override
+        {
+            const auto nodesFolder = DataPath().getRootDir().getChildFile ("Nodes");
+            if (! nodesFolder.exists() && nodesFolder.createDirectory().failed())
+                return false;
+
+            return nodesFolder.startAsProcess();
+        }
+    };
+
     struct AddPresetOp : public ResultOp
+
     {
         AddPresetOp (const Node& n)
             : node (n) {}
