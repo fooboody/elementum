@@ -637,6 +637,7 @@ PluginListComponent::PluginListComponent (PluginManager& p, PropertiesFile* prop
 PluginListComponent::~PluginListComponent()
 {
     list.removeChangeListener (this);
+    plugins.removeChangeListener (this);
 }
 
 void PluginListComponent::setOptionsButtonText (const String& newText)
