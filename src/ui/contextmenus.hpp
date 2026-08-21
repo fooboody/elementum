@@ -294,6 +294,18 @@ private:
                 for (int i = lastSize; i < unverified.size(); ++i)
                     formatMenu.addItem (unverifiedResultOffset + i, unverified[i]->name);
             }
+            else
+            {
+                // Provider formats (e.g. CLAP): identifiers are file paths.
+                for (int i = lastSize; i < unverified.size(); ++i)
+                {
+                    const auto& fid = unverified.getUnchecked (i)->fileOrIdentifier;
+                    menu.addItem (i + 20000,
+                                  juce::File::isAbsolutePath (fid)
+                                      ? juce::File (fid).getFileNameWithoutExtension()
+                                      : fid);
+                }
+            }
 
             if (formatMenu.getNumItems() > 0)
                 unverifiedMenu.addSubMenu (name, formatMenu);
