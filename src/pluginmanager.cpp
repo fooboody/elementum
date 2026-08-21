@@ -855,12 +855,126 @@ void PluginScanner::scanForAudioPlugins (const juce::String& formatName)
     scanForAudioPlugins (identifiers);
 }
 
+void PluginScanner::replaceDescriptionsForRescanTarget (const RescanTarget& target,
+                                                        const OwnedArray<PluginDescription>& descriptions)
+{
+    const auto belongsToTarget = [&target] (const PluginDescription& description) {
+        if (description.pluginFormatName != target.formatName)
+            return false;
+
+        if (target.formatName == "CLAP")
+            return description.fileOrIdentifier.endsWith (":" + target.fileOrIdentifier);
+
+        return description.fileOrIdentifier == target.fileOrIdentifier;
+    };
+
+    const auto existing = list.getTypes();
+    for (const auto& description : existing)
+        if (belongsToTarget (description))
+            list.removeType (description);
+
+    for (const auto* description : descriptions)
+        list.addType (*description);
+}
+
+void PluginScanner::rescanAudioPluginTargets (const Array<RescanTarget>& targets)
+{
+    const auto total = static_cast<float> (targets.size());
+
+    for (int i = 0; i < targets.size(); ++i)
+    {
+        const auto& target = targets.getReference (i);
+        const auto reportProgress = [this, i, total]() {
+            const float progress = static_cast<float> (i + 1) / total;
+            notifyOnMessageThread ([progress] (PluginScanner& s) {
+                s.listeners.call (&Listener::audioPluginScanProgress, progress);
+            });
+        };
+
+        if (shouldAbort())
+            return;
+
+        notifyOnMessageThread ([name = File::createFileWithoutCheckingPath (target.fileOrIdentifier).getFileName()] (PluginScanner& s) {
+            s.listeners.call (&Listener::audioPluginScanStarted, name);
+        });
+
+        // A manual rescan is an explicit retry, so clear only this candidate's
+        // prior blacklist entry before loading it in the worker.
+        list.removeFromBlacklist (target.fileOrIdentifier);
+
+        auto crashed = detail::readDeadMansPedalFile();
+        crashed.removeString (target.fileOrIdentifier);
+        crashed.add (target.fileOrIdentifier);
+        detail::setDeadMansPedalFile (crashed);
+
+        const auto removeFromPedal = [&crashed, &target]() {
+            crashed.removeString (target.fileOrIdentifier);
+            detail::setDeadMansPedalFile (crashed);
+        };
+
+        OwnedArray<PluginDescription> descriptions;
+        switch (retrieveDescriptions (target.formatName, target.fileOrIdentifier, descriptions))
+        {
+            case ScanResult::ok:
+                consecutiveFailures = 0;
+                if (descriptions.size() > 0)
+                    replaceDescriptionsForRescanTarget (target, descriptions);
+                removeFromPedal();
+                if (descriptions.size() == 0)
+                    failedIdentifiers.add (target.fileOrIdentifier);
+                break;
+
+            case ScanResult::crashed:
+                consecutiveFailures = 0;
+                failedIdentifiers.add (target.fileOrIdentifier);
+                break;
+
+            case ScanResult::unavailable:
+                removeFromPedal();
+                if (++consecutiveFailures >= maxConsecutiveFailures)
+                {
+                    abortedByFailure = true;
+                    {
+                        ScopedLock sl (stateLock);
+                        lastScanError = TRANS ("Plugin rescanning stopped early because the "
+                                               "scanner process could not be started or "
+                                               "kept failing.");
+                    }
+                    return;
+                }
+                break;
+
+            case ScanResult::cancelled:
+                removeFromPedal();
+                return;
+        }
+
+        reportProgress();
+    }
+}
+
 void PluginScanner::scanForAudioPlugins (const StringArray& formats)
 {
     if (isThreadRunning() || scanning.load())
         return;
 
     formatsToScan = formats;
+    rescanTargets.clearQuick();
+    beginScan();
+}
+
+void PluginScanner::rescanAudioPlugins (const Array<RescanTarget>& targets)
+{
+    if (targets.isEmpty() || isThreadRunning() || scanning.load())
+        return;
+
+    formatsToScan.clearQuick();
+    rescanTargets = targets;
+    beginScan();
+}
+
+void PluginScanner::beginScan()
+{
     cancelFlag = 0;
     abortedByFailure = false;
     consecutiveFailures = 0;
@@ -881,11 +995,18 @@ void PluginScanner::run()
     {
         detail::setDeadMansPedalFile ({});
 
-        for (const auto& format : formatsToScan)
+        if (rescanTargets.isEmpty())
         {
-            scanAudioFormat (format);
-            if (shouldAbort() || abortedByFailure)
-                break;
+            for (const auto& format : formatsToScan)
+            {
+                scanAudioFormat (format);
+                if (shouldAbort() || abortedByFailure)
+                    break;
+            }
+        }
+        else
+        {
+            rescanAudioPluginTargets (rescanTargets);
         }
 
         resetWorker (true);

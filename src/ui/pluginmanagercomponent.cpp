@@ -98,6 +98,27 @@ public:
         startScan();
     }
 
+    Scanner (PluginListComponent& plc,
+             PluginManager& plugins,
+             const Array<PluginScanner::RescanTarget>& targets,
+             const String& title,
+             const String& text)
+        : owner (plc),
+          formatToScan (*plugins.getAudioPluginFormat ("Element")),
+          propertiesToUse (nullptr),
+          pathChooserWindow (TRANS ("Select folders to scan..."), String(), AlertWindow::NoIcon),
+          progressWindow (title, text, AlertWindow::NoIcon),
+          progress (0.0),
+          numThreads (0),
+          allowAsync (false),
+          finished (false),
+          useBackgroundScanner (true),
+          rescanTargets (targets)
+    {
+        scanner.setNonOwned (owner.plugins.getBackgroundAudioPluginScanner());
+        startScan();
+    }
+
     ~Scanner()
     {
         stopTimer();
@@ -129,6 +150,7 @@ private:
     std::unique_ptr<ThreadPool> pool;
     [[maybe_unused]] bool useBackgroundScanner = false;
     StringArray formatsToScan;
+    Array<PluginScanner::RescanTarget> rescanTargets;
 
     static void startScanCallback (int result, AlertWindow* alert, Scanner* scanner)
     {
@@ -238,10 +260,13 @@ private:
             if (auto* world = ViewHelpers::getGlobals (&owner))
                 scanner->setPerPluginTimeout (world->settings().pluginScanTimeoutSeconds() * 1000);
 
-            if (formatsToScan.size() > 0)
+                        if (! rescanTargets.isEmpty())
+                scanner->rescanAudioPlugins (rescanTargets);
+            else if (formatsToScan.size() > 0)
                 scanner->scanForAudioPlugins (formatsToScan);
             else
                 scanner->scanForAudioPlugins (formatToScan.getName());
+
         }
 
         // If a scan was already running the listener added above tracks it,
@@ -492,14 +517,18 @@ public:
             case 2:
                 owner.removeSelectedPlugins();
                 break;
-            case 3:
+                        case 3:
                 if (isPositiveAndBelow (row, list.getNumTypes()))
                 {
                     const auto desc = list.getTypes().getReference (row);
                     owner.plugins.setPluginHidden (desc, ! owner.plugins.isPluginHidden (desc));
                 }
                 break;
+            case 4:
+                owner.rescanSelectedPlugins();
+                break;
             default: {
+
             }
             break;
         }
@@ -507,19 +536,26 @@ public:
 
     void cellClicked (int row, int col, const MouseEvent& ev) override
     {
-        if (ev.mods.isPopupMenu())
+                if (ev.mods.isPopupMenu())
         {
+            if (row >= 0 && ! owner.table.getSelectedRows().contains (row))
+                owner.table.selectRow (row);
+
             const bool onPlugin = isPositiveAndBelow (row, list.getNumTypes());
             bool hidden = false;
+
             if (onPlugin)
                 hidden = owner.plugins.isPluginHidden (list.getTypes().getReference (row));
 
             PopupMenu menu;
             menu.addItem (3, hidden ? TRANS ("Show Plugin") : TRANS ("Hide Plugin"), onPlugin);
             menu.addSeparator();
-            menu.addItem (1, TRANS ("Clear List"));
+                        menu.addItem (1, TRANS ("Clear List"));
             menu.addItem (2, TRANS ("Remove Selected"));
+            menu.addSeparator();
+            menu.addItem (4, TRANS ("Rescan Selected"), ! owner.isScanning() && owner.table.getNumSelectedRows() > 0);
             cellPopup (menu.show(), row);
+
         }
         else if (col == favoriteCol && isPositiveAndBelow (row, list.getNumTypes()))
         {
@@ -710,7 +746,74 @@ void PluginListComponent::removeSelectedPlugins()
             removePluginItem (i);
 }
 
+void PluginListComponent::rescanSelectedPlugins()
+{
+    if (isScanning())
+        return;
+
+    Array<PluginScanner::RescanTarget> targets;
+    StringArray targetKeys;
+    const auto types = list.getTypes();
+    const auto selected = table.getSelectedRows();
+
+    const auto addTarget = [&targets, &targetKeys] (const String& formatName, const String& fileOrIdentifier) {
+        const auto key = formatName + "\n" + fileOrIdentifier;
+        if (formatName.isEmpty() || fileOrIdentifier.isEmpty() || targetKeys.contains (key))
+            return;
+
+        targetKeys.add (key);
+        targets.add ({ formatName, fileOrIdentifier });
+    };
+
+    for (int row = 0; row < table.getNumRows(); ++row)
+    {
+        if (! selected.contains (row))
+            continue;
+
+        if (row < types.size())
+        {
+            const auto& description = types.getReference (row);
+            if (description.pluginFormatName == "Element")
+                continue;
+
+            auto candidate = description.fileOrIdentifier;
+            if (description.pluginFormatName == "CLAP")
+                candidate = candidate.fromFirstOccurrenceOf (":", false, false);
+
+            addTarget (description.pluginFormatName, candidate);
+            continue;
+        }
+
+        const auto blacklistIndex = row - types.size();
+        if (! isPositiveAndBelow (blacklistIndex, list.getBlacklistedFiles().size()))
+            continue;
+
+        const auto& identifier = list.getBlacklistedFiles()[blacklistIndex];
+        if (identifier.endsWithIgnoreCase (".clap"))
+            addTarget ("CLAP", identifier);
+        else if (identifier.endsWithIgnoreCase (".vst3"))
+            addTarget ("VST3", identifier);
+        else if (identifier.endsWithIgnoreCase (".vst") || identifier.endsWithIgnoreCase (".dll"))
+            addTarget ("VST", identifier);
+        else if (identifier.startsWithIgnoreCase ("http://") || identifier.startsWithIgnoreCase ("https://"))
+            addTarget ("LV2", identifier);
+    }
+
+    if (targets.isEmpty())
+        return;
+
+    if (auto* world = ViewHelpers::getGlobals (this))
+        plugins.saveUserPlugins (world->settings());
+
+    currentScanner.reset (new Scanner (*this,
+                                       plugins,
+                                       targets,
+                                       TRANS ("Rescanning Plug-ins..."),
+                                       TRANS ("Rescanning selected plug-ins...")));
+}
+
 void PluginListComponent::setTableModel (TableListBoxModel* model)
+
 {
     table.setModel (nullptr);
     tableModel.reset (model);

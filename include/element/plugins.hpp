@@ -227,6 +227,17 @@ public:
         is already in progress. */
     void scanForAudioPlugins (const juce::StringArray& formats);
 
+    /** A format-specific plug-in candidate to reload in an isolated worker. */
+    struct RescanTarget {
+        juce::String formatName;
+        juce::String fileOrIdentifier;
+    };
+
+    /** Starts an asynchronous, forced rescan of the supplied candidates. Unlike
+        scanForAudioPlugins(), these candidates are loaded even when already
+        listed. Targets are processed serially in the scanner worker. */
+    void rescanAudioPlugins (const juce::Array<RescanTarget>& targets);
+
     /** Cancels the current scan operation if possible. */
     void cancel();
 
@@ -297,8 +308,10 @@ private:
     juce::KnownPluginList& list;
     juce::Atomic<int> cancelFlag { 0 };
     juce::File _scannerExe;
-    juce::StringArray formatsToScan;
+        juce::StringArray formatsToScan;
+    juce::Array<RescanTarget> rescanTargets;
     std::atomic<bool> scanning { false };
+
     int launchTimeoutMs;
     int perPluginTimeoutMs { 90000 };
     int maxConsecutiveFailures { 3 };
@@ -311,9 +324,15 @@ private:
     bool shouldAbort() const noexcept;
     void abandonWorkerAfterCancellation();
     void resetWorker (bool alsoKill);
-    void notifyOnMessageThread (std::function<void (PluginScanner&)> fn);
+        void notifyOnMessageThread (std::function<void (PluginScanner&)> fn);
+    void beginScan();
     void scanAudioFormat (const juce::String& formatName);
+
+    void rescanAudioPluginTargets (const juce::Array<RescanTarget>& targets);
+    void replaceDescriptionsForRescanTarget (const RescanTarget& target,
+                                             const juce::OwnedArray<juce::PluginDescription>& descriptions);
     ScanResult retrieveDescriptions (const juce::String& formatName,
+
                                      const juce::String& fileOrIdentifier,
                                      juce::OwnedArray<juce::PluginDescription>& result);
 

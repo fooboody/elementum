@@ -128,13 +128,52 @@ BOOST_AUTO_TEST_CASE (BrokenScannerExeNeverBlacklists)
     BOOST_CHECK (scanner->getFailedFiles().isEmpty());
     BOOST_CHECK (scanner->getLastScanError().isNotEmpty());
 
-    scanner->removeListener (&listener);
+        scanner->removeListener (&listener);
     scanner.reset();
     manager.setPropertiesFile (nullptr);
     tmp.deleteRecursively();
 }
 
+/** An explicit rescan is a retry for only its selected candidate: it clears that
+    blacklist entry before launching the worker, but must leave other entries
+    untouched when the scanner process is unavailable. */
+BOOST_AUTO_TEST_CASE (ExplicitRescanOnlyClearsSelectedBlacklistEntry)
+{
+#if JUCE_WINDOWS
+    const juce::File brokenExe ("C:\\Windows\\System32\\where.exe");
+#else
+    const juce::File brokenExe ("/bin/true");
+#endif
+    if (! brokenExe.existsAsFile())
+        return;
+
+    PluginManager manager;
+    manager.addDefaultFormats();
+
+    auto& blacklist = manager.getKnownPlugins();
+    const juce::String selected ("C:\\plugins\\selected.vst3");
+    const juce::String untouched ("C:\\plugins\\untouched.vst3");
+    blacklist.addToBlacklist (selected);
+    blacklist.addToBlacklist (untouched);
+
+    std::unique_ptr<PluginScanner> scanner (manager.createAudioPluginScanner());
+    RecordingListener listener;
+    scanner->addListener (&listener);
+    scanner->setScannerExe (brokenExe);
+    scanner->setLaunchTimeout (1000);
+
+    scanner->rescanAudioPlugins ({ { "VST3", selected } });
+    BOOST_REQUIRE (scanner->waitForScanToFinish (30000));
+
+    BOOST_CHECK_EQUAL (listener.finishedCount.load(), 1);
+    BOOST_CHECK (! manager.getKnownPlugins().getBlacklistedFiles().contains (selected));
+    BOOST_CHECK (manager.getKnownPlugins().getBlacklistedFiles().contains (untouched));
+
+    scanner->removeListener (&listener);
+}
+
 /** Full round trip against the real element executable: worker launches,
+
     completes the ready handshake, scans garbage files without hanging, and
     reports them failed without touching innocent state. */
 BOOST_AUTO_TEST_CASE (RealWorkerScansGarbageWithoutHanging)

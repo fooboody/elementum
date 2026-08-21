@@ -75,6 +75,9 @@ public:
     /** Removes the plugins currently selected in the table. */
     void removeSelectedPlugins();
 
+    /** Rescans the currently selected third-party plug-in candidates. */
+    void rescanSelectedPlugins();
+
     /** Sets a custom table model to be used.
      This will take ownership of the model and delete it when no longer needed.
      */
