@@ -327,7 +327,53 @@ static void paintHeart (Graphics& g, Rectangle<int> cell, bool filled, Colour co
 } // namespace detail
 
 //==============================================================================
+class PluginListHeader final : public TableHeaderComponent
+{
+public:
+    explicit PluginListHeader (TableListBox& ownerToUse)
+        : owner (ownerToUse)
+    {
+    }
+
+    void addMenuItems (PopupMenu& menu, const int columnIdClicked) override
+    {
+        TableHeaderComponent::addMenuItems (menu, columnIdClicked);
+
+        if (owner.isAutoSizeMenuOptionShown())
+        {
+            menu.addSeparator();
+            menu.addItem (autoSizeColumnItem, "Auto-Size This Column", columnIdClicked != 0);
+            menu.addItem (autoSizeAllColumnsItem, "Auto-Size All Columns");
+        }
+    }
+
+    void reactToMenuItem (const int menuReturnId, const int columnIdClicked) override
+    {
+        if (menuReturnId == autoSizeColumnItem)
+        {
+            if (columnIdClicked != 0)
+                owner.autoSizeColumn (columnIdClicked);
+            return;
+        }
+
+        if (menuReturnId == autoSizeAllColumnsItem)
+        {
+            owner.autoSizeAllColumns();
+            return;
+        }
+
+        TableHeaderComponent::reactToMenuItem (menuReturnId, columnIdClicked);
+    }
+
+private:
+    static constexpr int autoSizeColumnItem = 0x60000001;
+    static constexpr int autoSizeAllColumnsItem = 0x60000002;
+    TableListBox& owner;
+};
+
+//==============================================================================
 class PluginListComponent::TableModel : public TableListBoxModel
+
 {
 public:
     TableModel (PluginListComponent& c, KnownPluginList& l) : owner (c), list (l) {}
@@ -538,6 +584,7 @@ PluginListComponent::PluginListComponent (PluginManager& p, PropertiesFile* prop
       numThreads (allowAsync ? 1 : 0)
 {
     tableModel.reset (new TableModel (*this, list));
+    table.setHeader (std::make_unique<PluginListHeader> (table));
 
     TableHeaderComponent& header = table.getHeader();
 

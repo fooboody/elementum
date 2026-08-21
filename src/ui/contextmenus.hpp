@@ -397,7 +397,8 @@ public:
         PopupMenu menu;
         int index = 30000;
         ProcessorPtr ptr = node.getObject();
-        menu.addItem (index++, "Mute input ports", ptr != nullptr, ptr && ptr->isMutingInputs());
+        menu.addItem (index++, "Mute Input Ports", ptr != nullptr, ptr && ptr->isMutingInputs());
+
         addOversamplingSubmenu (menu);
         addSubMenu (TRANS ("Options"), menu, ptr != nullptr);
 #endif
@@ -510,9 +511,10 @@ public:
             return;
 
         const String format = node.getProperty (tags::format).toString();
-        addItemInternal (menu, TRANS ("Save node..."), new AddPresetOp (node));
-        addItemInternal (menu, "Save as default...", new SaveDefaultNodeOp (node));
-        addItemInternal (menu, "Reset default...", new ResetDefaultNodeOp (node));
+        addItemInternal (menu, TRANS ("Save Node..."), new AddPresetOp (node));
+        addItemInternal (menu, "Save as Default", new SaveDefaultNodeOp (node));
+        addItemInternal (menu, "Reset Default", new ResetDefaultNodeOp (node));
+
         menu.addSeparator();
 
         {
