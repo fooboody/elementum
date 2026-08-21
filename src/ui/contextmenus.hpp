@@ -11,6 +11,8 @@
 
 #include "engine/graphnode.hpp"
 #include "ui/guicommon.hpp"
+#include "ui/plugindetails.hpp"
+
 #include "presetmanager.hpp"
 #include "ui/block.hpp"
 #include "./utils.hpp"
@@ -645,6 +647,31 @@ public:
         currentResultOpId = firstResultOpId;
     }
 
+    struct ResultOp
+    {
+        ResultOp() {}
+        virtual ~ResultOp() {}
+        virtual bool isActive() { return true; }
+        virtual bool isTicked() { return false; }
+        virtual Message* createMessage() { return nullptr; }
+        virtual bool perform() { return false; }
+        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ResultOp);
+    };
+
+    struct ShowPluginDetailsOp : public ResultOp
+    {
+        explicit ShowPluginDetailsOp (const PluginDescription& d)
+            : description (d) {}
+
+        bool perform() override
+        {
+            showPluginDetails (description);
+            return true;
+        }
+
+        PluginDescription description;
+    };
+
     void setNode (const Node& n, const bool header = true)
     {
         reset();
@@ -653,7 +680,18 @@ public:
             addMainItems (header);
     }
 
+    void addPluginDetailsItem()
+    {
+        PluginDescription description;
+        if (! getPluginDescriptionForFavorite (description))
+            return;
+
+        addSeparator();
+        addItemInternal (*this, "Details", new ShowPluginDetailsOp (description));
+    }
+
 private:
+
     struct ReplaceManufacturerGroup
     {
         String name;
@@ -762,19 +800,8 @@ private:
     const int firstResultOpId = 1024;
     int currentResultOpId = 1024;
 
-    struct ResultOp
-    {
-        ResultOp() {}
-        virtual ~ResultOp() {}
-        virtual bool isActive() { return true; }
-        virtual bool isTicked() { return false; }
-        virtual Message* createMessage() { return nullptr; }
-        virtual bool perform() { return false; }
-
-        JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ResultOp);
-    };
-
     struct EnableNodeOp : public ResultOp
+
     {
         const Node node;
         EnableNodeOp (const Node& n) : node (n) {}

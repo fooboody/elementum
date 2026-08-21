@@ -3,6 +3,7 @@
 
 #include <element/plugins.hpp>
 #include "ui/guicommon.hpp"
+#include "ui/plugindetails.hpp"
 #include "ui/pluginspanelview.hpp"
 
 namespace element {
@@ -110,6 +111,22 @@ public:
     }
 
     bool mightContainSubItems() override { return false; }
+
+    void itemClicked (const MouseEvent& event) override
+    {
+        if (! event.mods.isPopupMenu())
+            return;
+
+        PopupMenu menu;
+        menu.addItem (details, "Details");
+        if (menu.show() == details)
+            showPluginDetails (*desc);
+    }
+
+    enum MenuResult
+    {
+        details = 1
+    };
 
     const std::unique_ptr<const PluginDescription> desc;
 

@@ -729,7 +729,10 @@ void BlockComponent::mouseDown (const MouseEvent& e)
         menu.addOptionsSubmenu();
 
         if (world)
+        {
             menu.addPresetsMenu (world->presets());
+            menu.addPluginDetailsItem();
+        }
 
         colorSelector.setCurrentColour (Colour::fromString (
             node.getUIValueTree().getProperty ("color", color.toString()).toString()));
