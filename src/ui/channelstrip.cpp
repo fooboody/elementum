@@ -45,6 +45,7 @@ ChannelStripComponent::ChannelStripComponent()
     fader.setSliderStyle (Slider::LinearVertical);
     fader.setTextBoxStyle (Slider::NoTextBox, true, 1, 1);
     fader.setRange (-60.0, 6.0, 0.001);
+    fader.setDoubleClickReturnValue (true, 0.0, ModifierKeys::noModifiers);
     fader.setValue (0.f, dontSendNotification);
     fader.setSkewFactor (2);
     fader.addListener (this);

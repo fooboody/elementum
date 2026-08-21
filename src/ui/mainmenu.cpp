@@ -303,8 +303,8 @@ void MainMenu::buildViewMenu (PopupMenu& menu)
 
 void MainMenu::buildWindowMenu (PopupMenu& menu)
 {
-    menu.addCommandItem (&cmd, Commands::hideAllPluginWindows, "Close Plugin Windows...");
-    menu.addCommandItem (&cmd, Commands::showAllPluginWindows, "Show Plugin Windows...");
+    menu.addCommandItem (&cmd, Commands::hideAllPluginWindows, "Close Plugin Windows");
+    menu.addCommandItem (&cmd, Commands::showAllPluginWindows, "Show Plugin Windows");
     menu.addCommandItem (&cmd, Commands::resetPluginWindows, "Reset Plugin Windows");
 }
 
@@ -396,7 +396,7 @@ void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::showGraphMixer, "Graph Mixer");
     menu.addCommandItem (&cmd, Commands::showConsole, "Console");
     menu.addSeparator();
-    menu.addCommandItem (&cmd, Commands::rotateContentView, "Rotate View...");
+    menu.addCommandItem (&cmd, Commands::rotateContentView, "Rotate View");
     menu.addCommandItem (&cmd, Commands::swapGraphEditorAndMixer, "Swap Graph and Mixer");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::toggleChannelStrip, "Channel Strip");

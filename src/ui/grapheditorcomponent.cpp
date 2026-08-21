@@ -565,7 +565,6 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
             popup.addSeparator();
             popup.addItem (5, "Change Orientation");
             popup.addItem (7, "Fix Out-of-Bounds Nodes");
-            popup.addItem (8, "Reload Colors from Conf File");
 
             popup.addSeparator();
             popup.addSectionHeader ("Plugins");
@@ -688,18 +687,6 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                         setSize (width, height);
                     return;
                 }
-                case 8:
-                    if (auto* const world = ViewHelpers::getGlobals (this))
-                    {
-                        world->settings().reloadColourSettings();
-                        if (auto* const gui = ViewHelpers::getGuiController (this))
-                            gui->refreshPopupMenuTheme();
-                        repaintComponentTree();
-                        if (auto* const topLevel = getTopLevelComponent())
-                            topLevel->repaint();
-                    }
-                    return;
-
                 // Zoom options (commented don't look right yet)
                 // case 50: setZoomScale (0.25); return; break;
                 // case 51: setZoomScale (0.50); return; break;

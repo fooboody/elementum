@@ -70,7 +70,7 @@ The exact output directory can vary with the selected generator and build config
 
 ## Configuration and Customization
 
-Most normal settings are available from the application UI. Some advanced options, including Graph Editor colors, are intentionally configurable by directly editing the profile `.conf` file. After manually editing color values, choose “Reload Colors from Conf File” from the Graph Editor context menu to apply them without restarting Elementum.
+Most normal settings are available from the application UI. Some advanced options, including Graph Editor colors, are intentionally configurable by directly editing the profile `.conf` file.
 
 ## License and Attribution
 
