@@ -115,6 +115,7 @@ private:
     void resizerMouseDown();
     void resizerMouseUp();
     void updateLayout();
+    bool canChangeGraphMixerVisibility() const;
     void setContentView (ContentView* view, const bool accessory = false);
 
     friend class GuiService;

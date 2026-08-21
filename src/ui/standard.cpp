@@ -780,7 +780,11 @@ void StandardContent::setContentView (ContentView* view, const bool accessory)
 
 void StandardContent::setSecondaryView (const String& name)
 {
+    if (name == EL_VIEW_GRAPH_MIXER && ! canChangeGraphMixerVisibility())
+        return;
+
     if (auto v = createContentView (name))
+
     {
         v->setName (name);
         setContentView (v, true);
@@ -1212,11 +1216,14 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
         }
         break;
             //===
-        case Commands::showGraphMixer: {
+                case Commands::showGraphMixer: {
             int flags = (showAccessoryView() && getAccessoryViewName() == EL_VIEW_GRAPH_MIXER)
                             ? Info::isTicked
                             : 0;
+            if (! canChangeGraphMixerVisibility())
+                flags |= Info::isDisabled;
             result.setInfo ("Graph Mixer", "Show/hide the graph mixer", "UI", flags);
+
             break;
         }
         //======================================================================
@@ -1309,8 +1316,12 @@ bool StandardContent::perform (const InvocationInfo& info)
             setMainView (EL_VIEW_GRAPH_EDITOR);
             break;
         //======================================================================
-        case Commands::showGraphMixer: {
+                case Commands::showGraphMixer: {
+            if (! canChangeGraphMixerVisibility())
+                return false;
+
             if (showAccessoryView() && getAccessoryViewName() == EL_VIEW_GRAPH_MIXER)
+
             {
                 container->setSecondaryView (nullptr);
             }
@@ -1367,8 +1378,17 @@ bool StandardContent::perform (const InvocationInfo& info)
     return result;
 }
 
+bool StandardContent::canChangeGraphMixerVisibility() const
+{
+    const auto& mainViewName = getMainViewName();
+    return mainViewName != EL_VIEW_PLUGIN_MANAGER && mainViewName != EL_VIEW_KEYMAP_EDITOR;
+}
+
 void StandardContent::setShowAccessoryView (const bool show)
 {
+    if (getAccessoryViewName() == EL_VIEW_GRAPH_MIXER && ! canChangeGraphMixerVisibility())
+        return;
+
     if (container)
         container->setShowAccessoryView (show);
 }
