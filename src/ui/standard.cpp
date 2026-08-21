@@ -146,7 +146,7 @@ public:
             {
                                 const int secondaryHeight = jmin (currentSecondaryHeight(), jmax (0, r.getHeight() - barSize - 48));
 
-                if (isGraphMixerAboveEditor())
+                if (isAccessoryAbovePrimary())
                 {
                     secondary->setBounds (r.removeFromTop (secondaryHeight));
                     bar->setBounds (r.removeFromTop (barSize));
@@ -161,7 +161,7 @@ public:
             }
             else
             {
-                if (isGraphMixerAboveEditor())
+                if (isAccessoryAbovePrimary())
                 {
                     Component* comps[] = {
                         secondary.get(),
@@ -204,12 +204,16 @@ public:
             primary->stabilizeContent();
     }
 
-    void setMainView (ContentView* view)
+        void setMainView (ContentView* view)
     {
         if (view)
             view->initializeView (owner.services());
 
+        // Preserve the visible accessory's actual height before the primary
+        // view changes its placement context.
+        captureSecondaryHeight();
         if (primary)
+
         {
             primary->willBeRemoved();
             removeChildComponent (primary.get());
@@ -223,6 +227,7 @@ public:
             addAndMakeVisible (primary.get());
         }
 
+        configureAccessoryLayout();
         resized();
 
         if (primary)
@@ -270,30 +275,19 @@ public:
             captureSecondaryHeight();
 
         showAccessoryView = show;
-        if (showAccessoryView)
-        {
-            locked = true;
-            auto& secondaryHeight = currentSecondaryHeight();
-            secondaryHeight = jmax (50, secondaryHeight);
-            layout.setItemLayout (0, 48, -1.0, jmax (48, availableContentHeight() - barSize - secondaryHeight));
-            layout.setItemLayout (1, barSize, barSize, barSize);
-
-            if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
-                layout.setItemLayout (2, secondaryHeight, secondaryHeight, secondaryHeight);
-            else
-                layout.setItemLayout (2, 48, -1.0, secondaryHeight);
-        }
+        configureAccessoryLayout();
 
         resized();
     }
 
     bool canSwapGraphEditorAndMixer() const
     {
-        return showAccessoryView
-               && primary != nullptr
-               && secondary != nullptr
-               && (primary->getName() == EL_VIEW_GRAPH_EDITOR || primary->getName() == "PatchBay")
-               && secondary->getName() == EL_VIEW_GRAPH_MIXER;
+        return canSwapGraphEditorAndAccessory (EL_VIEW_GRAPH_MIXER);
+    }
+
+    bool canSwapGraphEditorAndConsole() const
+    {
+        return canSwapGraphEditorAndAccessory (EL_VIEW_CONSOLE);
     }
 
     void swapGraphEditorAndMixer()
@@ -302,7 +296,17 @@ public:
             return;
 
         graphMixerAboveEditor = ! graphMixerAboveEditor;
-        locked = true;
+        configureAccessoryLayout();
+        resized();
+    }
+
+    void swapGraphEditorAndConsole()
+    {
+        if (! canSwapGraphEditorAndConsole())
+            return;
+
+        consoleAboveEditor = ! consoleAboveEditor;
+        configureAccessoryLayout();
         resized();
     }
 
@@ -314,7 +318,9 @@ public:
         props->setValue ("ContentContainer_showAccessoryView", showAccessoryView);
 
         props->setValue ("ContentContainer_lastSecondaryView", owner.getAccessoryViewName());
-        props->setValue ("ContentContainer_graphMixerAboveEditor", graphMixerAboveEditor);
+                props->setValue ("ContentContainer_graphMixerAboveEditor", graphMixerAboveEditor);
+        props->setValue ("ContentContainer_consoleAboveEditor", consoleAboveEditor);
+
     }
 
     void restoreState (PropertiesFile* props)
@@ -325,7 +331,9 @@ public:
         consoleHeight = jmax (50, props->getIntValue ("ContentContainer_consoleHeight", lastSecondaryHeight));
         showAccessoryView = props->getIntValue ("ContentContainer_showAccessoryView", showAccessoryView);
 
-        graphMixerAboveEditor = props->getBoolValue ("ContentContainer_graphMixerAboveEditor", false);
+                graphMixerAboveEditor = props->getBoolValue ("ContentContainer_graphMixerAboveEditor", false);
+        consoleAboveEditor = props->getBoolValue ("ContentContainer_consoleAboveEditor", false);
+
         auto lastSecondaryName = props->getValue ("ContentContainer_lastSecondaryView");
         if (showAccessoryView)
         {
@@ -403,7 +411,9 @@ private:
     std::unique_ptr<Bottom> bottom;
 
     bool showAccessoryView = false;
-    bool graphMixerAboveEditor = false;
+        bool graphMixerAboveEditor = false;
+    bool consoleAboveEditor = false;
+
     int barSize = 2;
         int lastSecondaryHeight = 172;
     int graphMixerHeight = 172;
@@ -411,6 +421,36 @@ private:
     int capturedAccessoryHeight = -1;
 
     bool locked = true;
+
+    void configureAccessoryLayout()
+    {
+        if (! showAccessoryView || secondary == nullptr || primary == nullptr)
+            return;
+
+        locked = true;
+        auto& secondaryHeight = currentSecondaryHeight();
+        secondaryHeight = jmax (50, secondaryHeight);
+        const int primaryHeight = jmax (48, availableContentHeight() - barSize - secondaryHeight);
+        const bool accessoryAbovePrimary = isAccessoryAbovePrimary();
+
+        layout.setItemLayout (1, barSize, barSize, barSize);
+        if (accessoryAbovePrimary)
+        {
+            if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
+                layout.setItemLayout (0, secondaryHeight, secondaryHeight, secondaryHeight);
+            else
+                layout.setItemLayout (0, 48, -1.0, secondaryHeight);
+            layout.setItemLayout (2, 48, -1.0, primaryHeight);
+        }
+        else
+        {
+            layout.setItemLayout (0, 48, -1.0, primaryHeight);
+            if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
+                layout.setItemLayout (2, secondaryHeight, secondaryHeight, secondaryHeight);
+            else
+                layout.setItemLayout (2, 48, -1.0, secondaryHeight);
+        }
+    }
 
     int availableContentHeight() const
     {
@@ -453,9 +493,26 @@ private:
         return mainViewName == EL_VIEW_PLUGIN_MANAGER || mainViewName == EL_VIEW_KEYMAP_EDITOR;
     }
 
-    bool isGraphMixerAboveEditor() const
+    bool canSwapGraphEditorAndAccessory (const String& accessoryViewName) const
     {
-        return graphMixerAboveEditor && canSwapGraphEditorAndMixer();
+        return showAccessoryView
+               && primary != nullptr
+               && secondary != nullptr
+               && (primary->getName() == EL_VIEW_GRAPH_EDITOR || primary->getName() == "PatchBay")
+               && secondary->getName() == accessoryViewName;
+    }
+
+    bool isAccessoryAbovePrimary() const
+    {
+        if (secondary == nullptr)
+            return false;
+
+        if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
+            return graphMixerAboveEditor && canSwapGraphEditorAndMixer();
+        if (secondary->getName() == EL_VIEW_CONSOLE)
+            return consoleAboveEditor && canSwapGraphEditorAndConsole();
+
+        return false;
     }
 
     void lockLayout()
@@ -465,7 +522,7 @@ private:
         const int primaryMin = 48;
         if (showAccessoryView)
         {
-            if (isGraphMixerAboveEditor())
+            if (isAccessoryAbovePrimary())
             {
                 layout.setItemLayout (0, secondary->getHeight(), secondary->getHeight(), secondary->getHeight());
                 layout.setItemLayout (1, barSize, barSize, barSize);
@@ -495,7 +552,7 @@ private:
 
         if (showAccessoryView)
         {
-            if (isGraphMixerAboveEditor())
+            if (isAccessoryAbovePrimary())
             {
                 layout.setItemLayout (0, 48, -1.0, secondary->getHeight());
                 layout.setItemLayout (1, barSize, barSize, barSize);
@@ -1148,7 +1205,8 @@ void StandardContent::getAllCommands (Array<CommandID>& commands)
         Commands::showLastContentView,
         Commands::rotateContentView,
         Commands::swapGraphEditorAndMixer,
-        Commands::selectAll
+        Commands::swapGraphEditorAndConsole,
+        Commands::selectAll,
     });
     // clang-format on
 }
@@ -1266,7 +1324,7 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
             result.setInfo ("Next View", "Shows the next View", "UI", 0);
             break;
         }
-        case Commands::swapGraphEditorAndMixer: {
+                case Commands::swapGraphEditorAndMixer: {
             const int flags = container != nullptr && container->canSwapGraphEditorAndMixer()
                                   ? 0
                                   : Info::isDisabled;
@@ -1276,6 +1334,17 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
                             flags);
             break;
         }
+        case Commands::swapGraphEditorAndConsole: {
+            const int flags = container != nullptr && container->canSwapGraphEditorAndConsole()
+                                  ? 0
+                                  : Info::isDisabled;
+            result.setInfo ("Swap Graph and Console",
+                            "Swap the positions of the graph view and Console",
+                            "UI",
+                            flags);
+            break;
+        }
+
         case Commands::selectAll: {
             int flags = 0;
             result.setInfo ("Select All", "Select all nodes", "UI", flags);
@@ -1358,9 +1427,13 @@ bool StandardContent::perform (const InvocationInfo& info)
                 case Commands::rotateContentView:
             nextMainView();
             break;
-        case Commands::swapGraphEditorAndMixer:
+                case Commands::swapGraphEditorAndMixer:
             container->swapGraphEditorAndMixer();
             break;
+        case Commands::swapGraphEditorAndConsole:
+            container->swapGraphEditorAndConsole();
+            break;
+
         case Commands::selectAll: {
             if (auto view = dynamic_cast<GraphEditorView*> (container->primary.get()))
                 view->selectAllNodes();

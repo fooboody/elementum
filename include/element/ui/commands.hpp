@@ -84,8 +84,10 @@ public:
         cut = juce::StandardApplicationCommandIDs::cut,
         selectAll = juce::StandardApplicationCommandIDs::selectAll,
 
-        swapGraphEditorAndMixer = 0x0200,
-        scanPlugins
+                swapGraphEditorAndMixer = 0x0200,
+        scanPlugins,
+        swapGraphEditorAndConsole
+
     };
 
     inline static juce::Array<juce::CommandID> getAllCommands()
@@ -114,6 +116,7 @@ public:
             toggleVirtualKeyboard,
             rotateContentView,
             swapGraphEditorAndMixer,
+            swapGraphEditorAndConsole,
             scanPlugins,
 
             mediaClose,
@@ -215,10 +218,14 @@ public:
             case Commands::rotateContentView:
                 return "rotateContentView";
                 break;
-            case Commands::swapGraphEditorAndMixer:
+                        case Commands::swapGraphEditorAndMixer:
                 return "swapGraphEditorAndMixer";
                 break;
+            case Commands::swapGraphEditorAndConsole:
+                return "swapGraphEditorAndConsole";
+                break;
             case Commands::scanPlugins:
+
                 return "scanPlugins";
                 break;
             case Commands::showControllers:
@@ -298,9 +305,12 @@ public:
             return Commands::toggleVirtualKeyboard;
         if (str == "rotateContentView")
             return Commands::rotateContentView;
-        if (str == "swapGraphEditorAndMixer")
+                if (str == "swapGraphEditorAndMixer")
             return Commands::swapGraphEditorAndMixer;
+        if (str == "swapGraphEditorAndConsole")
+            return Commands::swapGraphEditorAndConsole;
         if (str == "scanPlugins")
+
             return Commands::scanPlugins;
 
         if (str == "showControllers")

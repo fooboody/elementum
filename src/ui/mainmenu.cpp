@@ -397,8 +397,10 @@ void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::showConsole, "Console");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::rotateContentView, "Rotate View");
-    menu.addCommandItem (&cmd, Commands::swapGraphEditorAndMixer, "Swap Graph and Mixer");
+        menu.addCommandItem (&cmd, Commands::swapGraphEditorAndMixer, "Swap Graph and Mixer");
+    menu.addCommandItem (&cmd, Commands::swapGraphEditorAndConsole, "Swap Graph and Console");
     menu.addSeparator();
+
     menu.addCommandItem (&cmd, Commands::toggleChannelStrip, "Channel Strip");
     menu.addCommandItem (&cmd, Commands::toggleVirtualKeyboard, "Virtual Keyboard");
     menu.addCommandItem (&cmd, Commands::toggleMeterBridge, "Meter Bridge");
