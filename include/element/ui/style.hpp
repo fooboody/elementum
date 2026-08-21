@@ -157,7 +157,9 @@ public:
 
     // Menus
     virtual juce::Font getPopupMenuFont() override;
+    void drawTooltip (juce::Graphics&, const juce::String&, int width, int height) override;
     void setPopupMenuTheme (const juce::String& mode,
+
                             juce::Colour highlightedBackground,
                             juce::Colour highlightedText);
     virtual void drawPopupMenuBackground (juce::Graphics& g, int width, int height) override;

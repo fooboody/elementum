@@ -17,6 +17,21 @@ bool pluginMatchesSearch (const PluginDescription& plugin,
         || (includeManufacturers && plugin.manufacturerName.containsIgnoreCase (searchText));
 }
 
+String normalisePluginCategory (String category)
+{
+    return category.replace ("Fx|Fx", "Fx")
+                   .replace ("Instrument|Instrument", "Instrument");
+}
+
+Array<PluginDescription> getNormalisedVisiblePluginTypes (const PluginManager& plugins)
+{
+    auto types = plugins.getVisiblePluginTypes();
+    for (auto& plugin : types)
+        plugin.category = normalisePluginCategory (plugin.category);
+
+    return types;
+}
+
 bool folderContainsSearchMatch (const KnownPluginList::PluginTree& folder,
                                 const String& searchText,
                                 const bool includeManufacturers)
@@ -88,7 +103,14 @@ class PluginTreeViewItem : public TreeViewItem
 public:
     PluginTreeViewItem (const PluginDescription& d)
         : desc (new PluginDescription (d)) {}
+
+    String getTooltip() override
+    {
+        return desc->manufacturerName.trim();
+    }
+
     bool mightContainSubItems() override { return false; }
+
     const std::unique_ptr<const PluginDescription> desc;
 
     var getDragSourceDescription() override
@@ -192,8 +214,9 @@ public:
         : owner (o),
           plugins (p)
     {
-        data = KnownPluginList::createTree (p.getVisiblePluginTypes(),
+        data = KnownPluginList::createTree (getNormalisedVisiblePluginTypes (p),
                                             KnownPluginList::sortByCategory);
+
     }
 
     bool mightContainSubItems() override { return true; }

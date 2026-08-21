@@ -260,7 +260,11 @@ LookAndFeel_E1::LookAndFeel_E1()
     // PopupMenu Styling
     setPopupMenuTheme ("auto", Colour (0xff4765a0), Colours::white);
 
+    // Tooltip Styling
+    setColour (TooltipWindow::outlineColourId, Colour (0xff999999));
+
     // ComboBox Styling
+
     setColour (ComboBox::backgroundColourId, Colours::black);
     setColour (ComboBox::outlineColourId, Colours::black.brighter (0.2f));
     setColour (ComboBox::buttonColourId, Colours::black.brighter (0.2f));
@@ -1048,7 +1052,30 @@ Font LookAndFeel_E1::getPopupMenuFont() {
     return LookAndFeel_V2::getPopupMenuFont(); 
 }
 
+void LookAndFeel_E1::drawTooltip (Graphics& g, const String& text, int width, int height)
+{
+    const Rectangle<float> bounds (0.0f, 0.0f, (float) width, (float) height);
+    constexpr float padding = 5.0f;
+    constexpr float cornerSize = 5.0f;
+
+    g.setColour (findColour (TooltipWindow::backgroundColourId));
+    g.fillRoundedRectangle (bounds, cornerSize);
+
+    g.setColour (findColour (TooltipWindow::outlineColourId));
+    g.drawRoundedRectangle (bounds.reduced (0.5f), cornerSize, 1.0f);
+
+    AttributedString attributedText;
+    attributedText.setJustification (Justification::centred);
+    attributedText.append (text, Font (FontOptions (12.0f)),
+                           findColour (TooltipWindow::textColourId));
+
+    TextLayout layout;
+    layout.createLayout (attributedText, jmax (1.0f, bounds.getWidth() - padding * 2.0f));
+    layout.draw (g, bounds.reduced (padding));
+}
+
 void LookAndFeel_E1::drawPopupMenuBackground (Graphics& g, int width, int height)
+
 {
     const Rectangle<float> r (0.f, 0.f, (float) width, (float) height);
     const auto background = findColour (PopupMenu::backgroundColourId);
