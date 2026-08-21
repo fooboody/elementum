@@ -151,6 +151,7 @@ public:
             menu.addOptionsSubmenu();
             if (world)
                 menu.addPresetsMenu (world->presets());
+            menu.addPluginDetailsItem();
             menu.show (0, 0, 0, 0, callback);
         }
         else if (button == &onTopButton)

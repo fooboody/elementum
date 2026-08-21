@@ -196,6 +196,8 @@ public:
         if (world)
             menu.addPresetsMenu (world->presets());
 
+        menu.addPluginDetailsItem();
+
         const int result = menu.show();
         if (auto* message = menu.createMessageForResultCode (result))
         {
@@ -213,6 +215,8 @@ public:
 
         if (world)
             menu.addPresetsMenu (world->presets());
+
+        menu.addPluginDetailsItem();
         const int result = menu.show();
         if (auto* message = menu.createMessageForResultCode (result))
         {
