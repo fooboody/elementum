@@ -1196,7 +1196,7 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
                                   : Info::isDisabled;
             result.setInfo ("Swap Graph and Mixer",
                             "Swap the positions of the graph view and Graph Mixer",
-                            "View",
+                            "UI",
                             flags);
             break;
         }
