@@ -8,7 +8,8 @@
 #include <element/settings.hpp>
 #include <element/ui.hpp>
 #include <element/ui/commands.hpp>
-#include <element/ui/content.hpp>
+#include <element/context.hpp>
+#include <element/plugins.hpp>
 #include <element/ui/mainwindow.hpp>
 #include <element/ui/preferences.hpp>
 #include <element/ui/standard.hpp>
@@ -23,6 +24,7 @@
 #include "services/sessionservice.hpp"
 #include "ui/aboutscreen.hpp"
 #include "ui/capslock.hpp"
+#include "ui/pluginmanagercomponent.hpp"
 #include "ui/pluginwindow.hpp"
 #include "ui/systemtray.hpp"
 #include "ui/virtualkeyboardview.hpp"
@@ -764,6 +766,7 @@ void GuiService::getAllCommands (Array<CommandID>& ids)
                     Commands::showAllPluginWindows,
                     Commands::hideAllPluginWindows,
                     Commands::resetPluginWindows,
+                    Commands::scanPlugins,
                     Commands::toggleMidiLearn,
                     Commands::toggleUserInterface,
                     //======================================================================
@@ -831,6 +834,9 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             break;
         case Commands::resetPluginWindows:
             result.setInfo ("Reset Plugin Windows", "Move off-screen plugin windows back on screen.", "Session", 0);
+            break;
+        case Commands::scanPlugins:
+            result.setInfo ("Scan", "Scan for audio plug-ins.", "Plugin Manager", 0);
             break;
         case Commands::toggleMidiLearn: {
             int flags = 0;
@@ -1017,6 +1023,14 @@ bool GuiService::perform (const InvocationInfo& info)
                     }
             break;
         }
+        case Commands::scanPlugins:
+            if (auto* standard = dynamic_cast<StandardContent*> (content()))
+            {
+                standard->setMainView (EL_VIEW_PLUGIN_MANAGER);
+                if (auto* pluginManager = dynamic_cast<PluginManagerContentView*> (standard->getMainViewComponent()))
+                    pluginManager->scanAll();
+            }
+            break;
         case Commands::toggleMidiLearn: {
             if (auto* mapping = sibling<MappingService>())
             {

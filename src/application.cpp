@@ -152,6 +152,8 @@ struct PluginDetailsLaunchArguments
 {
     bool writeText = false;
     bool writeJson = false;
+    bool overwriteText = false;
+    bool overwriteJson = false;
     String sourcePath;
     String error;
 
@@ -162,23 +164,43 @@ PluginDetailsLaunchArguments parsePluginDetailsLaunchArguments (const String& co
 {
     PluginDetailsLaunchArguments parsed;
     const auto tokens = StringArray::fromTokens (commandLine, true);
+    const auto parseOption = [&parsed] (const String& token) {
+        if (token == "--details")
+        {
+            parsed.writeText = true;
+            return true;
+        }
+
+        if (token == "--details-json")
+        {
+            parsed.writeJson = true;
+            return true;
+        }
+
+        if (token == "--details-overwrite")
+        {
+            parsed.writeText = true;
+            parsed.overwriteText = true;
+            return true;
+        }
+
+        if (token == "--details-overwrite-json")
+        {
+            parsed.writeJson = true;
+            parsed.overwriteJson = true;
+            return true;
+        }
+
+        return false;
+    };
 
     for (int i = 0; i < tokens.size() - 1; ++i)
-    {
-        if (tokens[i] == "--details")
-            parsed.writeText = true;
-        else if (tokens[i] == "--details-json")
-            parsed.writeJson = true;
-    }
+        parseOption (tokens[i]);
 
-    if (tokens.size() > 0)
+    if (! tokens.isEmpty())
     {
         const auto& finalToken = tokens.getReference (tokens.size() - 1);
-        if (finalToken == "--details")
-            parsed.writeText = true;
-        else if (finalToken == "--details-json")
-            parsed.writeJson = true;
-        else
+        if (! parseOption (finalToken))
             parsed.sourcePath = finalToken.unquoted();
     }
 
@@ -186,7 +208,7 @@ PluginDetailsLaunchArguments parsePluginDetailsLaunchArguments (const String& co
         return parsed;
 
     if (parsed.sourcePath.isEmpty())
-        parsed.error = "No plug-in path was provided for --details or --details-json.";
+        parsed.error = "No plug-in path was provided for a plug-in details export option.";
 
     return parsed;
 }
@@ -201,6 +223,8 @@ struct PluginDetailsOutput
     File destination;
     String content;
     File temporary;
+    File backup;
+    bool overwrite = false;
     bool finalized = false;
 };
 
@@ -330,17 +354,21 @@ Result writePluginDetailsOutputs (const OwnedArray<PluginDescription>& descripti
 
         if (options.writeText)
             outputs.add ({ directory.getChildFile (identifier).withFileExtension ("txt"),
-                           getPluginDetailsText (*description), {} });
+                           getPluginDetailsText (*description), {}, {}, options.overwriteText });
         if (options.writeJson)
             outputs.add ({ directory.getChildFile (identifier).withFileExtension ("json"),
-                           getPluginDetailsJsonText (*description), {} });
+                           getPluginDetailsJsonText (*description), {}, {}, options.overwriteJson });
     }
 
-    for (const auto& output : outputs)
-    {
-        if (output.destination.exists())
-            return Result::fail ("A Plugin Details output file already exists:\n" + output.destination.getFullPathName());
-    }
+    // Existing files are intentionally left untouched by default. This makes
+    // repeated exports quiet and idempotent while allowing per-format explicit
+    // replacement through the dedicated overwrite options.
+    for (int i = outputs.size(); --i >= 0;)
+        if (outputs.getReference (i).destination.exists() && ! outputs.getReference (i).overwrite)
+            outputs.remove (i);
+
+    if (outputs.isEmpty())
+        return Result::ok();
 
     if (! directory.createDirectory() || ! directory.isDirectory())
         return Result::fail ("Elementum could not create the PluginDetails output directory:\n" + directory.getFullPathName());
@@ -370,12 +398,35 @@ Result writePluginDetailsOutputs (const OwnedArray<PluginDescription>& descripti
 
     for (auto& output : outputs)
     {
-        if (! output.temporary.moveFileTo (output.destination))
+        if (! output.destination.exists())
+            continue;
+
+        output.backup = directory.getNonexistentChildFile (".plugin-details-backup-" + String (Random::getSystemRandom().nextInt()), "tmp", false);
+        if (! output.destination.copyFileTo (output.backup))
         {
             for (const auto& pending : outputs)
             {
                 pending.temporary.deleteFile();
-                if (pending.finalized)
+                pending.backup.deleteFile();
+            }
+            cleanEmptyNewDirectory();
+            return Result::fail ("Elementum could not prepare the Plugin Details output file for replacement:\n" + output.destination.getFullPathName());
+        }
+    }
+
+    for (auto& output : outputs)
+    {
+        const auto finalized = output.destination.exists()
+                                 ? output.temporary.replaceFileIn (output.destination)
+                                 : output.temporary.moveFileTo (output.destination);
+        if (! finalized)
+        {
+            for (const auto& pending : outputs)
+            {
+                pending.temporary.deleteFile();
+                if (pending.backup.existsAsFile())
+                    pending.backup.replaceFileIn (pending.destination);
+                else if (pending.finalized)
                     pending.destination.deleteFile();
             }
             cleanEmptyNewDirectory();
@@ -383,6 +434,9 @@ Result writePluginDetailsOutputs (const OwnedArray<PluginDescription>& descripti
         }
         output.finalized = true;
     }
+
+    for (const auto& output : outputs)
+        output.backup.deleteFile();
 
     return Result::ok();
 }

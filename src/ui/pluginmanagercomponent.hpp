@@ -143,6 +143,9 @@ public:
     void didBecomeActive() override;
     void willBeRemoved() override;
 
+    /** Starts an all-format scan through the visible plug-in list. */
+    void scanAll();
+
 private:
     std::unique_ptr<PluginListComponent> pluginList;
     Settings* settings();

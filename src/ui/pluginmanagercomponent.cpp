@@ -1162,6 +1162,12 @@ void PluginManagerContentView::willBeRemoved()
     saveSettings();
 }
 
+void PluginManagerContentView::scanAll()
+{
+    if (pluginList != nullptr && ! pluginList->isScanning())
+        pluginList->scanAll();
+}
+
 void PluginManagerContentView::resized()
 {
     if (pluginList)
