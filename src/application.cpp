@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <atomic>
+#include <thread>
 #include <element/application.hpp>
 #include <element/services.hpp>
 #include <element/version.hpp>
@@ -19,6 +20,7 @@
 #include <element/ui/mainwindow.hpp>
 #include <element/ui/updater.hpp>
 
+#include "engine/clapprovider.hpp"
 #include "engine/internalformat.hpp"
 #include "engine/midiengine.hpp"
 #include "scripting.hpp"
@@ -265,11 +267,17 @@ StringArray getPluginDetailIdentifiers (const File& source, const String& format
     return identifiers;
 }
 
-Result collectPluginDetails (Context& context, const File& source,
-                             OwnedArray<PluginDescription>& descriptions)
+Result collectPluginDetails (PluginManager& plugins,
+                             const File& source,
+                             OwnedArray<PluginDescription>& descriptions,
+                             const std::function<void (PluginScanner*)>& scannerReady)
 {
-    auto& plugins = context.plugins();
     std::unique_ptr<PluginScanner> scanner (plugins.createAudioPluginScanner());
+    // Details export handles one explicit target at a time. Do not leave a
+    // command-line caller waiting behind a plug-in that cannot report metadata.
+    scanner->setLaunchTimeout (5000);
+    scanner->setPerPluginTimeout (5000);
+    scannerReady (scanner.get());
     StringArray formats;
 
     for (int i = 0; i < plugins.getAudioPluginFormats().getNumFormats(); ++i)
@@ -286,13 +294,17 @@ Result collectPluginDetails (Context& context, const File& source,
             OwnedArray<PluginDescription> result;
             const auto scanResult = scanner->retrievePluginDescriptions (format, identifier, result);
             if (scanResult.failed())
+            {
+                scannerReady (nullptr);
                 return scanResult;
+            }
 
             for (auto* description : result)
                 descriptions.add (new PluginDescription (*description));
         }
     }
 
+    scannerReady (nullptr);
     return descriptions.isEmpty()
                ? Result::fail ("No supported plug-ins were found at:\n" + source.getFullPathName())
                : Result::ok();
@@ -375,23 +387,12 @@ Result writePluginDetailsOutputs (const OwnedArray<PluginDescription>& descripti
     return Result::ok();
 }
 
-Result runPluginDetailsMode (const PluginDetailsLaunchArguments& options)
+bool isPluginDetailsScanFailure (const Result& result)
 {
-    const auto source = File::isAbsolutePath (options.sourcePath)
-                            ? File (options.sourcePath)
-                            : File::getCurrentWorkingDirectory().getChildFile (options.sourcePath);
-    if (! source.exists())
-        return Result::fail ("The requested plug-in path does not exist:\n" + source.getFullPathName());
-
-    Context context (RunMode::Standalone, "");
-    context.plugins().setPropertiesFile (context.settings().getUserSettings());
-
-    OwnedArray<PluginDescription> descriptions;
-    const auto scanResult = collectPluginDetails (context, source, descriptions);
-    if (scanResult.failed())
-        return scanResult;
-
-    return writePluginDetailsOutputs (descriptions, options);
+    const auto message = result.getErrorMessage();
+    return message.startsWith ("The plug-in scanner timed out or stopped")
+        || message.startsWith ("The plug-in scanner could not be started")
+        || message.startsWith ("The plug-in scan was cancelled");
 }
 
 String encodeProfileInstanceMessage (const String& profileIdentifier,
@@ -426,6 +427,72 @@ bool decodeProfileInstanceMessage (const String& message,
     return profileIdentifier.isNotEmpty();
 }
 } // namespace
+
+class Application::PluginDetailsExportThread final : public Thread
+{
+public:
+    PluginDetailsExportThread (Application& ownerToUse, PluginDetailsLaunchArguments optionsToUse)
+        : Thread ("Plugin Details Export"), owner (ownerToUse), options (std::move (optionsToUse)) {}
+
+    void requestCancel()
+    {
+        cancelRequested = true;
+        if (auto* scanner = activeScanner.load())
+            scanner->cancel();
+    }
+
+private:
+    void run() override
+    {
+        WaitableEvent completed;
+        std::thread watchdog ([this, &completed] {
+            if (! completed.wait (5000))
+                requestCancel();
+        });
+
+        Result result = Result::ok();
+        if (options.error.isNotEmpty())
+        {
+            result = Result::fail (options.error);
+        }
+        else
+        {
+            const auto source = File::isAbsolutePath (options.sourcePath)
+                                    ? File (options.sourcePath)
+                                    : File::getCurrentWorkingDirectory().getChildFile (options.sourcePath);
+            if (! source.exists())
+            {
+                result = Result::fail ("The requested plug-in path does not exist:\n" + source.getFullPathName());
+            }
+            else
+            {
+                PluginManager plugins;
+                plugins.getNodeFactory().add (new CLAPProvider());
+                plugins.addDefaultFormats();
+
+                OwnedArray<PluginDescription> descriptions;
+                result = collectPluginDetails (plugins, source, descriptions, [this] (PluginScanner* scanner) {
+                    activeScanner = scanner;
+                    if (cancelRequested.load() && scanner != nullptr)
+                        scanner->cancel();
+                });
+
+                if (result.wasOk())
+                    result = writePluginDetailsOutputs (descriptions, options);
+            }
+        }
+
+        activeScanner = nullptr;
+        completed.signal();
+        watchdog.join();
+        MessageManager::callAsync ([this, result] { owner.finishPluginDetailsExport (result); });
+    }
+
+    Application& owner;
+    PluginDetailsLaunchArguments options;
+    std::atomic<PluginScanner*> activeScanner { nullptr };
+    std::atomic<bool> cancelRequested { false };
+};
 
 class Startup : public ActionBroadcaster
 {
@@ -709,21 +776,21 @@ void Application::initialise (const String& commandLine)
     if (pluginDetailsOptions.isRequested())
     {
         initializeModulePath();
-        const Result result = pluginDetailsOptions.error.isNotEmpty()
-                                  ? Result::fail (pluginDetailsOptions.error)
-                                  : runPluginDetailsMode (pluginDetailsOptions);
+        pluginDetailsExportThread = std::make_unique<PluginDetailsExportThread> (*this, pluginDetailsOptions);
+        pluginDetailsExportThread->startThread();
+        return;
+    }
 
-        if (result.failed())
-            AlertWindow::showMessageBox (AlertWindow::WarningIcon, "Plugin Details Export Failed", result.getErrorMessage());
-
-        quit();
+    const bool isScannerWorker = commandLine.contains (EL_PLUGIN_SCANNER_PROCESS_ID);
+    if (isScannerWorker)
+    {
+        if (! maybeLaunchScannerWorker (commandLine))
+            quit();
         return;
     }
 
     const auto parsed = parseLaunchArguments (commandLine);
     launchArguments = parsed.remaining;
-
-    const bool isScannerWorker = commandLine.contains (EL_PLUGIN_SCANNER_PROCESS_ID);
     if (parsed.profileDirectoryError.isNotEmpty() && ! isScannerWorker)
     {
         AlertWindow::showMessageBox (AlertWindow::WarningIcon,
@@ -746,15 +813,6 @@ void Application::initialise (const String& commandLine)
     }
 
     world = std::make_unique<Context> (RunMode::Standalone, commandLine, applicationDataDirectory);
-    if (maybeLaunchScannerWorker (commandLine))
-        return;
-
-    if (isScannerWorker && ! acquireProfileInstanceLock())
-    {
-        quit();
-        return;
-    }
-
     initializeModulePath();
     printCopyNotice();
 
@@ -967,6 +1025,20 @@ void Application::AuthStartupThread::run()
     });
 }
 
+void Application::finishPluginDetailsExport (Result result)
+{
+    if (pluginDetailsExportThread != nullptr)
+    {
+        pluginDetailsExportThread->waitForThreadToExit (1000);
+        pluginDetailsExportThread.reset();
+    }
+
+    if (result.failed() && ! isPluginDetailsScanFailure (result))
+        AlertWindow::showMessageBox (AlertWindow::WarningIcon, "Plugin Details Export Failed", result.getErrorMessage());
+
+    quit();
+}
+
 void Application::printCopyNotice()
 {
     String appName = Util::appName();
@@ -981,7 +1053,8 @@ void Application::printCopyNotice()
 bool Application::maybeLaunchScannerWorker (const String& commandLine)
 {
     workers.clearQuick (true);
-    workers.add (world->plugins().createAudioPluginScannerWorker());
+    PluginManager pluginManager;
+    workers.add (pluginManager.createAudioPluginScannerWorker());
     StringArray processIds = { EL_PLUGIN_SCANNER_PROCESS_ID };
     for (auto* worker : workers)
     {

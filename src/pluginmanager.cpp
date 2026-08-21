@@ -165,7 +165,12 @@ public:
 
         auto doLaunch = [this, scannerExe, timeoutMs]() -> bool {
             Logger::writeToLog (String ("launching plugin scanner: ") + scannerExe.getFullPathName());
-            return launchWorkerProcess (scannerExe, EL_PLUGIN_SCANNER_PROCESS_ID, timeoutMs, 0);
+            // Keep plug-in and worker diagnostics out of the caller's console.
+            // The coordinator only communicates through its private IPC pipe.
+            return launchWorkerProcess (scannerExe,
+                                        EL_PLUGIN_SCANNER_PROCESS_ID,
+                                        timeoutMs,
+                                        ChildProcess::wantStdOut | ChildProcess::wantStdErr);
         };
 
         if (MessageManager::getInstance()->isThisTheMessageThread())
@@ -287,10 +292,18 @@ public:
     /** Kills the worker connection and forcibly terminates the worker
         process. A worker hung inside a plugin's load code cannot process the
         kill message or exit on its own, so the OS process must be killed. */
+    void forceTerminateWorkerProcess()
+    {
+        detail::terminateProcess (workerPid.exchange (0));
+    }
+
     void terminateWorkerProcess()
     {
+        // A worker wedged inside plug-in code may stop draining its IPC pipe.
+        // Kill it at the OS level before closing the coordinator, otherwise
+        // sending the graceful kill message can block the Details CLI.
+        forceTerminateWorkerProcess();
         killWorkerProcess();
-        detail::terminateProcess (workerPid.exchange (0));
     }
 
     void handleConnectionLost() override
@@ -547,6 +560,19 @@ void PluginScanner::cancel()
 
 bool PluginScanner::isScanning() const { return scanning.load(); }
 
+void PluginScanner::abandonWorkerAfterCancellation()
+{
+    auto abandonedWorker = std::move (superprocess);
+    if (abandonedWorker == nullptr)
+        return;
+
+    // Killing the process itself is immediate. Coordinator connection teardown
+    // may still wait for a wedged IPC pipe, so complete that independent cleanup
+    // away from the Details CLI's exit path.
+    abandonedWorker->forceTerminateWorkerProcess();
+    std::thread ([worker = std::move (abandonedWorker)]() mutable {}).detach();
+}
+
 bool PluginScanner::shouldAbort() const noexcept
 {
     return cancelFlag.get() != 0 || threadShouldExit();
@@ -652,20 +678,25 @@ PluginScanner::ScanResult PluginScanner::retrieveDescriptions (const String& for
     for (;;)
     {
         if (shouldAbort())
+        {
+            abandonWorkerAfterCancellation();
             return ScanResult::cancelled;
+        }
+
+        // Check the absolute deadline before processing every response. A
+        // separate worker heartbeat can continue even while plug-in loading is
+        // permanently wedged, so a progress message must not postpone expiry.
+        if (Time::getMillisecondCounter() >= deadline)
+        {
+            Logger::writeToLog (String ("plugin scan timed out: ") + fileOrIdentifier);
+            resetWorker (true);
+            return ScanResult::crashed;
+        }
 
         const auto response = superprocess->getResponse();
 
         if (response.state == State::timeout)
-        {
-            if (Time::getMillisecondCounter() >= deadline)
-            {
-                Logger::writeToLog (String ("plugin scan timed out: ") + fileOrIdentifier);
-                resetWorker (true);
-                return ScanResult::crashed;
-            }
             continue;
-        }
 
         if (response.state == State::progress)
         {

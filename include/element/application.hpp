@@ -147,6 +147,8 @@ private:
     void restoreMainWindow();
     void maybeOpenCommandLineArguments (const juce::StringArray& arguments);
 
+    class PluginDetailsExportThread;
+
     /** Background thread that attempts a token refresh on startup. */
     class AuthStartupThread : public juce::Thread {
     public:
@@ -167,6 +169,7 @@ private:
     std::unique_ptr<Context> world;                       ///< The application context and services
     std::unique_ptr<Startup> startup;                     ///< Handles startup initialization
     std::unique_ptr<AuthStartupThread> authStartupThread; ///< Startup auth refresh thread
+    std::unique_ptr<PluginDetailsExportThread> pluginDetailsExportThread;
     juce::OwnedArray<juce::ChildProcessWorker> workers;   ///< Worker processes (e.g., plugin scanner)
 #if JUCE_LINUX
     class MidiSettingsApply {
@@ -190,6 +193,9 @@ private:
 
     /** Prints the copyright notice to the log. */
     void printCopyNotice();
+
+    /** Completes a background Details export on the message thread. */
+    void finishPluginDetailsExport (juce::Result result);
 
     /** Attempts to launch a plugin scanner worker process.
         

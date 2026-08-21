@@ -309,6 +309,7 @@ private:
 
     void run() override;
     bool shouldAbort() const noexcept;
+    void abandonWorkerAfterCancellation();
     void resetWorker (bool alsoKill);
     void notifyOnMessageThread (std::function<void (PluginScanner&)> fn);
     void scanAudioFormat (const juce::String& formatName);
