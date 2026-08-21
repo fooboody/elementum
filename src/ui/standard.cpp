@@ -144,7 +144,8 @@ public:
             if (locked && secondary->getName() == EL_VIEW_GRAPH_MIXER)
 
             {
-                const int secondaryHeight = jmin (lastSecondaryHeight, jmax (0, r.getHeight() - barSize - 48));
+                                const int secondaryHeight = jmin (currentSecondaryHeight(), jmax (0, r.getHeight() - barSize - 48));
+
                 if (isGraphMixerAboveEditor())
                 {
                     secondary->setBounds (r.removeFromTop (secondaryHeight));
@@ -178,7 +179,7 @@ public:
                     };
                     layout.layOutComponents (comps, 3, 0, 0, r.getWidth(), r.getHeight(), true, true);
                 }
-                lastSecondaryHeight = secondary->getHeight();
+                captureSecondaryHeight();
             }
         }
                 else
@@ -231,14 +232,16 @@ public:
         }
     }
 
-    void setSecondaryView (ContentView* view)
+        void setSecondaryView (ContentView* view)
     {
         if (view)
             view->initializeView (owner.services());
 
         if (secondary)
         {
+            captureSecondaryHeight();
             secondary->willBeRemoved();
+
             removeChildComponent (secondary.get());
         }
 
@@ -263,18 +266,22 @@ public:
     {
         if (showAccessoryView == show && ! force)
             return;
+        if (showAccessoryView && ! show)
+            captureSecondaryHeight();
+
         showAccessoryView = show;
         if (showAccessoryView)
         {
             locked = true;
-            lastSecondaryHeight = jmax (50, lastSecondaryHeight);
-            layout.setItemLayout (0, 48, -1.0, primary->getHeight() - 4 - lastSecondaryHeight);
+            auto& secondaryHeight = currentSecondaryHeight();
+            secondaryHeight = jmax (50, secondaryHeight);
+            layout.setItemLayout (0, 48, -1.0, jmax (48, availableContentHeight() - barSize - secondaryHeight));
             layout.setItemLayout (1, barSize, barSize, barSize);
 
             if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
-                layout.setItemLayout (2, lastSecondaryHeight, lastSecondaryHeight, lastSecondaryHeight);
+                layout.setItemLayout (2, secondaryHeight, secondaryHeight, secondaryHeight);
             else
-                layout.setItemLayout (2, 48, -1.0, lastSecondaryHeight);
+                layout.setItemLayout (2, 48, -1.0, secondaryHeight);
         }
 
         resized();
@@ -301,17 +308,23 @@ public:
 
     void saveState (PropertiesFile* props)
     {
-        props->setValue ("ContentContainer_lastSecondaryHeight", lastSecondaryHeight);
+                props->setValue ("ContentContainer_lastSecondaryHeight", currentSecondaryHeight());
+        props->setValue ("ContentContainer_graphMixerHeight", graphMixerHeight);
+        props->setValue ("ContentContainer_consoleHeight", consoleHeight);
         props->setValue ("ContentContainer_showAccessoryView", showAccessoryView);
+
         props->setValue ("ContentContainer_lastSecondaryView", owner.getAccessoryViewName());
         props->setValue ("ContentContainer_graphMixerAboveEditor", graphMixerAboveEditor);
     }
 
     void restoreState (PropertiesFile* props)
     {
-        lastSecondaryHeight = props->getIntValue ("ContentContainer_lastSecondaryHeight", lastSecondaryHeight);
+                lastSecondaryHeight = props->getIntValue ("ContentContainer_lastSecondaryHeight", lastSecondaryHeight);
         lastSecondaryHeight = jmax (50, lastSecondaryHeight);
+        graphMixerHeight = jmax (50, props->getIntValue ("ContentContainer_graphMixerHeight", lastSecondaryHeight));
+        consoleHeight = jmax (50, props->getIntValue ("ContentContainer_consoleHeight", lastSecondaryHeight));
         showAccessoryView = props->getIntValue ("ContentContainer_showAccessoryView", showAccessoryView);
+
         graphMixerAboveEditor = props->getBoolValue ("ContentContainer_graphMixerAboveEditor", false);
         auto lastSecondaryName = props->getValue ("ContentContainer_lastSecondaryView");
         if (showAccessoryView)
@@ -392,9 +405,44 @@ private:
     bool showAccessoryView = false;
     bool graphMixerAboveEditor = false;
     int barSize = 2;
-    int lastSecondaryHeight = 172;
+        int lastSecondaryHeight = 172;
+    int graphMixerHeight = 172;
+    int consoleHeight = 172;
     int capturedAccessoryHeight = -1;
+
     bool locked = true;
+
+    int availableContentHeight() const
+    {
+        auto height = getHeight();
+        if (bottom != nullptr && bottom->requiredHeight() > 0)
+            height -= bottom->requiredHeight() + 1;
+        return height;
+    }
+
+    int& currentSecondaryHeight()
+    {
+        if (secondary != nullptr)
+        {
+            if (secondary->getName() == EL_VIEW_GRAPH_MIXER)
+                return graphMixerHeight;
+            if (secondary->getName() == EL_VIEW_CONSOLE)
+                return consoleHeight;
+        }
+
+        return lastSecondaryHeight;
+    }
+
+    int currentSecondaryHeight() const
+    {
+        return const_cast<ContentContainer*> (this)->currentSecondaryHeight();
+    }
+
+    void captureSecondaryHeight()
+    {
+        if (secondary != nullptr)
+            currentSecondaryHeight() = jmax (50, secondary->getHeight());
+    }
 
     bool shouldTemporarilyHideGraphMixer() const
     {
@@ -435,8 +483,9 @@ private:
 
         if (showAccessoryView)
         {
-            lastSecondaryHeight = secondary->getHeight();
-            capturedAccessoryHeight = lastSecondaryHeight;
+                        captureSecondaryHeight();
+            capturedAccessoryHeight = currentSecondaryHeight();
+
         }
     }
 
@@ -464,7 +513,8 @@ private:
 
         if (showAccessoryView)
         {
-            capturedAccessoryHeight = secondary->getHeight();
+                        capturedAccessoryHeight = currentSecondaryHeight();
+
         }
     }
 };
