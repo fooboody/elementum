@@ -15,6 +15,7 @@ const char* Settings::checkForUpdatesKey = "checkForUpdates";
 const char* Settings::pluginFormatsKey = "pluginFormatsKey";
 const char* Settings::pluginWindowOnTopDefault = "pluginWindowOnTopDefault";
 const char* Settings::scanForPluginsOnStartKey = "scanForPluginsOnStart";
+const char* Settings::pluginScanTimeoutSecondsKey = "pluginScanTimeoutSeconds";
 const char* Settings::showPluginWindowsKey = "showPluginWindows";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
@@ -311,6 +312,7 @@ Settings::Settings (const File& applicationDataDirectory_)
         }
 
         setDefault (menuAppearanceKey, "auto");
+        setDefault (pluginScanTimeoutSecondsKey, "90");
         changed = ensureColourSettings (props) || changed;
         if (changed && ! props->saveIfNeeded())
             DBG ("[element] Failed to save repaired colour settings during startup");
@@ -445,6 +447,37 @@ void Settings::setScanForPluginsOnStartup (const bool shouldScan)
         return;
     if (auto* p = getProps())
         p->setValue (scanForPluginsOnStartKey, shouldScan);
+}
+
+//=============================================================================
+int Settings::normalisePluginScanTimeoutSeconds (const int seconds) noexcept
+{
+    switch (seconds)
+    {
+        case 30:
+        case 60:
+        case 90:
+        case 180:
+        case 300:
+            return seconds;
+        default:
+            return defaultPluginScanTimeoutSeconds;
+    }
+}
+
+int Settings::pluginScanTimeoutSeconds() const
+{
+    if (auto* p = getProps())
+        return normalisePluginScanTimeoutSeconds (
+            p->getIntValue (pluginScanTimeoutSecondsKey, defaultPluginScanTimeoutSeconds));
+
+    return defaultPluginScanTimeoutSeconds;
+}
+
+void Settings::setPluginScanTimeoutSeconds (const int seconds)
+{
+    if (auto* p = getProps())
+        p->setValue (pluginScanTimeoutSecondsKey, normalisePluginScanTimeoutSeconds (seconds));
 }
 
 //=============================================================================

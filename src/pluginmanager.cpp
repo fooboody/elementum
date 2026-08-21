@@ -415,9 +415,10 @@ public:
                 || matchingFormat->requiresUnblockedMessageThreadDuringCreation (pd)))
         {
             // findAllTypesForFile can block for a long time with no feedback
-            // in between (e.g. a VST3 shell plugin such as WaveShell
-            // enumerating many housed sub-plugins), so send heartbeats to
-            // let the coordinator tell a slow scan from a wedged one.
+            // in between (e.g. a VST3 shell plug-in such as WaveShell
+            // enumerating many housed plug-ins). Send heartbeats so the UI can
+            // keep showing the active plug-in, but never let them extend the
+            // coordinator's per-plug-in timeout.
             std::mutex hbMutex;
             std::condition_variable hbCondvar;
             bool scanning = true;
@@ -645,9 +646,9 @@ PluginScanner::ScanResult PluginScanner::retrieveDescriptions (const String& for
 
         if (response.state == State::progress)
         {
-            // The worker is still alive and working on this plugin, so
-            // push the deadline out rather than treating it as wedged.
-            deadline = Time::getMillisecondCounter() + static_cast<uint32> (perPluginTimeoutMs);
+            // A heartbeat only confirms that the worker process is still alive.
+            // It must not extend the deadline: a plug-in can wedge inside its
+            // load code while a separate heartbeat thread keeps running.
             notifyOnMessageThread ([name = File::createFileWithoutCheckingPath (fileOrIdentifier).getFileName()] (PluginScanner& s) {
                 s.listeners.call (&Listener::audioPluginScanStarted, name + "…");
             });
@@ -1255,6 +1256,15 @@ juce::ChildProcessWorker* PluginManager::createAudioPluginScannerWorker()
 PluginScanner* PluginManager::createAudioPluginScanner()
 {
     auto* scanner = new PluginScanner (*this);
+
+    if (props != nullptr)
+    {
+        const auto timeoutSeconds = Settings::normalisePluginScanTimeoutSeconds (
+            props->getIntValue (Settings::pluginScanTimeoutSecondsKey,
+                                Settings::defaultPluginScanTimeoutSeconds));
+        scanner->setPerPluginTimeout (timeoutSeconds * 1000);
+    }
+
     return scanner;
 }
 
