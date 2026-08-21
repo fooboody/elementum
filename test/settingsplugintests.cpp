@@ -39,4 +39,28 @@ BOOST_AUTO_TEST_CASE (ManufacturerInitialIndexSettingIsPersisted)
     directory.deleteRecursively();
 }
 
+BOOST_AUTO_TEST_CASE (PluginScanTimeoutSettingIsPersistedAndValidated)
+{
+    const auto directory = makeSettingsDirectory();
+
+    {
+        Settings settings (directory);
+        BOOST_CHECK_EQUAL (settings.pluginScanTimeoutSeconds(), 90);
+        settings.setPluginScanTimeoutSeconds (300);
+        BOOST_REQUIRE (settings.saveIfNeeded());
+    }
+
+    {
+        Settings settings (directory);
+        BOOST_CHECK_EQUAL (settings.pluginScanTimeoutSeconds(), 300);
+
+        auto* const props = settings.getUserSettings();
+        BOOST_REQUIRE (props != nullptr);
+        props->setValue (Settings::pluginScanTimeoutSecondsKey, 45);
+        BOOST_CHECK_EQUAL (settings.pluginScanTimeoutSeconds(), 90);
+    }
+
+    directory.deleteRecursively();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

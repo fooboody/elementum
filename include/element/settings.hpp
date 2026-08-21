@@ -27,6 +27,7 @@ public:
     static const char* pluginWindowOnTopDefault;
     static const char* lastPluginScanPathPrefix;
     static const char* scanForPluginsOnStartKey;
+    static const char* pluginScanTimeoutSecondsKey;
     static const char* showPluginWindowsKey;
     static const char* openLastUsedSessionKey;
     static const char* askToSaveSessionKey;
@@ -118,6 +119,14 @@ public:
 
     /** Set if plugins should be scanned during startup */
     void setScanForPluginsOnStartup (const bool shouldScan);
+
+    /** The maximum time a single third-party plug-in may spend scanning. */
+    int pluginScanTimeoutSeconds() const;
+    void setPluginScanTimeoutSeconds (int seconds);
+
+    /** Returns a supported plug-in scan timeout, or the default for invalid values. */
+    static int normalisePluginScanTimeoutSeconds (int seconds) noexcept;
+    static constexpr int defaultPluginScanTimeoutSeconds = 90;
 
     /** True if plugin windows should be made visible when added to a graph */
     bool showPluginWindowsWhenAdded() const;

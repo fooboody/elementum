@@ -14,6 +14,11 @@ namespace element {
 
 static void removeNonElementPlugins (KnownPluginList& list);
 
+namespace {
+constexpr int scanTimeoutMenuIdBase = 200;
+constexpr int scanTimeoutSeconds[] { 30, 60, 90, 180, 300 };
+}
+
 //==============================================================================
 class PluginListComponent::Scanner : private Timer,
                                      public PluginScanner::Listener
@@ -230,6 +235,9 @@ private:
 
         if (! scanner->isScanning())
         {
+            if (auto* world = ViewHelpers::getGlobals (&owner))
+                scanner->setPerPluginTimeout (world->settings().pluginScanTimeoutSeconds() * 1000);
+
             if (formatsToScan.size() > 0)
                 scanner->scanForAudioPlugins (formatsToScan);
             else
@@ -848,6 +856,18 @@ void PluginListComponent::clearPluginListAfterConfirmation()
 
 void PluginListComponent::optionsMenuCallback (int result)
 {
+    if (result >= scanTimeoutMenuIdBase
+        && result < scanTimeoutMenuIdBase + numElementsInArray (scanTimeoutSeconds))
+    {
+        if (auto* world = ViewHelpers::getGlobals (this))
+        {
+            auto& settings = world->settings();
+            settings.setPluginScanTimeoutSeconds (scanTimeoutSeconds[result - scanTimeoutMenuIdBase]);
+            settings.saveIfNeeded();
+        }
+        return;
+    }
+
     switch (result)
     {
         case 0:
@@ -943,10 +963,24 @@ void PluginListComponent::buttonClicked (Button* button)
         if (plugins.isAudioPluginFormatSupported ("LV2"))
             paths.addItem (102, TRANS ("LV2 Path"));
         if (paths.getNumItems() > 0)
-        {
             menu.addSubMenu ("Search Paths", paths);
-            menu.addSeparator();
+
+        PopupMenu timeout;
+        auto timeoutSeconds = Settings::defaultPluginScanTimeoutSeconds;
+        if (auto* world = ViewHelpers::getGlobals (this))
+            timeoutSeconds = world->settings().pluginScanTimeoutSeconds();
+
+        for (int i = 0; i < numElementsInArray (scanTimeoutSeconds); ++i)
+        {
+            const auto seconds = scanTimeoutSeconds[i];
+            timeout.addItem (scanTimeoutMenuIdBase + i,
+                             String (seconds) + " Seconds",
+                             true,
+                             seconds == timeoutSeconds);
         }
+
+        menu.addSubMenu ("Scan Timeout", timeout);
+        menu.addSeparator();
 
         menu.addItem (2, TRANS ("Remove Selected Plug-in from List"), table.getNumSelectedRows() > 0);
         menu.addItem (3, TRANS ("Show Folder Containing Selected Plug-in"), canShowSelectedFolder());
