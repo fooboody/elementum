@@ -581,6 +581,29 @@ juce::String PluginScanner::getLastScanError() const
     return lastScanError;
 }
 
+Result PluginScanner::retrievePluginDescriptions (const String& formatName,
+                                                   const String& fileOrIdentifier,
+                                                   OwnedArray<PluginDescription>& result)
+{
+    if (isScanning())
+        return Result::fail ("The plugin scanner is already in use.");
+
+    cancelFlag = 0;
+    switch (retrieveDescriptions (formatName, fileOrIdentifier, result))
+    {
+        case ScanResult::ok:
+            return Result::ok();
+        case ScanResult::crashed:
+            return Result::fail ("The plug-in scanner timed out or stopped while reading:\n" + fileOrIdentifier);
+        case ScanResult::unavailable:
+            return Result::fail ("The plug-in scanner could not be started for:\n" + fileOrIdentifier);
+        case ScanResult::cancelled:
+            return Result::fail ("The plug-in scan was cancelled for:\n" + fileOrIdentifier);
+    }
+
+    return Result::fail ("The plug-in scanner returned an unknown result.");
+}
+
 void PluginScanner::resetWorker (bool alsoKill)
 {
     if (superprocess != nullptr && alsoKill && superprocess->isLaunched())

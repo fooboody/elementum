@@ -9,6 +9,8 @@
 #include <element/context.hpp>
 #include <element/devices.hpp>
 #include <element/plugins.hpp>
+#include <element/plugindetails.hpp>
+#include <element/nodefactory.hpp>
 #include <element/settings.hpp>
 #include <element/ui.hpp>
 #include <element/ui/commands.hpp>
@@ -141,7 +143,255 @@ ParsedLaunchArguments parseLaunchArguments (const String& commandLine)
         parsed.remaining.add (token);
     }
 
+        return parsed;
+}
+
+struct PluginDetailsLaunchArguments
+{
+    bool writeText = false;
+    bool writeJson = false;
+    String sourcePath;
+    String error;
+
+    bool isRequested() const noexcept { return writeText || writeJson; }
+};
+
+PluginDetailsLaunchArguments parsePluginDetailsLaunchArguments (const String& commandLine)
+{
+    PluginDetailsLaunchArguments parsed;
+    const auto tokens = StringArray::fromTokens (commandLine, true);
+
+    for (int i = 0; i < tokens.size() - 1; ++i)
+    {
+        if (tokens[i] == "--details")
+            parsed.writeText = true;
+        else if (tokens[i] == "--details-json")
+            parsed.writeJson = true;
+    }
+
+    if (tokens.size() > 0)
+    {
+        const auto& finalToken = tokens.getReference (tokens.size() - 1);
+        if (finalToken == "--details")
+            parsed.writeText = true;
+        else if (finalToken == "--details-json")
+            parsed.writeJson = true;
+        else
+            parsed.sourcePath = finalToken.unquoted();
+    }
+
+    if (! parsed.isRequested())
+        return parsed;
+
+    if (parsed.sourcePath.isEmpty())
+        parsed.error = "No plug-in path was provided for --details or --details-json.";
+
     return parsed;
+}
+
+File getPluginDetailsOutputDirectory()
+{
+    return DataPath::defaultUserDataPath().getChildFile ("PluginDetails");
+}
+
+struct PluginDetailsOutput
+{
+    File destination;
+    String content;
+    File temporary;
+    bool finalized = false;
+};
+
+String getPluginDetailFormatForExtension (const File& source)
+{
+    const auto extension = source.getFileExtension().toLowerCase();
+    if (extension == ".vst3")
+        return "VST3";
+    if (extension == ".vst" || extension == ".dll")
+        return "VST";
+    if (extension == ".aaxplugin")
+        return "AAX";
+    if (extension == ".component")
+        return "AudioUnit";
+    if (extension == ".lv2")
+        return "LV2";
+    if (extension == ".clap")
+        return "CLAP";
+    return {};
+}
+
+bool isNestedInsidePluginDetailsBundle (const File& file, const File& searchRoot)
+{
+    for (auto parent = file.getParentDirectory(); parent.exists();)
+    {
+        if (parent == searchRoot)
+            return false;
+        if (getPluginDetailFormatForExtension (parent).isNotEmpty())
+            return true;
+
+        const auto next = parent.getParentDirectory();
+        if (next == parent)
+            break;
+        parent = next;
+    }
+
+    return false;
+}
+
+StringArray getPluginDetailIdentifiers (const File& source, const String& formatName)
+{
+    StringArray identifiers;
+    const auto requestedFormat = getPluginDetailFormatForExtension (source);
+
+    if (requestedFormat.isNotEmpty())
+    {
+        if (formatName == requestedFormat)
+            identifiers.add (source.getFullPathName());
+    }
+    else if (source.isDirectory())
+    {
+        Array<File> candidates;
+        source.findChildFiles (candidates, File::findFilesAndDirectories, true);
+        for (const auto& candidate : candidates)
+        {
+            if (getPluginDetailFormatForExtension (candidate) == formatName
+                && ! isNestedInsidePluginDetailsBundle (candidate, source))
+                identifiers.add (candidate.getFullPathName());
+        }
+    }
+
+    identifiers.removeDuplicates (false);
+    identifiers.removeEmptyStrings();
+    return identifiers;
+}
+
+Result collectPluginDetails (Context& context, const File& source,
+                             OwnedArray<PluginDescription>& descriptions)
+{
+    auto& plugins = context.plugins();
+    std::unique_ptr<PluginScanner> scanner (plugins.createAudioPluginScanner());
+    StringArray formats;
+
+    for (int i = 0; i < plugins.getAudioPluginFormats().getNumFormats(); ++i)
+        formats.addIfNotAlreadyThere (plugins.getAudioPluginFormats().getFormat (i)->getName());
+
+    for (auto* provider : plugins.getNodeFactory().providers())
+        formats.addIfNotAlreadyThere (provider->format());
+
+    for (const auto& format : formats)
+    {
+        const auto identifiers = getPluginDetailIdentifiers (source, format);
+        for (const auto& identifier : identifiers)
+        {
+            OwnedArray<PluginDescription> result;
+            const auto scanResult = scanner->retrievePluginDescriptions (format, identifier, result);
+            if (scanResult.failed())
+                return scanResult;
+
+            for (auto* description : result)
+                descriptions.add (new PluginDescription (*description));
+        }
+    }
+
+    return descriptions.isEmpty()
+               ? Result::fail ("No supported plug-ins were found at:\n" + source.getFullPathName())
+               : Result::ok();
+}
+
+Result writePluginDetailsOutputs (const OwnedArray<PluginDescription>& descriptions,
+                                  const PluginDetailsLaunchArguments& options)
+{
+    Array<PluginDetailsOutput> outputs;
+    const auto directory = getPluginDetailsOutputDirectory();
+    const bool directoryExisted = directory.exists();
+    const auto cleanEmptyNewDirectory = [&] {
+        if (! directoryExisted && directory.isDirectory()
+            && directory.getNumberOfChildFiles (File::findFilesAndDirectories) == 0)
+            directory.deleteRecursively();
+    };
+
+    for (const auto* description : descriptions)
+    {
+        const auto identifier = description->createIdentifierString();
+        if (identifier.isEmpty())
+            return Result::fail ("A plug-in description has no identifier and cannot be exported.");
+
+        if (options.writeText)
+            outputs.add ({ directory.getChildFile (identifier).withFileExtension ("txt"),
+                           getPluginDetailsText (*description), {} });
+        if (options.writeJson)
+            outputs.add ({ directory.getChildFile (identifier).withFileExtension ("json"),
+                           getPluginDetailsJsonText (*description), {} });
+    }
+
+    for (const auto& output : outputs)
+    {
+        if (output.destination.exists())
+            return Result::fail ("A Plugin Details output file already exists:\n" + output.destination.getFullPathName());
+    }
+
+    if (! directory.createDirectory() || ! directory.isDirectory())
+        return Result::fail ("Elementum could not create the PluginDetails output directory:\n" + directory.getFullPathName());
+
+    for (auto& output : outputs)
+    {
+        output.temporary = directory.getNonexistentChildFile (".plugin-details-" + String (Random::getSystemRandom().nextInt()), "tmp", false);
+        FileOutputStream stream (output.temporary);
+        if (! stream.openedOk())
+        {
+            for (const auto& pending : outputs)
+                pending.temporary.deleteFile();
+            cleanEmptyNewDirectory();
+            return Result::fail ("Elementum could not write the Plugin Details output file:\n" + output.destination.getFullPathName());
+        }
+
+        stream.writeText (output.content, false, false, "\n");
+        stream.flush();
+        if (stream.getStatus().failed())
+        {
+            for (const auto& pending : outputs)
+                pending.temporary.deleteFile();
+            cleanEmptyNewDirectory();
+            return Result::fail ("Elementum could not write the Plugin Details output file:\n" + output.destination.getFullPathName());
+        }
+    }
+
+    for (auto& output : outputs)
+    {
+        if (! output.temporary.moveFileTo (output.destination))
+        {
+            for (const auto& pending : outputs)
+            {
+                pending.temporary.deleteFile();
+                if (pending.finalized)
+                    pending.destination.deleteFile();
+            }
+            cleanEmptyNewDirectory();
+            return Result::fail ("Elementum could not finalize the Plugin Details output file:\n" + output.destination.getFullPathName());
+        }
+        output.finalized = true;
+    }
+
+    return Result::ok();
+}
+
+Result runPluginDetailsMode (const PluginDetailsLaunchArguments& options)
+{
+    const auto source = File::isAbsolutePath (options.sourcePath)
+                            ? File (options.sourcePath)
+                            : File::getCurrentWorkingDirectory().getChildFile (options.sourcePath);
+    if (! source.exists())
+        return Result::fail ("The requested plug-in path does not exist:\n" + source.getFullPathName());
+
+    Context context (RunMode::Standalone, "");
+    context.plugins().setPropertiesFile (context.settings().getUserSettings());
+
+    OwnedArray<PluginDescription> descriptions;
+    const auto scanResult = collectPluginDetails (context, source, descriptions);
+    if (scanResult.failed())
+        return scanResult;
+
+    return writePluginDetailsOutputs (descriptions, options);
 }
 
 String encodeProfileInstanceMessage (const String& profileIdentifier,
@@ -454,6 +704,22 @@ void Application::handleProfileInstanceMessage (const String& message)
 void Application::initialise (const String& commandLine)
 {
     launchCommandLine = commandLine;
+
+    const auto pluginDetailsOptions = parsePluginDetailsLaunchArguments (commandLine);
+    if (pluginDetailsOptions.isRequested())
+    {
+        initializeModulePath();
+        const Result result = pluginDetailsOptions.error.isNotEmpty()
+                                  ? Result::fail (pluginDetailsOptions.error)
+                                  : runPluginDetailsMode (pluginDetailsOptions);
+
+        if (result.failed())
+            AlertWindow::showMessageBox (AlertWindow::WarningIcon, "Plugin Details Export Failed", result.getErrorMessage());
+
+        quit();
+        return;
+    }
+
     const auto parsed = parseLaunchArguments (commandLine);
     launchArguments = parsed.remaining;
 

@@ -273,6 +273,13 @@ public:
     /** Set how many consecutive scanner-process failures abort the scan. */
     void setMaxConsecutiveFailures (int n) { maxConsecutiveFailures = n; }
 
+    /** Retrieves descriptions for one unregistered plugin identifier using the
+        isolated scanner worker. The descriptions are not added to the known
+        plugin list. */
+    juce::Result retrievePluginDescriptions (const juce::String& formatName,
+                                             const juce::String& fileOrIdentifier,
+                                             juce::OwnedArray<juce::PluginDescription>& result);
+
 private:
     friend class PluginScannerCoordinator;
 
