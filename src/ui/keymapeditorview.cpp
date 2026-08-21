@@ -58,7 +58,7 @@ KeymapEditorView::KeymapEditorView()
 void KeymapEditorView::buttonClicked (Button* b)
 {
     saveMappings();
-    ViewHelpers::invokeDirectly (this, Commands::showLastContentView, true);
+    ViewHelpers::invokeDirectly (this, Commands::showGraphEditor, true);
 }
 
 void KeymapEditorView::stabilizeContent()

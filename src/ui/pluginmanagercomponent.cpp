@@ -1104,7 +1104,7 @@ void PluginListComponent::buttonClicked (Button* button)
     }
     else if (button == &closeButton)
     {
-        ViewHelpers::invokeDirectly (this, Commands::showLastContentView, true);
+        ViewHelpers::invokeDirectly (this, Commands::showGraphEditor, true);
         saveListToSettings();
     }
     else if (button == &scanButton)
