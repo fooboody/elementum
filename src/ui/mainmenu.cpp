@@ -137,6 +137,10 @@ void MainMenu::menuItemSelected (int index, int menu)
     {
         URL (ELEMENT_URL_CHANGELOG).launchInDefaultBrowser();
     }
+    else if (index == 8 && menu == File)
+    {
+        reloadColourSettings();
+    }
 
     else if (index == 2000 && menu == Window)
     {
@@ -222,6 +226,32 @@ void MainMenu::menuItemSelected (int index, int menu)
     }
 }
 
+void MainMenu::reloadColourSettings()
+{
+    world.settings().reloadColourSettings();
+
+    if (auto* gui = owner.services().find<GuiService>())
+        gui->refreshPopupMenuTheme();
+
+    if (auto* root = owner.getContentComponent())
+    {
+        std::function<void (Component*)> repaintTree = [&] (Component* component)
+        {
+            if (component == nullptr)
+                return;
+
+            component->repaint();
+            for (int i = 0; i < component->getNumChildComponents(); ++i)
+                repaintTree (component->getChildComponent (i));
+        };
+
+        repaintTree (root);
+    }
+
+    if (auto* topLevel = owner.getTopLevelComponent())
+        topLevel->repaint();
+}
+
 void MainMenu::addRecentFiles (PopupMenu& menu)
 {
     if (auto* cc = dynamic_cast<Content*> (owner.getContentComponent()))
@@ -254,6 +284,8 @@ void MainMenu::buildFileMenu (PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::exportGraph, "Export Graph...");
 
 #if ! JUCE_MAC
+    menu.addSeparator();
+    menu.addItem (8, "Reload Colors from Conf File");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::showPreferences, "Preferences...");
     menu.addSeparator();
@@ -365,6 +397,7 @@ void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::showConsole, "Console");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::rotateContentView, "Rotate View...");
+    menu.addCommandItem (&cmd, Commands::swapGraphEditorAndMixer, "Swap Graph and Mixer");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::toggleChannelStrip, "Channel Strip");
     menu.addCommandItem (&cmd, Commands::toggleVirtualKeyboard, "Virtual Keyboard");

@@ -136,22 +136,42 @@ public:
 
         if (showAccessoryView && secondary != nullptr)
         {
-            Component* comps[] = {
-                primary.get(),
-                bar.get(),
-                secondary.get()
-            };
-
             if (locked && secondary->getName() == EL_VIEW_GRAPH_MIXER)
             {
                 const int secondaryHeight = jmin (lastSecondaryHeight, jmax (0, r.getHeight() - barSize - 48));
-                secondary->setBounds (r.removeFromBottom (secondaryHeight));
-                bar->setBounds (r.removeFromBottom (barSize));
-                primary->setBounds (r);
+                if (isGraphMixerAboveEditor())
+                {
+                    secondary->setBounds (r.removeFromTop (secondaryHeight));
+                    bar->setBounds (r.removeFromTop (barSize));
+                    primary->setBounds (r);
+                }
+                else
+                {
+                    secondary->setBounds (r.removeFromBottom (secondaryHeight));
+                    bar->setBounds (r.removeFromBottom (barSize));
+                    primary->setBounds (r);
+                }
             }
             else
             {
-                layout.layOutComponents (comps, 3, 0, 0, r.getWidth(), r.getHeight(), true, true);
+                if (isGraphMixerAboveEditor())
+                {
+                    Component* comps[] = {
+                        secondary.get(),
+                        bar.get(),
+                        primary.get()
+                    };
+                    layout.layOutComponents (comps, 3, 0, 0, r.getWidth(), r.getHeight(), true, true);
+                }
+                else
+                {
+                    Component* comps[] = {
+                        primary.get(),
+                        bar.get(),
+                        secondary.get()
+                    };
+                    layout.layOutComponents (comps, 3, 0, 0, r.getWidth(), r.getHeight(), true, true);
+                }
                 lastSecondaryHeight = secondary->getHeight();
             }
         }
@@ -250,11 +270,31 @@ public:
         resized();
     }
 
+    bool canSwapGraphEditorAndMixer() const
+    {
+        return showAccessoryView
+               && primary != nullptr
+               && secondary != nullptr
+               && (primary->getName() == EL_VIEW_GRAPH_EDITOR || primary->getName() == "PatchBay")
+               && secondary->getName() == EL_VIEW_GRAPH_MIXER;
+    }
+
+    void swapGraphEditorAndMixer()
+    {
+        if (! canSwapGraphEditorAndMixer())
+            return;
+
+        graphMixerAboveEditor = ! graphMixerAboveEditor;
+        locked = true;
+        resized();
+    }
+
     void saveState (PropertiesFile* props)
     {
         props->setValue ("ContentContainer_lastSecondaryHeight", lastSecondaryHeight);
         props->setValue ("ContentContainer_showAccessoryView", showAccessoryView);
         props->setValue ("ContentContainer_lastSecondaryView", owner.getAccessoryViewName());
+        props->setValue ("ContentContainer_graphMixerAboveEditor", graphMixerAboveEditor);
     }
 
     void restoreState (PropertiesFile* props)
@@ -262,6 +302,7 @@ public:
         lastSecondaryHeight = props->getIntValue ("ContentContainer_lastSecondaryHeight", lastSecondaryHeight);
         lastSecondaryHeight = jmax (50, lastSecondaryHeight);
         showAccessoryView = props->getIntValue ("ContentContainer_showAccessoryView", showAccessoryView);
+        graphMixerAboveEditor = props->getBoolValue ("ContentContainer_graphMixerAboveEditor", false);
         auto lastSecondaryName = props->getValue ("ContentContainer_lastSecondaryView");
         if (showAccessoryView)
         {
@@ -339,10 +380,16 @@ private:
     std::unique_ptr<Bottom> bottom;
 
     bool showAccessoryView = false;
+    bool graphMixerAboveEditor = false;
     int barSize = 2;
     int lastSecondaryHeight = 172;
     int capturedAccessoryHeight = -1;
     bool locked = true;
+
+    bool isGraphMixerAboveEditor() const
+    {
+        return graphMixerAboveEditor && canSwapGraphEditorAndMixer();
+    }
 
     void lockLayout()
     {
@@ -351,9 +398,18 @@ private:
         const int primaryMin = 48;
         if (showAccessoryView)
         {
-            layout.setItemLayout (0, primaryMin, -1.0, primary->getHeight());
-            layout.setItemLayout (1, barSize, barSize, barSize);
-            layout.setItemLayout (2, secondary->getHeight(), secondary->getHeight(), secondary->getHeight());
+            if (isGraphMixerAboveEditor())
+            {
+                layout.setItemLayout (0, secondary->getHeight(), secondary->getHeight(), secondary->getHeight());
+                layout.setItemLayout (1, barSize, barSize, barSize);
+                layout.setItemLayout (2, primaryMin, -1.0, primary->getHeight());
+            }
+            else
+            {
+                layout.setItemLayout (0, primaryMin, -1.0, primary->getHeight());
+                layout.setItemLayout (1, barSize, barSize, barSize);
+                layout.setItemLayout (2, secondary->getHeight(), secondary->getHeight(), secondary->getHeight());
+            }
         }
 
         resized();
@@ -371,9 +427,18 @@ private:
 
         if (showAccessoryView)
         {
-            layout.setItemLayout (0, 48, -1.0, primary->getHeight());
-            layout.setItemLayout (1, barSize, barSize, barSize);
-            layout.setItemLayout (2, 48, -1.0, secondary->getHeight());
+            if (isGraphMixerAboveEditor())
+            {
+                layout.setItemLayout (0, 48, -1.0, secondary->getHeight());
+                layout.setItemLayout (1, barSize, barSize, barSize);
+                layout.setItemLayout (2, 48, -1.0, primary->getHeight());
+            }
+            else
+            {
+                layout.setItemLayout (0, 48, -1.0, primary->getHeight());
+                layout.setItemLayout (1, barSize, barSize, barSize);
+                layout.setItemLayout (2, 48, -1.0, secondary->getHeight());
+            }
         }
 
         resized();
@@ -1009,6 +1074,7 @@ void StandardContent::getAllCommands (Array<CommandID>& commands)
         Commands::toggleChannelStrip,
         Commands::showLastContentView,
         Commands::rotateContentView,
+        Commands::swapGraphEditorAndMixer,
         Commands::selectAll
     });
     // clang-format on
@@ -1120,8 +1186,18 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
             result.setInfo ("Last View", "Shows the last shown View", "UI", 0);
             break;
         }
-        case Commands::rotateContentView: {
+                case Commands::rotateContentView: {
             result.setInfo ("Next View", "Shows the next View", "UI", 0);
+            break;
+        }
+        case Commands::swapGraphEditorAndMixer: {
+            const int flags = container != nullptr && container->canSwapGraphEditorAndMixer()
+                                  ? 0
+                                  : Info::isDisabled;
+            result.setInfo ("Swap Graph and Mixer",
+                            "Swap the positions of the graph view and Graph Mixer",
+                            "View",
+                            flags);
             break;
         }
         case Commands::selectAll: {
@@ -1199,8 +1275,11 @@ bool StandardContent::perform (const InvocationInfo& info)
         case Commands::showLastContentView:
             backMainView();
             break;
-        case Commands::rotateContentView:
+                case Commands::rotateContentView:
             nextMainView();
+            break;
+        case Commands::swapGraphEditorAndMixer:
+            container->swapGraphEditorAndMixer();
             break;
         case Commands::selectAll: {
             if (auto view = dynamic_cast<GraphEditorView*> (container->primary.get()))

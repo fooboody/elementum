@@ -82,7 +82,9 @@ public:
         redo = juce::StandardApplicationCommandIDs::redo,
         paste = juce::StandardApplicationCommandIDs::paste,
         cut = juce::StandardApplicationCommandIDs::cut,
-        selectAll = juce::StandardApplicationCommandIDs::selectAll
+        selectAll = juce::StandardApplicationCommandIDs::selectAll,
+
+        swapGraphEditorAndMixer = 0x0200
     };
 
     inline static juce::Array<juce::CommandID> getAllCommands()
@@ -110,6 +112,7 @@ public:
 
             toggleVirtualKeyboard,
             rotateContentView,
+            swapGraphEditorAndMixer,
 
             mediaClose,
             mediaOpen,
@@ -210,6 +213,9 @@ public:
             case Commands::rotateContentView:
                 return "rotateContentView";
                 break;
+            case Commands::swapGraphEditorAndMixer:
+                return "swapGraphEditorAndMixer";
+                break;
             case Commands::showControllers:
                 return "showControllers";
                 break;
@@ -287,6 +293,8 @@ public:
             return Commands::toggleVirtualKeyboard;
         if (str == "rotateContentView")
             return Commands::rotateContentView;
+        if (str == "swapGraphEditorAndMixer")
+            return Commands::swapGraphEditorAndMixer;
 
         if (str == "showControllers")
             return Commands::showControllers;
