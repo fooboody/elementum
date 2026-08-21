@@ -134,9 +134,15 @@ public:
             bottom->setVisible (false);
         }
 
-        if (showAccessoryView && secondary != nullptr)
+                const bool showAccessoryInLayout = showAccessoryView
+                                           && secondary != nullptr
+                                           && ! shouldTemporarilyHideGraphMixer();
+        if (showAccessoryInLayout)
         {
+            secondary->setVisible (true);
+            bar->setVisible (true);
             if (locked && secondary->getName() == EL_VIEW_GRAPH_MIXER)
+
             {
                 const int secondaryHeight = jmin (lastSecondaryHeight, jmax (0, r.getHeight() - barSize - 48));
                 if (isGraphMixerAboveEditor())
@@ -175,10 +181,14 @@ public:
                 lastSecondaryHeight = secondary->getHeight();
             }
         }
-        else
+                else
         {
+            if (secondary != nullptr)
+                secondary->setVisible (false);
+            bar->setVisible (false);
             primary->setBounds (r);
         }
+
     }
 
     void setNode (const Node& node)
@@ -385,6 +395,15 @@ private:
     int lastSecondaryHeight = 172;
     int capturedAccessoryHeight = -1;
     bool locked = true;
+
+    bool shouldTemporarilyHideGraphMixer() const
+    {
+        if (secondary == nullptr || secondary->getName() != EL_VIEW_GRAPH_MIXER || primary == nullptr)
+            return false;
+
+        const auto& mainViewName = primary->getName();
+        return mainViewName == EL_VIEW_PLUGIN_MANAGER || mainViewName == EL_VIEW_KEYMAP_EDITOR;
+    }
 
     bool isGraphMixerAboveEditor() const
     {
