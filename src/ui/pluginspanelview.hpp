@@ -9,8 +9,23 @@
 namespace element {
 
 class PluginManager;
+class PluginsPanelView;
+
+class PluginSearchTextEditor : public TextEditor
+{
+public:
+    explicit PluginSearchTextEditor (PluginsPanelView&);
+
+    void addPopupMenuItems (PopupMenu&, const MouseEvent*) override;
+    void performPopupMenuAction (int) override;
+
+private:
+    PluginsPanelView& owner;
+    static constexpr int includeManufacturersMenuItem = 0x5001;
+};
 
 class PluginsPanelView : public ContentView,
+
                          public ChangeListener,
                          public TextEditor::Listener,
                          public Timer
@@ -29,6 +44,9 @@ public:
     /** Opens or closes every category currently shown in the tree. */
     void setAllCategoriesOpen (bool shouldOpen);
 
+    bool includeManufacturersInSearch();
+    void setIncludeManufacturersInSearch (bool shouldInclude);
+
     /** @internal */
     void textEditorTextChanged (TextEditor&) override;
     void textEditorReturnKeyPressed (TextEditor&) override;
@@ -38,7 +56,7 @@ public:
 private:
     PluginManager& plugins;
     TreeView tree;
-    TextEditor search;
+    PluginSearchTextEditor search;
 
     void updateTreeView();
 

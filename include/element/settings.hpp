@@ -56,6 +56,7 @@ public:
     static const char* mainContentTypeKey;
     static const char* pluginListHeaderKey;
     static const char* groupPluginManufacturersByInitialKey;
+    static const char* includePluginManufacturersInSearchKey;
     static const char* devicesKey;
     static const char* keymappingsKey;
     static const char* clockSourceKey;
@@ -147,6 +148,10 @@ public:
     /** True if plugin manufacturers should be grouped by their leading character in the Graph Editor menu. */
     bool groupPluginManufacturersByInitial() const;
     void setGroupPluginManufacturersByInitial (const bool);
+
+    /** True if manufacturer names should be included in plugin panel searches. */
+    bool includePluginManufacturersInSearch() const;
+    void setIncludePluginManufacturersInSearch (const bool);
 
     /** True if MIDI input sources should be connected to new plugins automatically */
     bool autoConnectMidiInputNodes() const;

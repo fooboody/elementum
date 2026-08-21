@@ -8,30 +8,36 @@
 namespace element {
 namespace {
 
-bool pluginMatchesSearch (const PluginDescription& plugin, const String& searchText)
+bool pluginMatchesSearch (const PluginDescription& plugin,
+                          const String& searchText,
+                          const bool includeManufacturers)
 {
-    return searchText.isEmpty() || plugin.name.containsIgnoreCase (searchText);
+    return searchText.isEmpty()
+        || plugin.name.containsIgnoreCase (searchText)
+        || (includeManufacturers && plugin.manufacturerName.containsIgnoreCase (searchText));
 }
 
 bool folderContainsSearchMatch (const KnownPluginList::PluginTree& folder,
-                                const String& searchText)
+                                const String& searchText,
+                                const bool includeManufacturers)
 {
     for (const auto& plugin : folder.plugins)
-        if (pluginMatchesSearch (plugin, searchText))
+        if (pluginMatchesSearch (plugin, searchText, includeManufacturers))
             return true;
 
     for (const auto* subFolder : folder.subFolders)
-        if (folderContainsSearchMatch (*subFolder, searchText))
+        if (folderContainsSearchMatch (*subFolder, searchText, includeManufacturers))
             return true;
 
     return false;
 }
 
-bool shouldIncludeFolder (const PluginsPanelView& panel,
+bool shouldIncludeFolder (PluginsPanelView& panel,
                           const KnownPluginList::PluginTree& folder)
 {
     return ! panel.isFiltering()
-        || folderContainsSearchMatch (folder, panel.getSearchText());
+        || folderContainsSearchMatch (folder, panel.getSearchText(),
+                                      panel.includeManufacturersInSearch());
 }
 
 void setCategoryOpennessRecursively (TreeViewItem& parent, const bool shouldOpen)
@@ -52,7 +58,32 @@ void setCategoryOpennessRecursively (TreeViewItem& parent, const bool shouldOpen
 
 } // namespace
 
+PluginSearchTextEditor::PluginSearchTextEditor (PluginsPanelView& o)
+    : owner (o)
+{
+}
+
+void PluginSearchTextEditor::addPopupMenuItems (PopupMenu& menu, const MouseEvent* event)
+{
+    TextEditor::addPopupMenuItems (menu, event);
+    menu.addSeparator();
+    menu.addItem (includeManufacturersMenuItem, "Include Manufacturers", true,
+                  owner.includeManufacturersInSearch());
+}
+
+void PluginSearchTextEditor::performPopupMenuAction (const int menuItemID)
+{
+    if (menuItemID == includeManufacturersMenuItem)
+    {
+        owner.setIncludeManufacturersInSearch (! owner.includeManufacturersInSearch());
+        return;
+    }
+
+    TextEditor::performPopupMenuAction (menuItemID);
+}
+
 class PluginTreeViewItem : public TreeViewItem
+
 {
 public:
     PluginTreeViewItem (const PluginDescription& d)
@@ -148,8 +179,9 @@ public:
                 addSubItem (new PluginFolderTreeViewItem (panel, *folder));
 
         for (const auto& plugin : tree.plugins)
-            if (pluginMatchesSearch (plugin, text))
+            if (pluginMatchesSearch (plugin, text, panel.includeManufacturersInSearch()))
                 addSubItem (new PluginTreeViewItem (plugin));
+
     }
 };
 
@@ -175,6 +207,7 @@ public:
         for (auto* folder : data->subFolders)
             if (shouldIncludeFolder (owner, *folder))
                 addSubItem (new PluginFolderTreeViewItem (owner, *folder));
+
     }
 
     PluginsPanelView& owner;
@@ -184,7 +217,9 @@ public:
 };
 
 PluginsPanelView::PluginsPanelView (PluginManager& p)
-    : plugins (p)
+    : plugins (p),
+      search (*this)
+
 {
     addAndMakeVisible (search);
     search.setTextToShowWhenEmpty (TRANS ("Search..."), Colors::textColor.darker());
@@ -243,7 +278,27 @@ void PluginsPanelView::setAllCategoriesOpen (const bool shouldOpen)
     tree.repaint();
 }
 
+bool PluginsPanelView::includeManufacturersInSearch()
+{
+    if (auto* const world = ViewHelpers::getGlobals (this))
+        return world->settings().includePluginManufacturersInSearch();
+
+    return false;
+}
+
+void PluginsPanelView::setIncludeManufacturersInSearch (const bool shouldInclude)
+{
+    if (auto* const world = ViewHelpers::getGlobals (this))
+    {
+        auto& settings = world->settings();
+        settings.setIncludePluginManufacturersInSearch (shouldInclude);
+        settings.saveIfNeeded();
+        updateTreeView();
+    }
+}
+
 void PluginsPanelView::timerCallback()
+
 {
     updateTreeView();
     stopTimer();

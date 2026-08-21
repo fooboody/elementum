@@ -44,6 +44,7 @@ const char* Settings::desktopScaleKey = "desktopScale";
 const char* Settings::mainContentTypeKey = "mainContentType";
 const char* Settings::pluginListHeaderKey = "pluginListHeader";
 const char* Settings::groupPluginManufacturersByInitialKey = "groupPluginManufacturersByInitial";
+const char* Settings::includePluginManufacturersInSearchKey = "includePluginManufacturersInSearch";
 const char* Settings::devicesKey = "devices";
 const char* Settings::keymappingsKey = "keymappings";
 const char* Settings::clockSourceKey = "clockSource";
@@ -570,6 +571,19 @@ void Settings::setGroupPluginManufacturersByInitial (const bool value)
 {
     if (auto* props = getProps())
         props->setValue (groupPluginManufacturersByInitialKey, value);
+}
+
+bool Settings::includePluginManufacturersInSearch() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (includePluginManufacturersInSearchKey, false);
+    return false;
+}
+
+void Settings::setIncludePluginManufacturersInSearch (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (includePluginManufacturersInSearchKey, value);
 }
 
 bool Settings::autoConnectMidiInputNodes() const
