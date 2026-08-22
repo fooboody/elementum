@@ -1,7 +1,9 @@
 // Copyright 2019-2023 Kushview, LLC <info@kushview.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <element/context.hpp>
 #include <element/services.hpp>
+#include <element/settings.hpp>
 #include <element/ui/style.hpp>
 
 #include "ui/nodechannelstrip.hpp"
@@ -122,9 +124,14 @@ public:
     {
         if (selected || (hover && ! dragging && ! down))
         {
-            g.setColour (Colors::toggleBlue);
+            auto borderColor = Colors::toggleBlue;
+            if (auto* const cc = ViewHelpers::findContentComponent (this))
+                borderColor = cc->context().settings().getColour (Settings::mixerSelectedBorderColorKey);
+
+            g.setColour (borderColor);
             g.drawRect (0.f, 0.f, (float) getWidth(), (float) getHeight(), selected ? 1.5f : 1.0f);
         }
+
     }
 
     bool isInterestedInDragSource (const SourceDetails& details) override
@@ -349,8 +356,11 @@ public:
 
     void paint (Graphics& g) override
     {
-        g.setColour (Colors::contentBackgroundColor);
-        g.fillAll();
+        auto backgroundColor = Colors::contentBackgroundColor;
+        if (auto* const cc = ViewHelpers::findContentComponent (this))
+            backgroundColor = cc->context().settings().getColour (Settings::mixerBackgroundColorKey);
+
+        g.fillAll (backgroundColor);
 
         if (model->getNumRows() <= 0)
         {

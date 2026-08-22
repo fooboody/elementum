@@ -1,7 +1,10 @@
 // Copyright 2019-2023 Kushview, LLC <info@kushview.net>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <element/settings.hpp>
+
 #include "ui/guicommon.hpp"
+
 #include "ui/block.hpp"
 #include "ui/grapheditorview.hpp"
 #include "common.hpp"
@@ -114,6 +117,13 @@ void GraphEditorView::changeListenerCallback (ChangeBroadcaster*)
 void GraphEditorView::paint (Graphics& g)
 {
     g.fillAll (Colors::contentBackgroundColor);
+
+    auto backgroundColor = Colors::contentBackgroundColor;
+    if (auto* const world = ViewHelpers::getGlobals (this))
+        backgroundColor = world->settings().getColour (Settings::graphEditorBackgroundColorKey);
+
+    g.setColour (backgroundColor);
+    g.fillRect (getLocalBounds().withTrimmedTop (24));
 }
 
 void GraphEditorView::graphDisplayResized (const Rectangle<int>& area)

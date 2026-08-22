@@ -1053,10 +1053,6 @@ void BlockComponent::paint (Graphics& g)
 
     auto barColor = isEnabled() && node.isEnabled() ? color : color.darker (.1f);
 
-    if (isSelected())
-    {
-        bgc = bgc.brighter (0.1f);
-    }
 
     if (colorize)
     {
@@ -1064,7 +1060,7 @@ void BlockComponent::paint (Graphics& g)
         {
             case Compact:
             case Small: {
-                g.setColour (selected ? barColor.brighter (0.1f) : barColor);
+                g.setColour (barColor);
                 g.fillRoundedRectangle (box.toFloat(), cornerSize);
                 break;
             }
@@ -1099,7 +1095,9 @@ void BlockComponent::paint (Graphics& g)
 
     if (isSelected())
     {
-        g.setColour (Colors::toggleBlue);
+        g.setColour (detail::configuredColour (this,
+                                                Settings::nodeSelectedBorderColorKey,
+                                                Colors::toggleBlue));
         g.drawRoundedRectangle (box.toFloat(), cornerSize, 1.5f);
     }
 

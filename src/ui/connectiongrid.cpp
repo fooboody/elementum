@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <element/plugins.hpp>
+#include <element/settings.hpp>
+
 #include <element/ui/style.hpp>
 #include <element/engine.hpp>
 
@@ -1004,6 +1006,13 @@ void ConnectionGrid::setNode (const Node& newNode)
 void ConnectionGrid::paint (Graphics& g)
 {
     g.fillAll (Colors::contentBackgroundColor);
+
+    auto backgroundColor = Colors::contentBackgroundColor;
+    if (auto* const world = ViewHelpers::getGlobals (this))
+        backgroundColor = world->settings().getColour (Settings::patchBayBackgroundColorKey);
+
+    g.setColour (backgroundColor);
+    g.fillRect (getLocalBounds().withTrimmedTop (24));
 }
 
 void ConnectionGrid::resized()

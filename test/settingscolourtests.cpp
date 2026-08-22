@@ -33,10 +33,16 @@ const ColourSettingExpectation colourSettings[] {
     { Settings::nearbyConnectHighlightColorKey, 0xffffffff },
     { Settings::nearbyDisconnectHighlightColorKey, 0xffff0000 },
     { Settings::nearbySwapHighlightColorKey, 0xffffffff },
-    { Settings::nodeEnabledColorKey, 0xff4b65a4 },
-    { Settings::nodeEnabledSelectedColorKey, 0xff7eb9fb },
-    { Settings::nodeDisabledColorKey, 0xff454a52 },
-    { Settings::nodeDisabledSelectedColorKey, 0xff707380 },
+    { Settings::nodeEnabledColorKey, 0xff315a9b },
+    { Settings::nodeEnabledSelectedColorKey, 0xff315a9b },
+    { Settings::nodeDisabledColorKey, 0xff4a4a4a },
+    { Settings::nodeDisabledSelectedColorKey, 0xff4a4a4a },
+    { Settings::nodeSelectedBorderColorKey, 0xfff75002 },
+    { Settings::mixerSelectedBorderColorKey, 0xfff75002 },
+    { Settings::graphEditorBackgroundColorKey, 0xff242424 },
+    { Settings::patchBayBackgroundColorKey, 0xff242424 },
+    { Settings::mixerBackgroundColorKey, 0xff242424 },
+
 };
 
 juce::File makeSettingsDirectory()

@@ -75,6 +75,11 @@ const char* Settings::nodeEnabledColorKey = "nodeEnabledColor";
 const char* Settings::nodeEnabledSelectedColorKey = "nodeEnabledSelectedColor";
 const char* Settings::nodeDisabledColorKey = "nodeDisabledColor";
 const char* Settings::nodeDisabledSelectedColorKey = "nodeDisabledSelectedColor";
+const char* Settings::nodeSelectedBorderColorKey = "nodeSelectedBorderColor";
+const char* Settings::mixerSelectedBorderColorKey = "mixerSelectedBorderColor";
+const char* Settings::graphEditorBackgroundColorKey = "graphEditorBackgroundColor";
+const char* Settings::patchBayBackgroundColorKey = "patchBayBackgroundColor";
+const char* Settings::mixerBackgroundColorKey = "mixerBackgroundColor";
 
 //=============================================================================
 enum OptionsMenuItemId
@@ -183,10 +188,16 @@ const ColourSettingDefault colourSettingDefaults[] {
     { Settings::nearbyConnectHighlightColorKey, "#ffffff", Colours::white },
     { Settings::nearbyDisconnectHighlightColorKey, "#ff0000", Colour (0xffff0000) },
     { Settings::nearbySwapHighlightColorKey, "#ffffff", Colours::white },
-    { Settings::nodeEnabledColorKey, "#4b65a4", Colour (0xff4b65a4) },
-    { Settings::nodeEnabledSelectedColorKey, "#7eb9fb", Colour (0xff7eb9fb) },
-    { Settings::nodeDisabledColorKey, "#454a52", Colour (0xff454a52) },
-    { Settings::nodeDisabledSelectedColorKey, "#707380", Colour (0xff707380) },
+    { Settings::nodeEnabledColorKey, "#315a9b", Colour (0xff315a9b) },
+    { Settings::nodeEnabledSelectedColorKey, "#315a9b", Colour (0xff315a9b) },
+    { Settings::nodeDisabledColorKey, "#4a4a4a", Colour (0xff4a4a4a) },
+    { Settings::nodeDisabledSelectedColorKey, "#4a4a4a", Colour (0xff4a4a4a) },
+    { Settings::nodeSelectedBorderColorKey, "#f75002", Colour (0xfff75002) },
+    { Settings::mixerSelectedBorderColorKey, "#f75002", Colour (0xfff75002) },
+    { Settings::graphEditorBackgroundColorKey, "#242424", Colour (0xff242424) },
+    { Settings::patchBayBackgroundColorKey, "#242424", Colour (0xff242424) },
+    { Settings::mixerBackgroundColorKey, "#242424", Colour (0xff242424) },
+
 };
 
 const ColourSettingDefault* findColourSettingDefault (const std::string_view key)

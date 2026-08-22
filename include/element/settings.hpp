@@ -87,6 +87,11 @@ public:
     static const char* nodeEnabledSelectedColorKey;
     static const char* nodeDisabledColorKey;
     static const char* nodeDisabledSelectedColorKey;
+    static const char* nodeSelectedBorderColorKey;
+    static const char* mixerSelectedBorderColorKey;
+    static const char* graphEditorBackgroundColorKey;
+    static const char* patchBayBackgroundColorKey;
+    static const char* mixerBackgroundColorKey;
 
     bool getBool (std::string_view key, bool fallback = false) const noexcept;
 

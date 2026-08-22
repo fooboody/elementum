@@ -512,7 +512,11 @@ void GraphEditorComponent::setVerticalLayout (const bool isVertical)
 
 void GraphEditorComponent::paint (Graphics& g)
 {
-    g.fillAll (findColour (Style::contentBackgroundColorId));
+    auto backgroundColor = findColour (Style::contentBackgroundColorId);
+    if (auto* const world = ViewHelpers::getGlobals (this))
+        backgroundColor = world->settings().getColour (Settings::graphEditorBackgroundColorKey);
+
+    g.fillAll (backgroundColor);
 }
 
 void GraphEditorComponent::mouseDown (const MouseEvent& e)
