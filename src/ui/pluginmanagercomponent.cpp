@@ -758,7 +758,10 @@ bool PluginListComponent::keyPressed (const KeyPress& key, Component*)
         return true;
     }
 
-    if (! modifiers.isShiftDown())
+    const auto keyCode = key.getKeyCode();
+    const bool isFunctionKey = keyCode >= KeyPress::F1Key && keyCode <= KeyPress::F35Key;
+
+    if (! modifiers.isShiftDown() && ! isFunctionKey)
         if (auto* const content = ViewHelpers::findContentComponent (this))
             if (auto* const keyMappings = content->services().find<UI>()->commands().getKeyMappings())
                 if (const auto commandID = keyMappings->findCommandForKeyPress (key); commandID != 0)
