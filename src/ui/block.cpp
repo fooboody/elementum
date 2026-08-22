@@ -1043,7 +1043,7 @@ void BlockComponent::paint (Graphics& g)
     {
         return detail::configuredColour (this, key, fallback);
     };
-    const auto bgc = enabled
+    auto bgc = enabled
                          ? getNodeBackground (selected ? Settings::nodeEnabledSelectedColorKey
                                                         : Settings::nodeEnabledColorKey,
                                                selected ? Colour (0xff7eb9fb) : Colour (0xff4b65a4))
@@ -1053,13 +1053,18 @@ void BlockComponent::paint (Graphics& g)
 
     auto barColor = isEnabled() && node.isEnabled() ? color : color.darker (.1f);
 
+    if (isSelected())
+    {
+        bgc = bgc.brighter (0.1f);
+    }
+
     if (colorize)
     {
         switch (displayMode)
         {
             case Compact:
             case Small: {
-                g.setColour (selected ? barColor.brighter (0.275f) : barColor);
+                g.setColour (selected ? barColor.brighter (0.1f) : barColor);
                 g.fillRoundedRectangle (box.toFloat(), cornerSize);
                 break;
             }
@@ -1090,6 +1095,12 @@ void BlockComponent::paint (Graphics& g)
     {
         g.setColour (bgc.darker (0.6f));
         g.drawRoundedRectangle (box.toFloat(), cornerSize, 1.3f);
+    }
+
+    if (isSelected())
+    {
+        g.setColour (Colors::toggleBlue);
+        g.drawRoundedRectangle (box.toFloat(), cornerSize, 1.5f);
     }
 
     auto displayName = node.getDisplayName();
