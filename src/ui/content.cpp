@@ -12,6 +12,8 @@
 #include <element/ui/content.hpp>
 #include <element/ui/preferences.hpp>
 #include <element/ui/style.hpp>
+#include "services/devicemonitor.hpp"
+#include "services/deviceservice.hpp"
 
 #include "services/mappingservice.hpp"
 #include "services/sessionservice.hpp"
