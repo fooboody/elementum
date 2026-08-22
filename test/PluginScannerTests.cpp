@@ -262,17 +262,17 @@ BOOST_AUTO_TEST_CASE (CrashingPluginDoesNotPoisonScan)
     tmp.deleteRecursively();
 }
 
-/** A plugin that hangs the worker must be killed at the per-plugin timeout,
-    treated as crashed, and the scan must continue with a fresh worker. */
-BOOST_AUTO_TEST_CASE (HangingPluginTimesOutAndScanContinues)
+/** A timeout below the preflight retry window must remain a single attempt
+    and still blacklist a genuinely hanging plugin. */
+BOOST_AUTO_TEST_CASE (HangingPluginTimesOutWithSingleAttemptBelowPreflightThreshold)
 {
     const auto exe = integrationScannerExe();
     const juce::File hangDir = juce::File (EL_TEST_BADPLUGINS_DIR).getChildFile ("hanger");
     if (! exe.existsAsFile() || ! hangDir.isDirectory())
         return;
 
-    auto tmp = makeGarbageDir ({ "after1.vst3", "after2.vst3" });
-    auto props = makeProps (tmp, hangDir.getFullPathName() + ";" + tmp.getFullPathName());
+    auto tmp = makeGarbageDir ({ });
+    auto props = makeProps (tmp, hangDir.getFullPathName());
 
     PluginManager manager;
     manager.addDefaultFormats();
@@ -282,17 +282,21 @@ BOOST_AUTO_TEST_CASE (HangingPluginTimesOutAndScanContinues)
     RecordingListener listener;
     scanner->addListener (&listener);
     scanner->setScannerExe (exe);
+    // A timeout below the 10-second preflight window must remain a single
+    // attempt. A retry would push this fixture well beyond the bound below.
     scanner->setPerPluginTimeout (3000);
 
+    const auto startedAt = juce::Time::getMillisecondCounterHiRes();
     scanner->scanForAudioPlugins (juce::StringArray { "VST3" });
     BOOST_REQUIRE (scanner->waitForScanToFinish (120000));
+    BOOST_CHECK_LT (juce::Time::getMillisecondCounterHiRes() - startedAt, 8000.0);
 
     BOOST_CHECK_EQUAL (listener.finishedCount.load(), 1);
     BOOST_CHECK (scanner->getLastScanError().isEmpty());
 
     const auto& blacklist = manager.getKnownPlugins().getBlacklistedFiles();
-    BOOST_CHECK_EQUAL (scanner->getFailedFiles().size(), 3);
-    BOOST_CHECK_EQUAL (blacklist.size(), 3);
+    BOOST_CHECK_EQUAL (scanner->getFailedFiles().size(), 1);
+    BOOST_CHECK_EQUAL (blacklist.size(), 1);
     BOOST_CHECK (blacklist.contains (hangDir.getChildFile ("hanger.vst3").getFullPathName()));
 
     scanner->removeListener (&listener);

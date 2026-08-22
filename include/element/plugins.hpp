@@ -277,8 +277,9 @@ public:
     /** Set the timeout used when launching the scanner process. */
     void setLaunchTimeout (int ms) { launchTimeoutMs = ms; }
 
-    /** Set how long a single plugin may take before the scanner process
-        is killed and the plugin treated as crashed. */
+    /** Set the total candidate-specific loading budget. Values above 10 seconds
+        use an initial 10-second worker attempt followed by one retry using the
+        remaining budget; values of 10 seconds or less use a single attempt. */
     void setPerPluginTimeout (int ms) { perPluginTimeoutMs = ms; }
 
     /** Set how many consecutive scanner-process failures abort the scan. */
@@ -296,7 +297,8 @@ private:
 
     enum class ScanResult {
         ok,          ///> The worker responded. The result may be empty.
-        crashed,     ///> The worker crashed or hung loading this plugin.
+        timedOut,    ///> The worker exceeded its candidate-specific deadline.
+        crashed,     ///> The worker stopped while loading this plugin.
         unavailable, ///> The worker could not be launched or contacted.
         cancelled    ///> The scan was cancelled.
     };
@@ -332,9 +334,12 @@ private:
     void replaceDescriptionsForRescanTarget (const RescanTarget& target,
                                              const juce::OwnedArray<juce::PluginDescription>& descriptions);
     ScanResult retrieveDescriptions (const juce::String& formatName,
-
                                      const juce::String& fileOrIdentifier,
-                                     juce::OwnedArray<juce::PluginDescription>& result);
+                                     juce::OwnedArray<juce::PluginDescription>& result,
+                                     int timeoutMs);
+    ScanResult retrieveDescriptionsWithPreflightRetry (const juce::String& formatName,
+                                                        const juce::String& fileOrIdentifier,
+                                                        juce::OwnedArray<juce::PluginDescription>& result);
 
     JUCE_DECLARE_WEAK_REFERENCEABLE (PluginScanner)
 };

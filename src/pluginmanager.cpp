@@ -96,6 +96,8 @@ static void setDeadMansPedalFile (const StringArray& newContents)
         deadMansPedalFile.replaceWithText (newContents.joinIntoString ("\n"), true, true);
 }
 
+constexpr int pluginScanPreflightTimeoutMs = 10 * 1000;
+
 static void applyBlacklistingsFromDeadMansPedal (KnownPluginList& list)
 {
     // If any plugins have crashed recently when being loaded, move them to the
@@ -615,10 +617,11 @@ Result PluginScanner::retrievePluginDescriptions (const String& formatName,
         return Result::fail ("The plugin scanner is already in use.");
 
     cancelFlag = 0;
-    switch (retrieveDescriptions (formatName, fileOrIdentifier, result))
+    switch (retrieveDescriptions (formatName, fileOrIdentifier, result, perPluginTimeoutMs))
     {
         case ScanResult::ok:
             return Result::ok();
+        case ScanResult::timedOut:
         case ScanResult::crashed:
             return Result::fail ("The plug-in scanner timed out or stopped while reading:\n" + fileOrIdentifier);
         case ScanResult::unavailable:
@@ -647,7 +650,8 @@ void PluginScanner::notifyOnMessageThread (std::function<void (PluginScanner&)> 
 
 PluginScanner::ScanResult PluginScanner::retrieveDescriptions (const String& formatName,
                                                                const String& fileOrIdentifier,
-                                                               OwnedArray<PluginDescription>& result)
+                                                               OwnedArray<PluginDescription>& result,
+                                                               const int timeoutMs)
 {
     if (superprocess == nullptr)
     {
@@ -673,7 +677,7 @@ PluginScanner::ScanResult PluginScanner::retrieveDescriptions (const String& for
     }
 
     using State = PluginScannerCoordinator::State;
-    auto deadline = Time::getMillisecondCounter() + static_cast<uint32> (perPluginTimeoutMs);
+    auto deadline = Time::getMillisecondCounter() + static_cast<uint32> (timeoutMs);
 
     for (;;)
     {
@@ -690,7 +694,7 @@ PluginScanner::ScanResult PluginScanner::retrieveDescriptions (const String& for
         {
             Logger::writeToLog (String ("plugin scan timed out: ") + fileOrIdentifier);
             resetWorker (true);
-            return ScanResult::crashed;
+            return ScanResult::timedOut;
         }
 
         const auto response = superprocess->getResponse();
@@ -729,6 +733,31 @@ PluginScanner::ScanResult PluginScanner::retrieveDescriptions (const String& for
 
         return ScanResult::ok;
     }
+}
+
+PluginScanner::ScanResult PluginScanner::retrieveDescriptionsWithPreflightRetry (const String& formatName,
+                                                                                   const String& fileOrIdentifier,
+                                                                                   OwnedArray<PluginDescription>& result)
+{
+    if (perPluginTimeoutMs <= detail::pluginScanPreflightTimeoutMs)
+        return retrieveDescriptions (formatName, fileOrIdentifier, result, perPluginTimeoutMs);
+
+    const auto firstAttempt = retrieveDescriptions (formatName,
+                                                    fileOrIdentifier,
+                                                    result,
+                                                    detail::pluginScanPreflightTimeoutMs);
+    if (firstAttempt != ScanResult::timedOut)
+        return firstAttempt;
+
+    if (shouldAbort())
+        return ScanResult::cancelled;
+
+    Logger::writeToLog (String ("retrying plugin scan after preflight timeout: ") + fileOrIdentifier);
+    const auto retryResult = retrieveDescriptions (formatName,
+                                                   fileOrIdentifier,
+                                                   result,
+                                                   perPluginTimeoutMs - detail::pluginScanPreflightTimeoutMs);
+    return retryResult == ScanResult::timedOut ? ScanResult::crashed : retryResult;
 }
 
 File PluginScanner::scannerExeFile() const noexcept { return _scannerExe; }
@@ -804,7 +833,7 @@ void PluginScanner::scanAudioFormat (const String& formatName)
             detail::setDeadMansPedalFile (crashed);
         };
 
-        switch (retrieveDescriptions (formatName, ID, descriptions))
+        switch (retrieveDescriptionsWithPreflightRetry (formatName, ID, descriptions))
         {
             case ScanResult::ok:
                 consecutiveFailures = 0;
@@ -816,6 +845,7 @@ void PluginScanner::scanAudioFormat (const String& formatName)
                     failedIdentifiers.add (ID);
                 break;
 
+            case ScanResult::timedOut:
             case ScanResult::crashed:
                 // Leave the ID on the dead-man's-pedal so it gets blacklisted.
                 consecutiveFailures = 0;
@@ -913,7 +943,7 @@ void PluginScanner::rescanAudioPluginTargets (const Array<RescanTarget>& targets
         };
 
         OwnedArray<PluginDescription> descriptions;
-        switch (retrieveDescriptions (target.formatName, target.fileOrIdentifier, descriptions))
+        switch (retrieveDescriptionsWithPreflightRetry (target.formatName, target.fileOrIdentifier, descriptions))
         {
             case ScanResult::ok:
                 consecutiveFailures = 0;
@@ -924,6 +954,7 @@ void PluginScanner::rescanAudioPluginTargets (const Array<RescanTarget>& targets
                     failedIdentifiers.add (target.fileOrIdentifier);
                 break;
 
+            case ScanResult::timedOut:
             case ScanResult::crashed:
                 consecutiveFailures = 0;
                 failedIdentifiers.add (target.fileOrIdentifier);
