@@ -300,13 +300,12 @@ private:
                 for (int i = lastSize; i < unverified.size(); ++i)
                 {
                     const auto& fid = unverified.getUnchecked (i)->fileOrIdentifier;
-                    menu.addItem (i + 20000,
-                                  juce::File::isAbsolutePath (fid)
-                                      ? juce::File (fid).getFileNameWithoutExtension()
-                                      : fid);
+                    formatMenu.addItem (unverifiedResultOffset + i,
+                                        juce::File::isAbsolutePath (fid)
+                                            ? juce::File (fid).getFileNameWithoutExtension ()
+                                            : fid);
                 }
             }
-
             if (formatMenu.getNumItems() > 0)
                 unverifiedMenu.addSubMenu (name, formatMenu);
         }
