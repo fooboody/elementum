@@ -5,6 +5,8 @@
 #include <element/context.hpp>
 #include <element/settings.hpp>
 #include <element/nodefactory.hpp>
+#include <element/ui.hpp>
+#include <element/ui/commands.hpp>
 
 #include "ui/guicommon.hpp"
 #include "ui/pluginmanagercomponent.hpp"
@@ -17,6 +19,7 @@ static void removeNonElementPlugins (KnownPluginList& list);
 namespace {
 constexpr int scanTimeoutMenuIdBase = 200;
 constexpr int scanTimeoutSeconds[] { 30, 60, 90, 180, 300 };
+constexpr uint32 typeSearchTimeoutMilliseconds = 1000;
 }
 
 //==============================================================================
@@ -643,6 +646,7 @@ PluginListComponent::PluginListComponent (PluginManager& p, PropertiesFile* prop
     table.setRowHeight (20);
     table.setModel (tableModel.get());
     table.setMultipleSelectionEnabled (true);
+    table.addKeyListener (this);
     addAndMakeVisible (table);
 
     addAndMakeVisible (optionsButton);
@@ -672,6 +676,7 @@ PluginListComponent::PluginListComponent (PluginManager& p, PropertiesFile* prop
 
 PluginListComponent::~PluginListComponent()
 {
+    table.removeKeyListener (this);
     list.removeChangeListener (this);
     plugins.removeChangeListener (this);
 }
@@ -726,6 +731,80 @@ void PluginListComponent::updateList()
 {
     table.updateContent();
     table.repaint();
+}
+
+bool PluginListComponent::keyPressed (const KeyPress& key, Component*)
+{
+    const auto modifiers = key.getModifiers();
+    if (modifiers.isCtrlDown() || modifiers.isAltDown() || modifiers.isCommandDown())
+        return false;
+
+    const auto character = key.getTextCharacter();
+    if (CharacterFunctions::isLetter (character))
+    {
+        const auto now = Time::getMillisecondCounter();
+        if (now - typeSearchLastKeyTime > typeSearchTimeoutMilliseconds)
+            typeSearchText.clear();
+
+        typeSearchLastKeyTime = now;
+        typeSearchText += String::charToString (character);
+
+        if (! selectPluginByNamePrefix (typeSearchText))
+        {
+            typeSearchText = String::charToString (character);
+            selectPluginByNamePrefix (typeSearchText);
+        }
+
+        return true;
+    }
+
+    if (! modifiers.isShiftDown())
+        if (auto* const content = ViewHelpers::findContentComponent (this))
+            if (auto* const keyMappings = content->services().find<UI>()->commands().getKeyMappings())
+                if (const auto commandID = keyMappings->findCommandForKeyPress (key); commandID != 0)
+                {
+                    auto& commandManager = keyMappings->getCommandManager();
+                    ApplicationCommandInfo info (0);
+
+                    if (commandManager.getTargetForCommand (commandID, info) != nullptr
+                        && (info.flags & ApplicationCommandInfo::isDisabled) == 0
+                        && (info.flags & ApplicationCommandInfo::wantsKeyUpDownCallbacks) == 0)
+                        return true;
+                }
+
+    return false;
+}
+
+bool PluginListComponent::selectPluginByNamePrefix (const String& prefix)
+{
+    const auto types = list.getTypes();
+    const auto numTypes = types.size();
+    if (numTypes == 0)
+        return false;
+
+    const auto matchesPrefix = [&] (const int row) {
+        return types.getReference (row).name.startsWithIgnoreCase (prefix);
+    };
+
+    auto startRow = table.getSelectedRow() + 1;
+    if (! isPositiveAndBelow (startRow, numTypes))
+        startRow = 0;
+
+    for (int row = startRow; row < numTypes; ++row)
+        if (matchesPrefix (row))
+        {
+            table.selectRow (row);
+            return true;
+        }
+
+    for (int row = 0; row < startRow; ++row)
+        if (matchesPrefix (row))
+        {
+            table.selectRow (row);
+            return true;
+        }
+
+    return false;
 }
 
 void PluginListComponent::restoreTableHeader (const String& state)

@@ -21,6 +21,7 @@ class Settings;
  */
 class PluginListComponent : public juce::Component,
                             public juce::FileDragAndDropTarget,
+                            private juce::KeyListener,
                             private juce::ChangeListener,
                             private juce::Button::Listener
 {
@@ -110,7 +111,9 @@ private:
     friend struct juce::ContainerDeletePolicy<Scanner>;
     std::unique_ptr<Scanner> currentScanner;
 
-    juce::OwnedArray<juce::TextButton> formatButtons;
+        juce::OwnedArray<juce::TextButton> formatButtons;
+    juce::String typeSearchText;
+    uint32 typeSearchLastKeyTime = 0;
 
     void scanFinished (const juce::StringArray&);
     static void optionsMenuStaticCallback (int, PluginListComponent*);
@@ -127,6 +130,8 @@ private:
     void filesDropped (const juce::StringArray&, int, int) override;
     void buttonClicked (juce::Button*) override;
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
+    bool keyPressed (const juce::KeyPress&, juce::Component*) override;
+    bool selectPluginByNamePrefix (const juce::String&);
 
     void scanWithBackgroundScanner();
 
