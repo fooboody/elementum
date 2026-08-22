@@ -59,7 +59,7 @@ public:
     void showContextMenu()
     {
         PopupMenu menu;
-        menu.addItem (1, TRANS ("Hide from mixer"));
+        menu.addItem (1, TRANS ("Hide from Mixer"));
         menu.showMenuAsync (PopupMenu::Options().withTargetComponent (this).withMousePosition(),
                             [strip = Component::SafePointer<GraphMixerChannelStrip> (this)] (int result) {
                                 if (strip == nullptr || result != 1)
@@ -287,7 +287,7 @@ public:
         }
         else if (hidden.isEmpty())
         {
-            menu.addItem (1, TRANS ("No hidden channels"), false);
+            menu.addItem (1, TRANS ("No Hidden Channels"), false);
         }
 
         menu.showMenuAsync (PopupMenu::Options(),
