@@ -360,8 +360,17 @@ public:
         updateLabels();
     }
 
+        String getSystemTrayPerformanceText() const
+    {
+        String text;
+        text << "Load " << String (devices.getCpuUsage() * 100.f, 1) << "%";
+        text << "\nCPU " << String (processCpuUsage, 1) << "%";
+        return text;
+    }
+
     void updateLabels()
     {
+
         auto engine = world.audio();
         const auto mode = world.services().getRunMode();
 
@@ -585,6 +594,14 @@ void Content::refreshStatusBar()
 {
     statusBar->updateLabels();
 }
+
+String Content::getSystemTrayPerformanceText() const
+{
+    return statusBar != nullptr ? statusBar->getSystemTrayPerformanceText()
+                                : String ("Load 0.0%\nCPU 0.0%");
+}
+
+
 
 Context& Content::context() { return _context; }
 SessionPtr Content::session() { return _context.session(); }

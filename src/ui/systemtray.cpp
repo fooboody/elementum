@@ -4,6 +4,8 @@
 #include <element/context.hpp>
 #include <element/ui.hpp>
 #include <element/ui/commands.hpp>
+#include <element/ui/content.hpp>
+
 #include <element/ui/mainwindow.hpp>
 
 #include "ui/systemtray.hpp"
@@ -81,17 +83,40 @@ void SystemTray::setEnabled (bool enabled)
         if (instance == nullptr)
             instance = new SystemTray();
 
-        if (instance != nullptr && ! instance->isOnDesktop())
-            instance->addToDesktop (0);
+        if (instance != nullptr)
+        {
+            if (! instance->isOnDesktop())
+                instance->addToDesktop (0);
+
+            instance->updateTooltip();
+            instance->startTimer (2000);
+        }
     }
     else
     {
         if (instance != nullptr)
         {
+            instance->stopTimer();
             if (instance->isOnDesktop())
                 instance->removeFromDesktop();
         }
     }
+}
+
+void SystemTray::updateTooltip()
+{
+    auto performanceText = String ("Load 0.0%\nCPU 0.0%");
+
+    if (auto* const window = getMainWindow())
+        if (auto* const content = dynamic_cast<Content*> (window->getContentComponent()))
+            performanceText = content->getSystemTrayPerformanceText();
+
+    setIconTooltip (Util::appName() + "\n" + performanceText);
+}
+
+void SystemTray::timerCallback()
+{
+    updateTooltip();
 }
 
 void SystemTray::mouseUp (const MouseEvent& ev)

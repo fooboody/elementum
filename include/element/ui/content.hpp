@@ -93,8 +93,13 @@ public:
     void refreshToolbar();
 
     //=========================================================================
-    /** Manually refresh the status bar */
+        /** Manually refresh the status bar */
     void refreshStatusBar();
+
+    /** Returns the current Load and CPU text for the system tray tooltip. */
+    juce::String getSystemTrayPerformanceText() const;
+
+
 
     /** Chang statusbar visibility */
     void setStatusBarVisible (bool);

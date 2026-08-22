@@ -6,7 +6,9 @@
 namespace element {
 
 class SystemTray : public SystemTrayIconComponent,
-                   public DeletedAtShutdown
+                   public DeletedAtShutdown,
+                   private Timer
+
 {
 public:
     ~SystemTray() = default;
@@ -22,6 +24,8 @@ private:
     static bool initialized;
     int mouseUpAction = -1;
     void runMenu();
+    void updateTooltip();
+    void timerCallback() override;
 
     friend class GuiService;
     static void init (GuiService&);
