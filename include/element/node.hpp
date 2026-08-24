@@ -180,6 +180,9 @@ public:
     /** Returns true if this node should be enabled */
     inline const bool isEnabled() const { return (bool) getProperty (tags::enabled, true); }
 
+    /** Enable or disable this node */
+    void setEnabled (bool);
+
     //=========================================================================
     /** Returns the enabled MIDI channels on this Node */
     MidiChannels getMidiChannels() const;
@@ -190,6 +193,9 @@ public:
 
     /** Returns the Value object for the bypass property */
     juce::Value getBypassedValue() { return getPropertyAsValue (tags::bypass); }
+
+    /** Change the bypass status of this Node */
+    void setBypassed (bool);
 
     //=========================================================================
     /** Returns true if this Node is muted */

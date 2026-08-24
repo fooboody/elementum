@@ -278,21 +278,8 @@ void Processor::suspendProcessing (const bool shouldBeSuspended)
         bypassed.set (iShouldBeSuspended);
     }
 
-        if (isSuspended() != wasSuspeneded)
+    if (isSuspended() != wasSuspeneded)
         bypassChanged (this);
-}
-
-void Processor::completePendingBypassResume() noexcept
-{
-    if (pendingBypassResume.exchange (0) == 0)
-        return;
-
-    if (auto* const proc = getAudioProcessor())
-        proc->suspendProcessing (false);
-
-    // The model remains bypass-off throughout this internal transition, so
-    // update the render-thread cache without emitting a second UI/mapping event.
-    bypassed.set (0);
 }
 
 bool Processor::isGraph() const noexcept { return isA<GraphNode>(); }
@@ -426,17 +413,9 @@ void Processor::setEnabled (const bool shouldBeEnabled)
     {
         if (parent)
         {
-            // Keep a bypass-off restoration separated from Enable and let the
-            // render thread complete it after one bypassed processing block.
-            const bool restoreBypassOff = ! isSuspended();
-            pendingBypassResume.set (restoreBypassOff ? 1 : 0);
-            if (restoreBypassOff)
-                suspendProcessing (true);
-
             prepare (parent->getSampleRate(), parent->getBlockSize(), parent, true);
             enabled.set (1);
-            enablementChanged (this);
-            return;
+            suspendProcessing (false);
         }
         else
         {
@@ -445,12 +424,8 @@ void Processor::setEnabled (const bool shouldBeEnabled)
     }
     else
     {
-        const bool cancelPendingBypassResume = pendingBypassResume.exchange (0) != 0;
+        suspendProcessing (true);
         enabled.set (0);
-
-        if (cancelPendingBypassResume)
-            suspendProcessing (false);
-
         unprepare();
     }
 

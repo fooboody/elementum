@@ -701,8 +701,7 @@ void BlockComponent::mouseDown (const MouseEvent& e)
     {
         if (auto obj = node.getObject())
         {
-            obj->setEnabled (! obj->isEnabled());
-            node.data().setProperty (tags::enabled, obj->isEnabled(), nullptr);
+            node.setEnabled (! node.isEnabled());
             panel->updateConnectorComponents();
             repaint();
         }

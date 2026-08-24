@@ -1183,6 +1183,26 @@ ValueTree Node::migrate (const ValueTree& data, String& error) noexcept
     return newData;
 }
 
+void Node::setEnabled (bool shouldBeEnabled)
+{
+    if (shouldBeEnabled != isEnabled())
+        setProperty (tags::enabled, shouldBeEnabled);
+    if (isBypassed() != ! shouldBeEnabled)
+        setProperty (tags::bypass, ! shouldBeEnabled);
+
+    if (auto* obj = getObject())
+        obj->setEnabled (shouldBeEnabled);
+}
+
+void Node::setBypassed (bool shouldBeBypassed)
+{
+    if (shouldBeBypassed != isBypassed())
+        setProperty (tags::bypass, shouldBeBypassed);
+
+    if (auto* obj = getObject())
+        obj->suspendProcessing (shouldBeBypassed);
+}
+
 void Node::setMuted (bool shouldBeMuted)
 {
     if (shouldBeMuted != isMuted())
@@ -1422,6 +1442,22 @@ void NodeObjectSync::valueTreePropertyChanged (ValueTree& tree, const Identifier
             g->cancelPendingUpdate();
             g->triggerAsyncUpdate();
         }
+    }
+    else if (property == tags::enabled)
+    {
+        const bool shouldBeEnabled = node.isEnabled();
+        const bool expectedBypass = ! shouldBeEnabled;
+        if (node.isBypassed() != expectedBypass)
+            tree.setProperty (tags::bypass, expectedBypass, nullptr);
+
+        if (obj->isEnabled() != shouldBeEnabled)
+            obj->setEnabled (shouldBeEnabled);
+    }
+    else if (property == tags::bypass)
+    {
+        const bool shouldBeBypassed = node.isBypassed();
+        if (obj->isSuspended() != shouldBeBypassed)
+            obj->suspendProcessing (shouldBeBypassed);
     }
 }
 

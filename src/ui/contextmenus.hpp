@@ -501,12 +501,7 @@ public:
         for (const auto& selectedNodeRef : nodes)
         {
             Node selectedNode (selectedNodeRef);
-            if (auto ptr = selectedNode.getObject())
-            {
-                ptr->setEnabled (shouldEnable);
-                selectedNode.data().setProperty (tags::enabled,
-                                                  ptr->isEnabled(), nullptr);
-            }
+            selectedNode.setEnabled (shouldEnable);
         }
     }
 
@@ -819,11 +814,10 @@ private:
         bool isTicked() override { return false; }
         bool perform() override
         {
-            if (ProcessorPtr ptr = node.getObject())
+            if (node.isValid())
             {
-                ptr->setEnabled (! ptr->isEnabled());
-                auto data = node.data();
-                data.setProperty (tags::enabled, ptr->isEnabled(), nullptr);
+                Node mutableNode (node);
+                mutableNode.setEnabled (! mutableNode.isEnabled());
                 return true;
             }
 

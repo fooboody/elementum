@@ -485,10 +485,6 @@ public:
             const auto blockLoad = blockSeconds > 0.0 ? (float) (elapsedSeconds / blockSeconds * 100.0) : 0.0f;
             node->updateDSPLoad (jmax (0.0f, blockLoad), numSamples);
         }
-
-        // Complete the internal bypass transition only after the processor has
-        // actually rendered one bypassed block.
-        node->completePendingBypassResume();
     }
 
     const ProcessorPtr node;

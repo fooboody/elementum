@@ -649,8 +649,7 @@ void GraphManager::setNodeModel (const Node& node)
         if (ProcessorPtr obj = createFilter (&desc, 0, 0, node.getNodeId()))
         {
             setupNode (node.data(), obj);
-            obj->setEnabled (node.isEnabled());
-            node.setProperty (tags::enabled, obj->isEnabled());
+            node.setEnabled (node.isEnabled());
         }
         else if (ProcessorPtr ph = createPlaceholder (node))
         {

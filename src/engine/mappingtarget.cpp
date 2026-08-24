@@ -105,14 +105,10 @@ void ParameterTarget::applySpecial (const juce::MidiMessage& message, bool toggl
     switch (parameterIndex)
     {
         case Processor::EnabledParameter:
-            object->setEnabled (on);
-            if (model.isEnabled() != object->isEnabled())
-                model.setProperty (tags::enabled, object->isEnabled());
+            model.setEnabled (on);
             break;
         case Processor::BypassParameter:
-            object->suspendProcessing (on);
-            if (model.isBypassed() != object->isSuspended())
-                model.setProperty (tags::bypass, object->isSuspended());
+            model.setBypassed (on);
             break;
         case Processor::MuteParameter:
             model.setMuted (on);

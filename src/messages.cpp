@@ -159,12 +159,8 @@ public:
             if (wasConnected == isConnected)
                 continue;
 
-            if (auto* const object = entry.node.getObject())
-            {
-                object->setEnabled (isConnected);
-                entry.node.setProperty (tags::enabled, object->isEnabled());
-                entry.changed = true;
-            }
+            entry.node.setEnabled (isConnected);
+            entry.changed = true;
         }
         return true;
     }
@@ -176,11 +172,7 @@ public:
             if (! entry.changed)
                 continue;
 
-            if (auto* const object = entry.node.getObject())
-            {
-                object->setEnabled (entry.enabledBefore);
-                entry.node.setProperty (tags::enabled, object->isEnabled());
-            }
+            entry.node.setEnabled (entry.enabledBefore);
         }
         return true;
     }
