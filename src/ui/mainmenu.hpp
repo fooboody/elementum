@@ -36,7 +36,7 @@ public:
 
     static void buildSessionMenu (Commands& cmd, PopupMenu& menu);
     static void buildEditMenu (Commands& cmd, PopupMenu& menu);
-    static void buildViewMenu (Commands& cmd, PopupMenu& menu);
+    static void buildViewMenu (Commands& cmd, PopupMenu& menu, bool includeKeyMappings = true);
     static void buildPluginMainMenu (Commands& cmd, PopupMenu& menu);
 
     Content* content();

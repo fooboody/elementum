@@ -77,6 +77,9 @@ struct GuiService::KeyPressManager : public KeyListener
 
     bool keyPressed (const KeyPress& key, Component* component) override
     {
+        if (owner.getRunMode() != RunMode::Standalone)
+            return false;
+
         bool handled = false;
         if (isCapsLockOn() && isVirtualKeyboardVisible())
             handled = handleVirtualKeyboardPressed (key, component);
@@ -367,11 +370,15 @@ void GuiService::saveProperties (PropertiesFile* props)
 {
     jassert (props);
 
-    if (keyMappingsDirty)
-        if (auto maps = commands().getKeyMappings())
-            if (auto xml = maps->createXml (true))
-                props->setValue (Settings::keymappingsKey, xml.get());
-    keyMappingsDirty = false;
+    if (getRunMode() == RunMode::Standalone)
+    {
+        if (keyMappingsDirty)
+            if (auto maps = commands().getKeyMappings())
+                if (auto xml = maps->createXml (true))
+                    props->setValue (Settings::keymappingsKey, xml.get());
+
+        keyMappingsDirty = false;
+    }
 
     if (mainWindow)
     {
@@ -594,9 +601,12 @@ Content* GuiService::content()
         }
 
         // keymaps must load after content is available.
-        if (auto maps = commands().getKeyMappings())
-            if (auto xml = settings().getUserSettings()->getXmlValue (Settings::keymappingsKey))
-                maps->restoreFromXml (*xml);
+        if (getRunMode() == RunMode::Standalone)
+        {
+            if (auto maps = commands().getKeyMappings())
+                if (auto xml = settings().getUserSettings()->getXmlValue (Settings::keymappingsKey))
+                    maps->restoreFromXml (*xml);
+        }
 
         commands().commandStatusChanged();
     }
@@ -1324,7 +1334,8 @@ void GuiService::changeListenerCallback (juce::ChangeBroadcaster* broadcaster)
 {
     if (broadcaster == commands().getKeyMappings())
     {
-        keyMappingsDirty = true;
+        if (getRunMode() == RunMode::Standalone)
+            keyMappingsDirty = true;
         return;
     }
 

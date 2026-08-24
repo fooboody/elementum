@@ -235,8 +235,7 @@ void MainMenu::reloadColourSettings()
 
     if (auto* root = owner.getContentComponent())
     {
-        std::function<void (Component*)> repaintTree = [&] (Component* component)
-        {
+        std::function<void (Component*)> repaintTree = [&] (Component* component) {
             if (component == nullptr)
                 return;
 
@@ -388,7 +387,7 @@ void MainMenu::buildEditMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::sessionInsertPlugin, "Insert Plugin...");
 }
 
-void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
+void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu, const bool includeKeyMappings)
 {
     menu.addCommandItem (&cmd, Commands::showPatchBay, "Patch Bay");
     menu.addCommandItem (&cmd, Commands::showGraphEditor, "Graph Editor");
@@ -397,7 +396,7 @@ void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::showConsole, "Console");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::rotateContentView, "Rotate View");
-        menu.addCommandItem (&cmd, Commands::swapGraphEditorAndMixer, "Swap Graph and Mixer");
+    menu.addCommandItem (&cmd, Commands::swapGraphEditorAndMixer, "Swap Graph and Mixer");
     menu.addCommandItem (&cmd, Commands::swapGraphEditorAndConsole, "Swap Graph and Console");
     menu.addSeparator();
 
@@ -408,7 +407,8 @@ void MainMenu::buildViewMenu (Commands& cmd, PopupMenu& menu)
     menu.addCommandItem (&cmd, Commands::showSessionConfig, "Session Properties");
     menu.addSeparator();
     menu.addCommandItem (&cmd, Commands::showPluginManager, "Plugin Manager");
-    menu.addCommandItem (&cmd, Commands::showKeymapEditor, "Key Mappings");
+    if (includeKeyMappings)
+        menu.addCommandItem (&cmd, Commands::showKeymapEditor, "Key Mappings");
 }
 
 void MainMenu::buildPluginMainMenu (Commands& cmd, PopupMenu& menu)
@@ -417,11 +417,10 @@ void MainMenu::buildPluginMainMenu (Commands& cmd, PopupMenu& menu)
     menu.addSeparator();
     buildEditMenu (cmd, menu);
     menu.addSeparator();
-    buildViewMenu (cmd, menu);
+    buildViewMenu (cmd, menu, false);
 
-    menu.addCommandItem (&cmd, Commands::showAbout, "About Elementum");
     menu.addSeparator();
-    menu.addItem (99999, "Close All Plugin Windows...");
+    menu.addCommandItem (&cmd, Commands::showAbout, "About Elementum");
 
 #if 0
     menu.addSeparator();
