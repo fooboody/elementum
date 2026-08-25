@@ -312,7 +312,8 @@ private:
 };
 
 class GraphMixerView::Content : public Component,
-                                public DragAndDropContainer
+                                public DragAndDropContainer,
+                                private ValueTree::Listener
 {
 public:
     Content (GraphMixerView& v, GuiService& gui, Session* sess)
@@ -324,12 +325,16 @@ public:
         model.reset (new GraphMixerListBoxModel (gui, box));
         box.setModel (model.get());
         box.updateContent();
+        watchNodes (session->getActiveGraph());
 
         _conns.push_back (ui.nodeSelected.connect (std::bind (&Content::onNodeSelected, this)));
         auto& ssrv = *gui.sibling<SessionService>();
         _conns.push_back (ssrv.sigSessionLoaded.connect ([this]() {
-            model->refreshNodes();
-            model->setNode (session->getActiveGraph());
+            const auto graph = session->getActiveGraph();
+            watchNodes (graph);
+            model->setNode (graph);
+            box.updateContent();
+            repaint();
         }));
     }
 
@@ -338,6 +343,7 @@ public:
         for (auto& c : _conns)
             c.disconnect();
         _conns.clear();
+        watchedNodes.removeListener (this);
 
         box.setModel (nullptr);
         model.reset();
@@ -345,9 +351,51 @@ public:
 
     void onNodeSelected()
     {
-        model->setNode (ui.getSelectedNode());
+        const auto node = ui.getSelectedNode();
+        watchNodes (node);
+        model->setNode (node);
         box.updateContent();
     }
+
+    void watchNodes (const Node& node)
+    {
+        const auto graph = node.isGraph() ? node : node.getParentGraph();
+        const auto nodes = graph.getNodesValueTree();
+        if (nodes == watchedNodes)
+            return;
+
+        watchedNodes.removeListener (this);
+        watchedNodes = nodes;
+        watchedNodes.addListener (this);
+    }
+
+    void valueTreeChildAdded (ValueTree& parent, ValueTree& child) override
+    {
+        if (parent == watchedNodes && child.hasType (types::Node))
+        {
+            model->refresh();
+            repaint();
+        }
+    }
+
+    void valueTreeChildRemoved (ValueTree& parent, ValueTree& child, int) override
+    {
+        if (parent == watchedNodes && child.hasType (types::Node))
+        {
+            model->refresh();
+            repaint();
+        }
+    }
+
+    void valueTreeChildOrderChanged (ValueTree& parent, int, int) override
+    {
+        if (parent == watchedNodes)
+            model->refresh();
+    }
+
+    void valueTreePropertyChanged (ValueTree&, const Identifier&) override {}
+    void valueTreeParentChanged (ValueTree&) override {}
+    void valueTreeRedirected (ValueTree&) override {}
 
     void resized() override
     {
@@ -385,6 +433,7 @@ private:
     [[maybe_unused]] GraphMixerView& view;
     std::unique_ptr<GraphMixerListBoxModel> model;
     HorizontalListBox box;
+    ValueTree watchedNodes;
     std::vector<SignalConnection> _conns;
 };
 
