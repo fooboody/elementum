@@ -376,4 +376,36 @@ void RemoveConnectionMessage::createActions (Services& app, OwnedArray<UndoableA
     addAutoNodeEnablementAction (app, actions, target, changedArcs);
 }
 
+void DisconnectNodeMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
+{
+    if (! node.isValid() || ! (inputs || outputs))
+        return;
+
+    const auto graph = node.getParentGraph();
+    if (! graph.isGraph())
+        return;
+
+    const auto nodeId = node.getNodeId();
+    for (int i = 0; i < graph.getNumConnections(); ++i)
+    {
+        const Arc arc (Node::arcFromValueTree (graph.getConnectionValueTree (i)));
+        if (! ((outputs && arc.sourceNode == nodeId) || (inputs && arc.destNode == nodeId)))
+            continue;
+
+        const Node source (graph.getNodeById (arc.sourceNode));
+        const Node dest (graph.getNodeById (arc.destNode));
+        if (! source.isValid() || ! dest.isValid())
+            continue;
+
+        const auto sourceType = source.getPort ((int) arc.sourcePort).getType();
+        const auto destType = dest.getPort ((int) arc.destPort).getType();
+        const bool isAudio = sourceType.isAudio() && destType.isAudio();
+        const bool isMidi = sourceType.isMidi() && destType.isMidi();
+        if ((audio && isAudio) || (midi && isMidi))
+            actions.add (new RemoveConnectionAction (app, graph,
+                                                     arc.sourceNode, arc.sourcePort,
+                                                     arc.destNode, arc.destPort));
+    }
+}
+
 } // namespace element

@@ -257,16 +257,17 @@ public:
     const Node node;
 };
 
-class DisconnectNodeMessage : public juce::Message
+struct DisconnectNodeMessage : public AppMessage
 {
-public:
     DisconnectNodeMessage (const Node& n, const bool i = true, const bool o = true, const bool a = true, const bool m = true)
-        : Message(), node (n), inputs (i), outputs (o), audio (a), midi (m) {}
+        : node (n), inputs (i), outputs (o), audio (a), midi (m) {}
     DisconnectNodeMessage()
-        : Message(), inputs (true), outputs (true), audio (true), midi (true) {}
+        : inputs (true), outputs (true), audio (true), midi (true) {}
+
     const Node node;
     const bool inputs, outputs;
     const bool audio, midi;
+    void createActions (Services& app, juce::OwnedArray<juce::UndoableAction>& actions) const override;
 };
 
 struct FinishedLaunchingMessage : public AppMessage
