@@ -1635,6 +1635,9 @@ bool StandardContent::perform (const InvocationInfo& info)
             const bool shouldMute = ! nodes.getFirst().isMutingInputs();
             for (auto& node : nodes)
                 node.setMuteInput (shouldMute);
+
+            if (auto* const view = getGraphEditorView (*this))
+                view->editor().updateComponents (false);
             break;
         }
         case Commands::toggleNodeMute:
