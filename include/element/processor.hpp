@@ -485,6 +485,9 @@ public:
     /** Triggered when the mute state changes */
     Signal<void (Processor*)> muteChanged;
 
+    /** Triggered when the oversampling factor changes */
+    Signal<void (Processor*)> oversamplingChanged;
+
     /** Triggered when the output gain changes */
     Signal<void (Processor*)> gainChanged;
 

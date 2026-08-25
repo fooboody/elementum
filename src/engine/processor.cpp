@@ -895,6 +895,7 @@ void Processor::setOversamplingFactor (int osFactor)
         setEnabled (wasEnabled);
     }
 
+    oversamplingChanged (this);
     if (auto* g = getParentGraph())
         g->triggerAsyncUpdate();
 }

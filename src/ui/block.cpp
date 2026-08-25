@@ -371,6 +371,9 @@ BlockComponent::BlockComponent (const Node& graph_, const Node& node_, const boo
         willRemoveConn = obj->willBeRemoved.connect ([this]() {
             valueChanged (nodeObject);
         });
+        oversamplingChangedConn = obj->oversamplingChanged.connect ([this] (Processor*) {
+            triggerAsyncUpdate();
+        });
     }
 }
 
@@ -378,6 +381,7 @@ BlockComponent::~BlockComponent() noexcept
 {
     nodeObject.removeListener (this);
     willRemoveConn.disconnect();
+    oversamplingChangedConn.disconnect();
     clearEmbedded();
     obj = nullptr;
 
@@ -581,6 +585,7 @@ void BlockComponent::valueChanged (Value& value)
     else if (nodeObject.refersToSameSourceAs (value))
     {
         willRemoveConn.disconnect();
+        oversamplingChangedConn.disconnect();
         clearEmbedded();
         obj = nullptr;
     }
@@ -1055,7 +1060,54 @@ Rectangle<int> BlockComponent::getCornerResizeBox() const
 
 void BlockComponent::paintOverChildren (Graphics& g)
 {
-    ignoreUnused (g);
+    if (displayMode != Normal || obj == nullptr)
+        return;
+
+    const int factor = obj->getOversamplingFactor();
+    if (factor <= 1)
+        return;
+
+    const auto box = getBoxRectangle();
+    const bool enabled = isEnabled() && node.isEnabled() && ! node.isMissing();
+    const bool selected = isSelected();
+    const auto getNodeBackground = [&] (const char* key, const Colour fallback)
+    {
+        return detail::configuredColour (this, key, fallback);
+    };
+    const auto background = enabled
+                                ? getNodeBackground (selected ? Settings::nodeEnabledSelectedColorKey
+                                                               : Settings::nodeEnabledColorKey,
+                                                      selected ? Colour (0xff7eb9fb) : Colour (0xff4b65a4))
+                                : getNodeBackground (selected ? Settings::nodeDisabledSelectedColorKey
+                                                               : Settings::nodeDisabledColorKey,
+                                                      selected ? Colour (0xff707380) : Colour (0xff454a52));
+    const auto subTextColor = node.isMissing() ? Colors::toggleRed
+                                                : detail::contrastingTextColour (background);
+
+    auto labelBounds = box.reduced (4, 2).removeFromBottom (18).removeFromRight (30);
+    const int minimumX = box.getX() + 52;
+    const int shift = pinSize + pinSpacing;
+    for (;;)
+    {
+        bool overlapsPort = false;
+        for (int i = 0; i < getNumChildComponents(); ++i)
+            if (auto* const port = dynamic_cast<PortComponent*> (getChildComponent (i)))
+                if (labelBounds.intersects (port->getBounds()))
+                {
+                    overlapsPort = true;
+                    break;
+                }
+
+        if (! overlapsPort)
+            break;
+        if (labelBounds.getX() - shift < minimumX)
+            return;
+        labelBounds = labelBounds.translated (-shift, 0);
+    }
+
+    g.setColour (subTextColor);
+    g.setFont (Font (FontOptions (12.f).withStyle (node.isMissing() ? "Bold" : "Regular")));
+    g.drawFittedText (String (factor) + "x", labelBounds, Justification::centredRight, 1);
 }
 
 void BlockComponent::paint (Graphics& g)

@@ -277,6 +277,7 @@ private:
     Node node;
     ProcessorPtr obj;
     boost::signals2::connection willRemoveConn;
+    boost::signals2::connection oversamplingChangedConn;
 
     Value nodeEnabled,
         nodeName,
