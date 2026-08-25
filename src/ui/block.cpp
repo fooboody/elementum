@@ -971,6 +971,12 @@ void BlockComponent::mouseUp (const MouseEvent& e)
         if (shouldOpenEditor)
             makeEditorActive();
     }
+    else if (e.mouseWasClicked() && e.getNumberOfClicks() == 1)
+    {
+        // A completed single modified click must not affect the next click sequence.
+        doubleClickHadModifier = false;
+    }
+
 }
 
 void BlockComponent::setSelectedInternal (bool status)
