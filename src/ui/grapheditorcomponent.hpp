@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ElementApp.h"
+#include <element/signals.hpp>
+
 #include "ui/viewhelpers.hpp"
 #include "ui/block.hpp"
 #include "scopedcallback.hpp"
@@ -41,6 +43,7 @@ public:
 
     /** Selects the given node */
     void selectNode (const Node& n);
+    void setSelectedNodes (const NodeArray& nodes);
     void selectAllNodes();
 
     /** Removes the selected nodes */
@@ -48,6 +51,9 @@ public:
 
     /** Returns the valid nodes in the current selection. */
     NodeArray getSelectedNodes() const;
+    bool isNodeSelected (const Node& node) const;
+
+    Signal<void()> selectionChanged;
 
     /** Moves nodes that are outside the canvas into a visible area. */
     void fixOutOfBoundsNodes();
@@ -134,6 +140,7 @@ private:
     } selectedNodes;
 
     bool ignoreNodeSelected = false;
+    bool selectionSyncInProgress = false;
 
     float zoomScale = 1.0;
 
@@ -160,6 +167,7 @@ private:
     PortComponent* findPinAt (const int x, const int y) const;
 
     void updateSelection();
+    void notifySelectionChanged();
 
     struct AutoConnectPair
     {
@@ -279,6 +287,9 @@ public:
     void setNode (const Node& node) { _editor.setNode (node); }
         void deleteSelectedNodes() { _editor.deleteSelectedNodes(); }
     NodeArray getSelectedNodes() const { return _editor.getSelectedNodes(); }
+    bool isNodeSelected (const Node& node) const { return _editor.isNodeSelected (node); }
+    void setSelectedNodes (const NodeArray& nodes) { _editor.setSelectedNodes (nodes); }
+    Signal<void()>& getSelectionChangedSignal() { return _editor.selectionChanged; }
     void fixOutOfBoundsNodes() { _editor.fixOutOfBoundsNodes(); }
 
     void fitCanvasToNodes()

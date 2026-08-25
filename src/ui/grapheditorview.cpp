@@ -162,7 +162,7 @@ void GraphEditorView::onNodeSelected()
         auto session = cc->session();
         auto& gui = *cc->services().find<GuiService>();
         const auto selected = gui.getSelectedNode();
-        if (selected.descendsFrom (getGraph()))
+        if (selected.descendsFrom (getGraph()) && ! _editor.isNodeSelected (selected))
         {
             // prevent minor gui changes from marking session as dirty.
             // This is a hack and need a better solution;

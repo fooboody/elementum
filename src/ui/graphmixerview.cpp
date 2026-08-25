@@ -6,7 +6,10 @@
 #include <element/settings.hpp>
 #include <element/ui/style.hpp>
 
+#include <element/ui/standard.hpp>
+
 #include "ui/nodechannelstrip.hpp"
+#include "ui/grapheditorview.hpp"
 #include "ui/graphmixerview.hpp"
 #include "ui/horizontallistbox.hpp"
 #include "ui/viewhelpers.hpp"
@@ -20,7 +23,9 @@ class GraphMixerChannelStrip : public NodeChannelStripComponent,
                                public ComponentListener
 {
 public:
-    std::function<void()> onRefreshNeeded;
+        std::function<void()> onRefreshNeeded;
+    std::function<void (const Node&, ModifierKeys)> onSelectionRequested;
+    std::function<void (const Node&)> onHideRequested;
 
     GraphMixerChannelStrip (GuiService& gui) : NodeChannelStripComponent (gui, false)
     {
@@ -35,12 +40,14 @@ public:
         listener.reset();
     }
 
-    void selectInGuiController()
+    void requestSelection (const ModifierKeys& modifiers)
     {
-        if (auto* const cc = ViewHelpers::findContentComponent (this))
-            if (auto* const gui = cc->services().find<GuiService>())
-                if (getNode() != gui->getSelectedNode())
-                    gui->selectNode (getNode());
+        if (selectionRequested)
+            return;
+
+        selectionRequested = true;
+        if (onSelectionRequested)
+            onSelectionRequested (getNode(), modifiers);
     }
 
     void mouseDown (const MouseEvent& ev) override
@@ -52,7 +59,8 @@ public:
         {
             down = true;
             dragging = false;
-            selectInGuiController();
+            selectionRequested = false;
+            requestSelection (ev.mods);
         }
     }
 
@@ -64,9 +72,14 @@ public:
                             [strip = Component::SafePointer<GraphMixerChannelStrip> (this)] (int result) {
                                 if (strip == nullptr || result != 1)
                                     return;
-                                strip->getNode().setHiddenInMixer (true);
-                                if (strip->onRefreshNeeded)
-                                    strip->onRefreshNeeded();
+                                if (strip->onHideRequested)
+                                    strip->onHideRequested (strip->getNode());
+                                else
+                                {
+                                    strip->getNode().setHiddenInMixer (true);
+                                    if (strip->onRefreshNeeded)
+                                        strip->onRefreshNeeded();
+                                }
                             });
     }
 
@@ -89,7 +102,7 @@ public:
 
     void mouseUp (const MouseEvent& ev) override
     {
-        dragging = down = hover = false;
+        dragging = down = hover = selectionRequested = false;
     }
 
     bool shouldDrawDragImageWhenOver() override
@@ -175,6 +188,7 @@ private:
     bool dragging = false;
     bool down = false;
     bool hover = false;
+    bool selectionRequested = false;
 
     struct ChildListener : public MouseListener
     {
@@ -184,7 +198,12 @@ private:
             if (ev.mods.isPopupMenu())
                 owner.showContextMenu();
             else
-                owner.selectInGuiController();
+                owner.requestSelection (ev.mods);
+        }
+
+        void mouseUp (const MouseEvent&) override
+        {
+            owner.selectionRequested = false;
         }
 
         GraphMixerChannelStrip& owner;
@@ -196,6 +215,10 @@ private:
 class GraphMixerListBoxModel : public ListBoxModel
 {
 public:
+    std::function<void()> onSelectionChanged;
+    std::function<void (const Node&, ModifierKeys)> onSelectionRequested;
+    std::function<void (const Node&)> onHideRequested;
+
     GraphMixerListBoxModel (GuiService& g, HorizontalListBox& b) : gui (g), box (b) { refreshNodes(); }
     ~GraphMixerListBoxModel() {}
 
@@ -220,16 +243,33 @@ public:
                                                   ? new GraphMixerChannelStrip (gui)
                                                   : dynamic_cast<GraphMixerChannelStrip*> (existing);
         strip->onRefreshNeeded = std::bind (&GraphMixerListBoxModel::refresh, this);
+        strip->onSelectionRequested = onSelectionRequested;
+        strip->onHideRequested = onHideRequested;
         auto node = getNode (rowNumber);
         strip->setNode (node);
-        strip->setSelected (node == gui.getSelectedNode());
+        strip->setSelected (isRowSelected);
         return strip;
     }
 
-    void refresh()
+        void refresh()
     {
         refreshNodes();
         box.updateContent();
+    }
+
+    void selectedRowsChanged (int) override
+    {
+        if (onSelectionChanged)
+            onSelectionChanged();
+    }
+
+    int getRowForNode (const Node& node) const
+    {
+        for (int i = 0; i < nodes.size(); ++i)
+            if (nodes.getReference (i) == node)
+                return i;
+
+        return -1;
     }
 
     void setNode (const Node& node)
@@ -322,10 +362,17 @@ public:
         setOpaque (true);
         addAndMakeVisible (box);
         box.setRowHeight (80);
+        box.setMultipleSelectionEnabled (true);
         model.reset (new GraphMixerListBoxModel (gui, box));
+        model->onSelectionChanged = [this]() { onMixerSelectionChanged(); };
+        model->onSelectionRequested = [this] (const Node& node, ModifierKeys modifiers) {
+            selectMixerNode (node, modifiers);
+        };
+        model->onHideRequested = [this] (const Node& node) { hideMixerNodes (node); };
         box.setModel (model.get());
         box.updateContent();
         watchNodes (session->getActiveGraph());
+        connectGraphEditorSelection();
 
         _conns.push_back (ui.nodeSelected.connect (std::bind (&Content::onNodeSelected, this)));
         auto& ssrv = *gui.sibling<SessionService>();
@@ -334,6 +381,8 @@ public:
             watchNodes (graph);
             model->setNode (graph);
             box.updateContent();
+            connectGraphEditorSelection();
+            syncMixerSelectionFromGraphEditor();
             repaint();
         }));
     }
@@ -343,18 +392,119 @@ public:
         for (auto& c : _conns)
             c.disconnect();
         _conns.clear();
+        graphSelectionConnection.disconnect();
         watchedNodes.removeListener (this);
 
         box.setModel (nullptr);
         model.reset();
     }
 
-    void onNodeSelected()
+        void onNodeSelected()
     {
         const auto node = ui.getSelectedNode();
         watchNodes (node);
         model->setNode (node);
         box.updateContent();
+        connectGraphEditorSelection();
+        syncMixerSelectionFromGraphEditor();
+    }
+
+    GraphEditorView* getGraphEditorView()
+    {
+        if (auto* const content = dynamic_cast<StandardContent*> (ViewHelpers::findContentComponent (this)))
+            return dynamic_cast<GraphEditorView*> (content->getMainViewComponent());
+
+        return nullptr;
+    }
+
+    void connectGraphEditorSelection()
+    {
+        auto* const editor = getGraphEditorView();
+        if (editor == graphEditor)
+            return;
+
+        graphSelectionConnection.disconnect();
+        graphEditor = editor;
+        if (graphEditor != nullptr)
+            graphSelectionConnection = graphEditor->editor().getSelectionChangedSignal().connect (
+                [this]() { syncMixerSelectionFromGraphEditor(); });
+    }
+
+    NodeArray getMixerSelectedNodes() const
+    {
+        NodeArray nodes;
+        for (int i = 0; i < box.getNumSelectedRows(); ++i)
+        {
+            const int row = box.getSelectedRow (i);
+            if (isPositiveAndBelow (row, model->getNumRows()))
+                nodes.add (model->getNode (row));
+        }
+
+        return nodes;
+    }
+
+    void syncMixerSelectionFromGraphEditor()
+    {
+        connectGraphEditorSelection();
+        if (syncingSelection || graphEditor == nullptr)
+            return;
+
+        SparseSet<int> rows;
+        for (const auto& node : graphEditor->editor().getSelectedNodes())
+        {
+            const int row = model->getRowForNode (node);
+            if (row >= 0)
+                rows.addRange (Range<int> (row, row + 1));
+        }
+
+        syncingSelection = true;
+        box.setSelectedRows (rows, juce::dontSendNotification);
+        syncingSelection = false;
+    }
+
+    void onMixerSelectionChanged()
+    {
+        connectGraphEditorSelection();
+        if (syncingSelection || graphEditor == nullptr)
+            return;
+
+        const auto nodes = getMixerSelectedNodes();
+        syncingSelection = true;
+        graphEditor->editor().setSelectedNodes (nodes);
+        syncingSelection = false;
+
+        if (nodes.isEmpty())
+        {
+            if (ui.getSelectedNode().descendsFrom (graphEditor->getGraph()))
+                ui.selectNode (Node());
+        }
+        else if (ui.getSelectedNode() != nodes.getLast())
+        {
+            ui.selectNode (nodes.getLast());
+        }
+    }
+
+    void selectMixerNode (const Node& node, ModifierKeys modifiers)
+    {
+        const int row = model->getRowForNode (node);
+        if (row >= 0)
+            box.selectRowsBasedOnModifierKeys (row, modifiers, false);
+    }
+
+    void hideMixerNodes (const Node& node)
+    {
+        auto nodes = getMixerSelectedNodes();
+        if (! nodes.contains (node))
+        {
+            nodes.clearQuick();
+            nodes.add (node);
+        }
+
+        for (auto& selectedNode : nodes)
+            selectedNode.setHiddenInMixer (true);
+
+        model->refresh();
+        syncMixerSelectionFromGraphEditor();
     }
 
     void watchNodes (const Node& node)
@@ -424,6 +574,8 @@ public:
     {
         model->refreshNodes();
         box.updateContent();
+        connectGraphEditorSelection();
+        syncMixerSelectionFromGraphEditor();
         repaint();
     }
 
@@ -434,6 +586,9 @@ private:
     std::unique_ptr<GraphMixerListBoxModel> model;
     HorizontalListBox box;
     ValueTree watchedNodes;
+    GraphEditorView* graphEditor = nullptr;
+    SignalConnection graphSelectionConnection;
+    bool syncingSelection = false;
     std::vector<SignalConnection> _conns;
 };
 

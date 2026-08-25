@@ -412,6 +412,8 @@ void GraphEditorComponent::SelectedNodes::itemSelected (uint32 nodeId)
         if (auto* block = dynamic_cast<BlockComponent*> (editor.getChildComponent (i)))
             if (nodeId == block->node.getNodeId())
                 block->setSelectedInternal (true);
+
+    editor.notifySelectionChanged();
 }
 
 void GraphEditorComponent::SelectedNodes::itemDeselected (uint32 nodeId)
@@ -420,6 +422,8 @@ void GraphEditorComponent::SelectedNodes::itemDeselected (uint32 nodeId)
         if (auto* block = dynamic_cast<BlockComponent*> (editor.getChildComponent (i)))
             if (nodeId == block->node.getNodeId())
                 block->setSelectedInternal (false);
+
+    editor.notifySelectionChanged();
 }
 
 //=============================================================================
@@ -1862,19 +1866,36 @@ void GraphEditorComponent::selectNode (const Node& nodeToSelect)
     }
 }
 
+void GraphEditorComponent::setSelectedNodes (const NodeArray& nodes)
+{
+    if (ignoreNodeSelected)
+        return;
+
+    selectionSyncInProgress = true;
+    selectedNodes.deselectAll();
+    for (const auto& node : nodes)
+        if (graph.getNodeById (node.getNodeId()) == node)
+            selectedNodes.addToSelection (node.getNodeId());
+    selectionSyncInProgress = false;
+
+    updateSelection();
+    notifySelectionChanged();
+}
+
 void GraphEditorComponent::selectAllNodes()
 {
     if (ignoreNodeSelected)
         return;
 
+    NodeArray nodes;
     Node lastSelected;
     for (int i = 0; i < graph.getNumNodes(); ++i)
     {
-        auto node = lastSelected = graph.getNode (i);
-        selectedNodes.addToSelection (node.getNodeId());
+        const auto node = lastSelected = graph.getNode (i);
+        nodes.add (node);
     }
 
-    updateSelection();
+    setSelectedNodes (nodes);
     if (auto* cc = ViewHelpers::findContentComponent (this))
     {
         auto* gui = cc->services().find<GuiService>();
@@ -1894,6 +1915,11 @@ NodeArray GraphEditorComponent::getSelectedNodes() const
     }
 
     return nodes;
+}
+
+bool GraphEditorComponent::isNodeSelected (const Node& node) const
+{
+    return node.isValid() && selectedNodes.isSelected (node.getNodeId());
 }
 
 void GraphEditorComponent::deleteSelectedNodes()
@@ -1954,6 +1980,12 @@ void GraphEditorComponent::updateSelection()
     for (int i = getNumChildComponents(); --i >= 0;)
         if (auto* const block = dynamic_cast<BlockComponent*> (getChildComponent (i)))
             block->repaint();
+}
+
+void GraphEditorComponent::notifySelectionChanged()
+{
+    if (! selectionSyncInProgress)
+        selectionChanged();
 }
 
 void GraphEditorComponent::ensureSize()
