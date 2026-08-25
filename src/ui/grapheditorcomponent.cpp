@@ -533,7 +533,12 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
         updateSelection();
     }
 
+    if (auto* const cc = ViewHelpers::findContentComponent (this))
+        if (auto* const gui = cc->services().find<GuiService>())
+            gui->selectNode (Node());
+
     if (e.mods.isPopupMenu())
+
     {
         const auto popupAnchor = e.getScreenPosition().roundToInt();
         const auto popupTarget = Rectangle<int> (popupAnchor.x, popupAnchor.y - 1, 1, 1);
