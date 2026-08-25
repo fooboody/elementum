@@ -71,7 +71,10 @@ public:
         node.getArcs (arcs);
         Node mutableNode (node);
         mutableNode.savePluginState();
-        node.getRelativePosition (x, y);
+        node.getRelativePosition (relativeX, relativeY);
+        hasAbsolutePosition = node.hasPosition();
+        if (hasAbsolutePosition)
+            node.getPosition (absoluteX, absoluteY);
         nodeData = node.data().createCopy();
         Node::sanitizeRuntimeProperties (nodeData);
     }
@@ -85,17 +88,24 @@ public:
 
     bool undo() override
     {
-        auto& ec = *app.find<EngineService>();
-        bool handled = true;
+        if (! targetGraph.isGraph() || ! nodeData.isValid())
+            return false;
 
+        auto& ec = *app.find<EngineService>();
         const Node newNode (nodeData, false);
         auto createdNode (ec.addNode (newNode, targetGraph, builder));
-        createdNode.setRelativePosition (x, y); // TODO: GraphManager should handle this
+
+        if (! createdNode.isValid())
+            return false;
+
+        createdNode.setRelativePosition (relativeX, relativeY);
+        if (hasAbsolutePosition)
+            createdNode.setPosition (absoluteX, absoluteY);
 
         for (const auto* arc : arcs)
             ec.addConnection (arc->sourceNode, arc->sourcePort, arc->destNode, arc->destPort, targetGraph);
 
-        return handled;
+        return true;
     }
 
 private:
@@ -105,8 +115,12 @@ private:
     const juce::Uuid nodeUuid;
     ConnectionBuilder builder;
     juce::OwnedArray<Arc> arcs;
-    double x = 0.5;
-    double y = 0.5;
+    double relativeX = 0.5;
+    double relativeY = 0.5;
+    double absoluteX = 0.0;
+    double absoluteY = 0.0;
+    bool hasAbsolutePosition = false;
+
     bool isDataValid() const
     {
         return targetGraph.isGraph() && ! nodeUuid.isNull() && nodeData.isValid();
