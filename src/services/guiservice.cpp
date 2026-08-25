@@ -640,7 +640,8 @@ void GuiService::showPluginWindowsFor (const Node& node, const bool recursive, c
     if (! node.isGraph())
     {
         if (force || (bool) node.getProperty (tags::windowVisible, false))
-            presentPluginWindow (node, force);
+            presentPluginWindow (node, focus);
+
         return;
     }
 

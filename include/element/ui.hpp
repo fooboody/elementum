@@ -74,8 +74,8 @@ public:
                                const bool force = false,
                                const bool focus = false);
 
-    /** present a plugin window */
-    void presentPluginWindow (const Node& node, const bool focus = false);
+    /** Present a plugin window, activating it by default. */
+    void presentPluginWindow (const Node& node, const bool focus = true);
 
     /** Sync all UI elements with application/plugin */
     void stabilizeContent();

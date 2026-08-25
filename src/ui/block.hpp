@@ -300,7 +300,9 @@ private:
         customHeight = 0;
     bool selectionMouseDownResult = false;
     bool doubleClickHadModifier = false;
+    bool pendingUnmodifiedDoubleClick = false;
     bool vertical = true;
+
     bool dragging = false;
     bool blockDrag = false;
     bool collapsed = false;

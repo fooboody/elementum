@@ -674,7 +674,10 @@ void BlockComponent::mouseDown (const MouseEvent& e)
     dragging = false;
 
     if (e.getNumberOfClicks() == 1)
+    {
         doubleClickHadModifier = false;
+        pendingUnmodifiedDoubleClick = false;
+    }
 
     doubleClickHadModifier = doubleClickHadModifier
                              || e.mods.isAltDown()
@@ -957,24 +960,43 @@ void BlockComponent::mouseUp (const MouseEvent& e)
                                       || panel->isSwapNearbyAudioConnectionsEnabled());
     }
 
-    doubleClickHadModifier = doubleClickHadModifier
-                             || e.mods.isAltDown()
+    const bool hasModifier = e.mods.isAltDown()
                              || e.mods.isCtrlDown()
                              || e.mods.isShiftDown()
                              || e.mods.isCommandDown();
+    doubleClickHadModifier = doubleClickHadModifier || hasModifier;
 
-    if (e.mouseWasClicked() && e.getNumberOfClicks() == 2)
+    if (! e.mouseWasClicked())
     {
-        const bool shouldOpenEditor = ! doubleClickHadModifier;
         doubleClickHadModifier = false;
+        pendingUnmodifiedDoubleClick = false;
+        return;
+    }
+
+    const int clicks = e.getNumberOfClicks();
+    if (clicks == 2)
+    {
+        if (doubleClickHadModifier)
+        {
+            // A modified click may be counted as the first click of the next
+            // unmodified double click. Wait for that double click's real second click.
+            pendingUnmodifiedDoubleClick = ! hasModifier;
+        }
+        else
+        {
+            makeEditorActive();
+        }
+
+        doubleClickHadModifier = false;
+    }
+    else if (clicks >= 3)
+    {
+        const bool shouldOpenEditor = pendingUnmodifiedDoubleClick && ! hasModifier;
+        doubleClickHadModifier = false;
+        pendingUnmodifiedDoubleClick = false;
 
         if (shouldOpenEditor)
             makeEditorActive();
-    }
-    else if (e.mouseWasClicked() && e.getNumberOfClicks() == 1)
-    {
-        // A completed single modified click must not affect the next click sequence.
-        doubleClickHadModifier = false;
     }
 
 }
