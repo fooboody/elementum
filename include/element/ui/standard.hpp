@@ -59,6 +59,9 @@ public:
 
     void setCurrentNode (const Node& node) override;
 
+    /** Deletes the current Graph Editor selection, if any. */
+    bool deleteSelectedGraphNodes();
+
     void stabilize (const bool refreshDataPathTrees = false) override;
     void stabilizeViews() override;
     void windowStateChanged() override;

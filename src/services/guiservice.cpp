@@ -77,6 +77,9 @@ struct GuiService::KeyPressManager : public KeyListener
 
     bool keyPressed (const KeyPress& key, Component* component) override
     {
+        if (handleGraphNodeDeletion (key))
+            return true;
+
         if (owner.getRunMode() != RunMode::Standalone)
             return false;
 
@@ -99,6 +102,21 @@ struct GuiService::KeyPressManager : public KeyListener
     }
 
 private:
+    bool handleGraphNodeDeletion (const KeyPress& key) const
+    {
+        if (key.getKeyCode() != KeyPress::backspaceKey && key.getKeyCode() != KeyPress::deleteKey)
+            return false;
+
+        for (auto* focus = Component::getCurrentlyFocusedComponent(); focus != nullptr; focus = focus->getParentComponent())
+            if (dynamic_cast<TextEditor*> (focus) != nullptr)
+                return false;
+
+        if (auto* const content = dynamic_cast<StandardContent*> (owner.content()))
+            return content->deleteSelectedGraphNodes();
+
+        return false;
+    }
+
     bool isVirtualKeyboardVisible() const
     {
         if (auto* cc = dynamic_cast<StandardContent*> (owner.content()))

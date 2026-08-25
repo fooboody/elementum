@@ -1231,6 +1231,20 @@ bool supportsNodeMuteAndBypassCommands (const NodeArray& nodes)
 
 } // namespace
 
+bool StandardContent::deleteSelectedGraphNodes()
+{
+    if (auto* const view = getGraphEditorView (*this))
+    {
+        if (! view->editor().getSelectedNodes().isEmpty())
+        {
+            view->editor().deleteSelectedNodes();
+            return true;
+        }
+    }
+
+    return false;
+}
+
 ApplicationCommandTarget* StandardContent::getNextCommandTarget()
 
 {
