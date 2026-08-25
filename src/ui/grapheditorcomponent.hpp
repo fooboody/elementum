@@ -46,7 +46,13 @@ public:
     /** Removes the selected nodes */
     void deleteSelectedNodes();
 
-    //=========================================================================
+    /** Returns the valid nodes in the current selection. */
+    NodeArray getSelectedNodes() const;
+
+    /** Moves nodes that are outside the canvas into a visible area. */
+    void fixOutOfBoundsNodes();
+
+    //==========================================================================
     void setZoomScale (float scale);
     float getZoomScale() const noexcept { return zoomScale; }
 
@@ -271,9 +277,12 @@ public:
     }
 
     void setNode (const Node& node) { _editor.setNode (node); }
-    void deleteSelectedNodes() { _editor.deleteSelectedNodes(); }
+        void deleteSelectedNodes() { _editor.deleteSelectedNodes(); }
+    NodeArray getSelectedNodes() const { return _editor.getSelectedNodes(); }
+    void fixOutOfBoundsNodes() { _editor.fixOutOfBoundsNodes(); }
 
     void fitCanvasToNodes()
+
     {
         const auto requiredSpace = _editor.getRequiredSpace();
         const int viewportWidth = _viewport.getWidth();

@@ -352,8 +352,28 @@ element::LookAndFeel_E1& GuiService::getLookAndFeel()
     return sGlobalLookAndFeel->look;
 }
 
+void GuiService::reloadColourSettings()
+{
+    world.settings().reloadColourSettings();
+    refreshPopupMenuTheme();
+
+    std::function<void (Component*)> repaintTree = [&] (Component* component) {
+        if (component == nullptr)
+            return;
+
+        component->repaint();
+        for (int i = 0; i < component->getNumChildComponents(); ++i)
+            repaintTree (component->getChildComponent (i));
+    };
+
+    repaintTree (content());
+    if (auto* topLevel = mainWindow.get())
+        topLevel->repaint();
+}
+
 void GuiService::refreshPopupMenuTheme()
 {
+
     auto& settings = world.settings();
     const auto* const props = settings.getUserSettings();
     const auto mode = props != nullptr

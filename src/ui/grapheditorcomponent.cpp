@@ -510,7 +510,61 @@ void GraphEditorComponent::setVerticalLayout (const bool isVertical)
     updateComponents();
 }
 
+void GraphEditorComponent::fixOutOfBoundsNodes()
+{
+    int width = getWidth();
+    int height = getHeight();
+    int numChanges = 0;
+    int numEditorChanges = 0;
+    for (int i = 0; i < getNumChildComponents(); ++i)
+    {
+        auto* const block = dynamic_cast<BlockComponent*> (getChildComponent (i));
+        if (nullptr == block)
+            continue;
+
+        auto r = block->getBounds();
+        bool changed = false;
+        if (r.getX() < 0)
+        {
+            changed = true;
+            r = r.withX (0);
+        }
+        else if (r.getRight() > width)
+        {
+            numEditorChanges++;
+            width = r.getRight();
+        }
+
+        if (r.getY() < 0)
+        {
+            changed = true;
+            r = r.withY (0);
+        }
+        else if (r.getBottom() > height)
+        {
+            numEditorChanges++;
+            height = r.getBottom();
+        }
+
+        if (changed)
+        {
+            block->moveBlockTo (r.getX(), r.getY());
+            ++numChanges;
+        }
+    }
+
+    if (numChanges > 0)
+    {
+        updateBlockComponents (true);
+        updateConnectorComponents();
+    }
+
+    if (numEditorChanges > 0)
+        setSize (width, height);
+}
+
 void GraphEditorComponent::paint (Graphics& g)
+
 {
     auto backgroundColor = findColour (Style::contentBackgroundColorId);
     if (auto* const world = ViewHelpers::getGlobals (this))
@@ -643,60 +697,10 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
                     return;
                     break;
 
-                case 7: {
-                    int width = getWidth();
-                    int height = getHeight();
-                    int numChanges = 0;
-                    int numEditorChanges = 0;
-                    for (int i = 0; i < getNumChildComponents(); ++i)
-                    {
-                        auto* const block = dynamic_cast<BlockComponent*> (getChildComponent (i));
-                        if (nullptr == block)
-                            continue;
-
-                        auto r = block->getBounds();
-                        // auto x = r.getX(), y = r.getY();
-                        // if (! isLayoutVertical())
-                        bool changed = false;
-                        if (r.getX() < 0)
-                        {
-                            changed = true;
-                            r = r.withX (0);
-                        }
-                        else if (r.getRight() > width)
-                        {
-                            numEditorChanges++;
-                            width = r.getRight();
-                        }
-
-                        if (r.getY() < 0)
-                        {
-                            changed = true;
-                            r = r.withY (0);
-                        }
-                        else if (r.getBottom() > height)
-                        {
-                            numEditorChanges++;
-                            height = r.getBottom();
-                        }
-
-                        if (changed)
-                        {
-                            block->moveBlockTo (r.getX(), r.getY());
-                            ++numChanges;
-                        }
-                    }
-
-                    if (numChanges > 0)
-                    {
-                        updateBlockComponents (true);
-                        updateConnectorComponents();
-                    }
-
-                    if (numEditorChanges > 0)
-                        setSize (width, height);
+                                case 7:
+                    fixOutOfBoundsNodes();
                     return;
-                }
+
                 case 8:
                     if (auto* const editor = findParentComponentOfClass<GraphEditor>())
                         editor->fitCanvasToNodes();
@@ -1879,9 +1883,23 @@ void GraphEditorComponent::selectAllNodes()
     }
 }
 
+NodeArray GraphEditorComponent::getSelectedNodes() const
+{
+    NodeArray nodes;
+    for (const auto& nodeId : selectedNodes)
+    {
+        const auto node = graph.getNodeById (nodeId);
+        if (node.isValid())
+            nodes.add (node);
+    }
+
+    return nodes;
+}
+
 void GraphEditorComponent::deleteSelectedNodes()
 {
     NodeArray toRemove;
+
     for (const auto& nodeId : selectedNodes)
     {
         const auto node = graph.getNodeById (nodeId);

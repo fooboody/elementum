@@ -139,7 +139,8 @@ void MainMenu::menuItemSelected (int index, int menu)
     }
     else if (index == 8 && menu == File)
     {
-        reloadColourSettings();
+        if (auto* const gui = owner.services().find<GuiService>())
+            gui->reloadColourSettings();
     }
 
     else if (index == 2000 && menu == Window)
@@ -226,30 +227,7 @@ void MainMenu::menuItemSelected (int index, int menu)
     }
 }
 
-void MainMenu::reloadColourSettings()
-{
-    world.settings().reloadColourSettings();
 
-    if (auto* gui = owner.services().find<GuiService>())
-        gui->refreshPopupMenuTheme();
-
-    if (auto* root = owner.getContentComponent())
-    {
-        std::function<void (Component*)> repaintTree = [&] (Component* component) {
-            if (component == nullptr)
-                return;
-
-            component->repaint();
-            for (int i = 0; i < component->getNumChildComponents(); ++i)
-                repaintTree (component->getChildComponent (i));
-        };
-
-        repaintTree (root);
-    }
-
-    if (auto* topLevel = owner.getTopLevelComponent())
-        topLevel->repaint();
-}
 
 void MainMenu::addRecentFiles (PopupMenu& menu)
 {

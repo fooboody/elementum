@@ -86,21 +86,57 @@ public:
 
                 swapGraphEditorAndMixer = 0x0200,
         scanPlugins,
-        swapGraphEditorAndConsole
+        swapGraphEditorAndConsole,
+
+        toggleNodeEnablement = 0x0800,
+        duplicateSelectedNodes,
+        disconnectSelectedNodes,
+        disconnectSelectedNodeInputs,
+        disconnectSelectedNodeOutputs,
+        disconnectSelectedNodeMidi,
+        fitCanvasToNodes,
+        fixOutOfBoundsNodes,
+
+        muteNodeInputs = 0x0900,
+        toggleNodeMute,
+        toggleNodeBypass,
+        setNodeOversamplingOff,
+        setNodeOversampling2x,
+        setNodeOversampling4x,
+        setNodeOversampling8x,
+
+        reloadColourSettings = 0x0A00
 
     };
 
     inline static juce::Array<juce::CommandID> getAllCommands()
     {
         return {
-            copy,
+                        copy,
             quit,
             undo,
             redo,
             paste,
             cut,
             selectAll,
+            toggleNodeEnablement,
+            toggleNodeMute,
+            toggleNodeBypass,
+            duplicateSelectedNodes,
+            disconnectSelectedNodes,
+            disconnectSelectedNodeInputs,
+            disconnectSelectedNodeOutputs,
+            disconnectSelectedNodeMidi,
+            fitCanvasToNodes,
+            fixOutOfBoundsNodes,
+            muteNodeInputs,
+            setNodeOversamplingOff,
+            setNodeOversampling2x,
+            setNodeOversampling4x,
+            setNodeOversampling8x,
+            reloadColourSettings,
             showAbout,
+
             showLegacyView,
             showPluginManager,
             showPreferences,
@@ -173,10 +209,59 @@ public:
             case Commands::undo:
                 return "undo";
                 break;
-            case Commands::redo:
+                        case Commands::redo:
                 return "redo";
                 break;
+            case Commands::toggleNodeEnablement:
+                return "toggleNodeEnablement";
+                break;
+            case Commands::duplicateSelectedNodes:
+                return "duplicateSelectedNodes";
+                break;
+            case Commands::disconnectSelectedNodes:
+                return "disconnectSelectedNodes";
+                break;
+            case Commands::disconnectSelectedNodeInputs:
+                return "disconnectSelectedNodeInputs";
+                break;
+            case Commands::disconnectSelectedNodeOutputs:
+                return "disconnectSelectedNodeOutputs";
+                break;
+            case Commands::disconnectSelectedNodeMidi:
+                return "disconnectSelectedNodeMidi";
+                break;
+            case Commands::fitCanvasToNodes:
+                return "fitCanvasToNodes";
+                break;
+            case Commands::fixOutOfBoundsNodes:
+                return "fixOutOfBoundsNodes";
+                break;
+            case Commands::muteNodeInputs:
+                return "muteNodeInputs";
+                break;
+            case Commands::toggleNodeMute:
+                return "toggleNodeMute";
+                break;
+            case Commands::toggleNodeBypass:
+                return "toggleNodeBypass";
+                break;
+            case Commands::setNodeOversamplingOff:
+                return "setNodeOversamplingOff";
+                break;
+            case Commands::setNodeOversampling2x:
+                return "setNodeOversampling2x";
+                break;
+            case Commands::setNodeOversampling4x:
+                return "setNodeOversampling4x";
+                break;
+            case Commands::setNodeOversampling8x:
+                return "setNodeOversampling8x";
+                break;
+            case Commands::reloadColourSettings:
+                return "reloadColourSettings";
+                break;
             case Commands::showAbout:
+
                 return "showAbout";
                 break;
             case Commands::showLegacyView:
@@ -273,10 +358,44 @@ public:
 
     inline static juce::CommandID fromString (const juce::String& str)
     {
-        if (str == "quit")
+                if (str == "quit")
             return Commands::quit;
 
+        if (str == "toggleNodeEnablement")
+            return Commands::toggleNodeEnablement;
+        if (str == "duplicateSelectedNodes")
+            return Commands::duplicateSelectedNodes;
+        if (str == "disconnectSelectedNodes")
+            return Commands::disconnectSelectedNodes;
+        if (str == "disconnectSelectedNodeInputs")
+            return Commands::disconnectSelectedNodeInputs;
+        if (str == "disconnectSelectedNodeOutputs")
+            return Commands::disconnectSelectedNodeOutputs;
+        if (str == "disconnectSelectedNodeMidi")
+            return Commands::disconnectSelectedNodeMidi;
+        if (str == "fitCanvasToNodes")
+            return Commands::fitCanvasToNodes;
+        if (str == "fixOutOfBoundsNodes")
+            return Commands::fixOutOfBoundsNodes;
+        if (str == "muteNodeInputs")
+            return Commands::muteNodeInputs;
+        if (str == "toggleNodeMute")
+            return Commands::toggleNodeMute;
+        if (str == "toggleNodeBypass")
+            return Commands::toggleNodeBypass;
+        if (str == "setNodeOversamplingOff")
+            return Commands::setNodeOversamplingOff;
+        if (str == "setNodeOversampling2x")
+            return Commands::setNodeOversampling2x;
+        if (str == "setNodeOversampling4x")
+            return Commands::setNodeOversampling4x;
+        if (str == "setNodeOversampling8x")
+            return Commands::setNodeOversampling8x;
+        if (str == "reloadColourSettings")
+            return Commands::reloadColourSettings;
+
         if (str == "showAbout")
+
             return Commands::showAbout;
         if (str == "showLegacyView")
             return Commands::showLegacyView;

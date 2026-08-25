@@ -4,7 +4,10 @@
 #include <element/context.hpp>
 #include <element/devices.hpp>
 #include <element/node.hpp>
+#include "messages.hpp"
+
 #include <element/plugins.hpp>
+
 #include <element/services.hpp>
 #include <element/settings.hpp>
 #include <element/ui/commands.hpp>
@@ -1181,7 +1184,55 @@ VirtualKeyboardView* StandardContent::getVirtualKeyboardView() const
 }
 
 //==============================================================================
+namespace {
+
+GraphEditorView* getGraphEditorView (StandardContent& content)
+{
+    return dynamic_cast<GraphEditorView*> (content.getMainViewComponent());
+}
+
+NodeArray getSelectedGraphNodes (StandardContent& content)
+{
+    if (auto* const view = getGraphEditorView (content))
+        return view->editor().getSelectedNodes();
+
+    return {};
+}
+
+bool supportsNodeProcessingCommands (const NodeArray& nodes)
+{
+    if (nodes.isEmpty())
+        return false;
+
+    for (const auto& node : nodes)
+    {
+        const auto processor = node.getObject();
+        if (processor == nullptr || processor->isAudioIONode() || processor->isMidiIONode())
+            return false;
+    }
+
+    return true;
+}
+
+bool supportsNodeMuteAndBypassCommands (const NodeArray& nodes)
+{
+    if (nodes.isEmpty())
+        return false;
+
+    for (const auto& node : nodes)
+    {
+        if (node.getObject() == nullptr || node.isIONode() || node.isRootGraph()
+            || node.isMidiInputDevice() || node.isMidiOutputDevice())
+            return false;
+    }
+
+    return true;
+}
+
+} // namespace
+
 ApplicationCommandTarget* StandardContent::getNextCommandTarget()
+
 {
     return nullptr;
 }
@@ -1205,8 +1256,25 @@ void StandardContent::getAllCommands (Array<CommandID>& commands)
         Commands::showLastContentView,
         Commands::rotateContentView,
         Commands::swapGraphEditorAndMixer,
-        Commands::swapGraphEditorAndConsole,
+                Commands::swapGraphEditorAndConsole,
         Commands::selectAll,
+        Commands::toggleNodeEnablement,
+        Commands::toggleNodeMute,
+        Commands::toggleNodeBypass,
+        Commands::duplicateSelectedNodes,
+        Commands::disconnectSelectedNodes,
+        Commands::disconnectSelectedNodeInputs,
+        Commands::disconnectSelectedNodeOutputs,
+        Commands::disconnectSelectedNodeMidi,
+        Commands::fitCanvasToNodes,
+        Commands::fixOutOfBoundsNodes,
+        Commands::muteNodeInputs,
+        Commands::setNodeOversamplingOff,
+        Commands::setNodeOversampling2x,
+        Commands::setNodeOversampling4x,
+        Commands::setNodeOversampling8x,
+        Commands::reloadColourSettings,
+
     });
     // clang-format on
 }
@@ -1345,12 +1413,83 @@ void StandardContent::getCommandInfo (CommandID commandID, ApplicationCommandInf
             break;
         }
 
-        case Commands::selectAll: {
+                case Commands::selectAll: {
             int flags = 0;
             result.setInfo ("Select All", "Select all nodes", "UI", flags);
             result.addDefaultKeypress ('a', ModifierKeys::commandModifier);
             break;
         }
+        case Commands::toggleNodeEnablement: {
+            const int flags = getSelectedGraphNodes (*this).isEmpty() ? Info::isDisabled : 0;
+            result.setInfo ("Toggle Enabled", "Enable or disable selected graph nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::duplicateSelectedNodes: {
+            const int flags = getSelectedGraphNodes (*this).isEmpty() ? Info::isDisabled : 0;
+            result.setInfo ("Duplicate", "Duplicate selected graph nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::disconnectSelectedNodes: {
+            const int flags = getSelectedGraphNodes (*this).isEmpty() ? Info::isDisabled : 0;
+            result.setInfo ("Disconnect All Ports", "Disconnect all ports on selected graph nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::disconnectSelectedNodeInputs: {
+            const int flags = getSelectedGraphNodes (*this).isEmpty() ? Info::isDisabled : 0;
+            result.setInfo ("Disconnect Input Ports", "Disconnect input ports on selected graph nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::disconnectSelectedNodeOutputs: {
+            const int flags = getSelectedGraphNodes (*this).isEmpty() ? Info::isDisabled : 0;
+            result.setInfo ("Disconnect Output Ports", "Disconnect output ports on selected graph nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::disconnectSelectedNodeMidi: {
+            const int flags = getSelectedGraphNodes (*this).isEmpty() ? Info::isDisabled : 0;
+            result.setInfo ("Disconnect MIDI Ports", "Disconnect MIDI ports on selected graph nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::fitCanvasToNodes: {
+            const int flags = getGraphEditorView (*this) == nullptr ? Info::isDisabled : 0;
+            result.setInfo ("Fit Canvas to Nodes", "Resize the Graph Editor canvas to fit its nodes", "UI", flags);
+            break;
+        }
+        case Commands::fixOutOfBoundsNodes: {
+            const int flags = getGraphEditorView (*this) == nullptr ? Info::isDisabled : 0;
+            result.setInfo ("Fix Out-of-Bounds Nodes", "Move graph nodes into the visible canvas area", "UI", flags);
+            break;
+        }
+        case Commands::muteNodeInputs: {
+            const int flags = supportsNodeProcessingCommands (getSelectedGraphNodes (*this)) ? 0 : Info::isDisabled;
+            result.setInfo ("Toggle Input Mute", "Toggle input-port muting for selected nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::toggleNodeMute:
+        case Commands::toggleNodeBypass: {
+            const int flags = supportsNodeMuteAndBypassCommands (getSelectedGraphNodes (*this)) ? 0 : Info::isDisabled;
+            const char* const name = commandID == Commands::toggleNodeMute ? "Toggle Mute" : "Toggle Bypass";
+            const char* const description = commandID == Commands::toggleNodeMute
+                                                ? "Toggle muting for selected nodes"
+                                                : "Toggle bypass for selected nodes";
+            result.setInfo (name, description, "Selected Nodes", flags);
+            break;
+        }
+        case Commands::setNodeOversamplingOff:
+        case Commands::setNodeOversampling2x:
+        case Commands::setNodeOversampling4x:
+        case Commands::setNodeOversampling8x: {
+            const int flags = supportsNodeProcessingCommands (getSelectedGraphNodes (*this)) ? 0 : Info::isDisabled;
+            const char* const name = commandID == Commands::setNodeOversamplingOff ? "Oversample Off"
+                                     : commandID == Commands::setNodeOversampling2x ? "Oversample 2x"
+                                     : commandID == Commands::setNodeOversampling4x ? "Oversample 4x"
+                                                                                     : "Oversample 8x";
+            result.setInfo (name, "Set oversampling for selected nodes", "Selected Nodes", flags);
+            break;
+        }
+        case Commands::reloadColourSettings:
+            result.setInfo ("Reload Colors from Configuration File", "Reload colour settings and repaint the UI", "Application", 0);
+            break;
+
     }
 }
 
@@ -1434,12 +1573,112 @@ bool StandardContent::perform (const InvocationInfo& info)
             container->swapGraphEditorAndConsole();
             break;
 
-        case Commands::selectAll: {
+                case Commands::selectAll: {
             if (auto view = dynamic_cast<GraphEditorView*> (container->primary.get()))
                 view->selectAllNodes();
             break;
         }
+        case Commands::toggleNodeEnablement: {
+            auto nodes = getSelectedGraphNodes (*this);
+            if (nodes.isEmpty())
+                return false;
+
+            const bool shouldEnable = ! nodes.getFirst().isEnabled();
+            for (auto& node : nodes)
+                node.setEnabled (shouldEnable);
+            if (auto* const view = getGraphEditorView (*this))
+                view->editor().updateComponents (false);
+            break;
+        }
+        case Commands::duplicateSelectedNodes: {
+            const auto nodes = getSelectedGraphNodes (*this);
+            if (nodes.isEmpty())
+                return false;
+
+            for (const auto& node : nodes)
+                post (new DuplicateNodeMessage (node));
+            break;
+        }
+        case Commands::disconnectSelectedNodes:
+        case Commands::disconnectSelectedNodeInputs:
+        case Commands::disconnectSelectedNodeOutputs:
+        case Commands::disconnectSelectedNodeMidi: {
+            const auto nodes = getSelectedGraphNodes (*this);
+            if (nodes.isEmpty())
+                return false;
+
+            const bool inputs = info.commandID != Commands::disconnectSelectedNodeOutputs;
+            const bool outputs = info.commandID != Commands::disconnectSelectedNodeInputs;
+            const bool audio = info.commandID != Commands::disconnectSelectedNodeMidi;
+            const bool midi = true;
+            for (const auto& node : nodes)
+                post (new DisconnectNodeMessage (node, inputs, outputs, audio, midi));
+            break;
+        }
+        case Commands::fitCanvasToNodes:
+            if (auto* const view = getGraphEditorView (*this))
+                view->editor().fitCanvasToNodes();
+            else
+                return false;
+            break;
+        case Commands::fixOutOfBoundsNodes:
+            if (auto* const view = getGraphEditorView (*this))
+                view->editor().fixOutOfBoundsNodes();
+            else
+                return false;
+            break;
+        case Commands::muteNodeInputs: {
+            auto nodes = getSelectedGraphNodes (*this);
+            if (! supportsNodeProcessingCommands (nodes))
+                return false;
+
+            const bool shouldMute = ! nodes.getFirst().isMutingInputs();
+            for (auto& node : nodes)
+                node.setMuteInput (shouldMute);
+            break;
+        }
+        case Commands::toggleNodeMute:
+        case Commands::toggleNodeBypass: {
+            auto nodes = getSelectedGraphNodes (*this);
+            if (! supportsNodeMuteAndBypassCommands (nodes))
+                return false;
+
+            if (info.commandID == Commands::toggleNodeMute)
+            {
+                const bool shouldMute = ! nodes.getFirst().isMuted();
+                for (auto& node : nodes)
+                    node.setMuted (shouldMute);
+            }
+            else
+            {
+                const bool shouldBypass = ! nodes.getFirst().isBypassed();
+                for (auto& node : nodes)
+                    node.setBypassed (shouldBypass);
+            }
+            break;
+        }
+        case Commands::setNodeOversamplingOff:
+        case Commands::setNodeOversampling2x:
+        case Commands::setNodeOversampling4x:
+        case Commands::setNodeOversampling8x: {
+            const auto nodes = getSelectedGraphNodes (*this);
+            if (! supportsNodeProcessingCommands (nodes))
+                return false;
+
+            const int factor = info.commandID == Commands::setNodeOversamplingOff ? 1
+                               : info.commandID == Commands::setNodeOversampling2x ? 2
+                               : info.commandID == Commands::setNodeOversampling4x ? 4
+                                                                                     : 8;
+            for (const auto& node : nodes)
+                if (auto processor = node.getObject())
+                    processor->setOversamplingFactor (factor);
+            break;
+        }
+        case Commands::reloadColourSettings:
+            services().find<GuiService>()->reloadColourSettings();
+            break;
         default:
+
             result = false;
             break;
     }

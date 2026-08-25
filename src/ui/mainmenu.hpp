@@ -62,8 +62,8 @@ private:
     void buildDebugMenu (PopupMenu& menu);
     void buildHelpMenu (PopupMenu& menu);
 
-    void addRecentFiles (PopupMenu& menu);
-    void reloadColourSettings();
+        void addRecentFiles (PopupMenu& menu);
+
 };
 
 } // namespace element
