@@ -24,14 +24,23 @@ class GraphMixerChannelStrip : public NodeChannelStripComponent,
 {
 public:
         std::function<void()> onRefreshNeeded;
+
+    std::function<void (GraphMixerChannelStrip&, double)> onFaderValueApplied;
     std::function<void (const Node&, ModifierKeys)> onSelectionRequested;
+
     std::function<void (const Node&)> onHideRequested;
 
     GraphMixerChannelStrip (GuiService& gui) : NodeChannelStripComponent (gui, false)
     {
         onNodeChanged = [this]() { setNodeNameEditable (! (getNode().isIONode())); };
         listener.reset (new ChildListener (*this));
+
         addMouseListener (listener.get(), true);
+        onVolumeApplied = [this] (double value) {
+            if (onFaderValueApplied)
+                onFaderValueApplied (*this, value);
+        };
+
     }
 
     ~GraphMixerChannelStrip()
@@ -215,8 +224,10 @@ private:
 class GraphMixerListBoxModel : public ListBoxModel
 {
 public:
-    std::function<void()> onSelectionChanged;
+        std::function<void()> onSelectionChanged;
+    std::function<void (GraphMixerChannelStrip&, double)> onFaderValueApplied;
     std::function<void (const Node&, ModifierKeys)> onSelectionRequested;
+
     std::function<void (const Node&)> onHideRequested;
 
     GraphMixerListBoxModel (GuiService& g, HorizontalListBox& b) : gui (g), box (b) { refreshNodes(); }
@@ -242,8 +253,10 @@ public:
         GraphMixerChannelStrip* const strip = existing == nullptr
                                                   ? new GraphMixerChannelStrip (gui)
                                                   : dynamic_cast<GraphMixerChannelStrip*> (existing);
-        strip->onRefreshNeeded = std::bind (&GraphMixerListBoxModel::refresh, this);
+                strip->onRefreshNeeded = std::bind (&GraphMixerListBoxModel::refresh, this);
+        strip->onFaderValueApplied = onFaderValueApplied;
         strip->onSelectionRequested = onSelectionRequested;
+
         strip->onHideRequested = onHideRequested;
         auto node = getNode (rowNumber);
         strip->setNode (node);
@@ -289,8 +302,8 @@ public:
         {
             const auto n = graph.getNode (i);
             // clang-format off
-            if (n.isMidiIONode() || 
-                n.getIdentifier() == EL_NODE_ID_MIDI_INPUT_DEVICE || 
+            if (n.isMidiIONode() ||
+                n.getIdentifier() == EL_NODE_ID_MIDI_INPUT_DEVICE ||
                 n.getIdentifier() == EL_NODE_ID_MIDI_OUTPUT_DEVICE ||
                 n.isHiddenInMixer())
             {
@@ -364,8 +377,12 @@ public:
         box.setRowHeight (80);
         box.setMultipleSelectionEnabled (true);
         model.reset (new GraphMixerListBoxModel (gui, box));
-        model->onSelectionChanged = [this]() { onMixerSelectionChanged(); };
+                model->onSelectionChanged = [this]() { onMixerSelectionChanged(); };
+        model->onFaderValueApplied = [this] (GraphMixerChannelStrip& source, double value) {
+            syncSelectedFaderValues (source, value);
+        };
         model->onSelectionRequested = [this] (const Node& node, ModifierKeys modifiers) {
+
             selectMixerNode (node, modifiers);
         };
         model->onHideRequested = [this] (const Node& node) { hideMixerNodes (node); };
@@ -430,7 +447,7 @@ public:
                 [this]() { syncMixerSelectionFromGraphEditor(); });
     }
 
-    NodeArray getMixerSelectedNodes() const
+        NodeArray getMixerSelectedNodes() const
     {
         NodeArray nodes;
         for (int i = 0; i < box.getNumSelectedRows(); ++i)
@@ -443,7 +460,54 @@ public:
         return nodes;
     }
 
+    static void setDefaultFaderValue (Node node, const double value, const double minimumDecibels)
+
+    {
+        if (auto* const object = node.getObject())
+        {
+            const auto gain = Decibels::decibelsToGain (value, minimumDecibels);
+            if (node.isAudioOutputNode())
+            {
+                node.setProperty (tags::inputGain, gain);
+                object->setInputGain (static_cast<float> (gain));
+            }
+            else
+            {
+                node.setProperty (tags::gain, gain);
+                object->setGain (static_cast<float> (gain));
+            }
+        }
+    }
+
+    void syncSelectedFaderValues (GraphMixerChannelStrip& source, const double value)
+    {
+        if (syncingFaderValues)
+            return;
+
+        const auto nodes = getMixerSelectedNodes();
+        if (nodes.size() < 2 || ! nodes.contains (source.getNode()))
+            return;
+
+        const juce::ScopedValueSetter<bool> syncing (syncingFaderValues, true);
+
+        const auto minimumDecibels = source.getChannelStrip().getMinDecibels();
+        for (const auto& node : nodes)
+        {
+            if (node == source.getNode())
+                continue;
+
+            const auto row = model->getRowForNode (node);
+            auto* const strip = row >= 0 ? dynamic_cast<GraphMixerChannelStrip*> (box.getComponentForRowNumber (row)) : nullptr;
+            if (strip != nullptr)
+                strip->getChannelStrip().setVolume (value, juce::sendNotificationSync);
+
+            else
+                setDefaultFaderValue (node, value, minimumDecibels);
+        }
+    }
+
     void syncMixerSelectionFromGraphEditor()
+
     {
         connectGraphEditorSelection();
         if (syncingSelection || graphEditor == nullptr)
@@ -587,8 +651,10 @@ private:
     HorizontalListBox box;
     ValueTree watchedNodes;
     GraphEditorView* graphEditor = nullptr;
-    SignalConnection graphSelectionConnection;
+        SignalConnection graphSelectionConnection;
     bool syncingSelection = false;
+    bool syncingFaderValues = false;
+
     std::vector<SignalConnection> _conns;
 };
 

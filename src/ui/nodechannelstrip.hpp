@@ -227,6 +227,9 @@ public:
         also want to override getCurrentVolume() */
     std::function<void (double)> onVolumeChanged;
 
+    /** Called after the default node gain update completes. */
+    std::function<void (double)> onVolumeApplied;
+
 protected:
     /** Override this to return volume from the backend/model layer. The
         default returns either the input or output gain of the node */
@@ -395,9 +398,13 @@ private:
                 }
             }
         }
+
+        if (onVolumeApplied != nullptr)
+            onVolumeApplied (value);
     }
 
     void muteChanged()
+
     {
         if (node.isValid())
             node.setProperty (tags::mute, channelStrip.isMuted());
