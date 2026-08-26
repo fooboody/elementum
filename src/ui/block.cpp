@@ -1085,24 +1085,29 @@ void BlockComponent::paintOverChildren (Graphics& g)
                                                 : detail::contrastingTextColour (background);
 
     auto labelBounds = box.reduced (4, 2).removeFromBottom (18).removeFromRight (30);
-    const int minimumX = box.getX() + 52;
-    const int shift = pinSize + pinSpacing;
-    for (;;)
+    if (! vertical)
     {
-        bool overlapsPort = false;
-        for (int i = 0; i < getNumChildComponents(); ++i)
-            if (auto* const port = dynamic_cast<PortComponent*> (getChildComponent (i)))
-                if (labelBounds.intersects (port->getBounds()))
-                {
-                    overlapsPort = true;
-                    break;
-                }
+        const int minimumX = box.getX() + 52;
+        for (;;)
+        {
+            bool overlapsPort = false;
+            for (int i = 0; i < getNumChildComponents(); ++i)
+                if (auto* const port = dynamic_cast<PortComponent*> (getChildComponent (i)))
+                    if (labelBounds.intersects (port->getBounds()))
+                    {
+                        overlapsPort = true;
+                        break;
+                    }
 
-        if (! overlapsPort)
-            break;
-        if (labelBounds.getX() - shift < minimumX)
-            return;
-        labelBounds = labelBounds.translated (-shift, 0);
+            if (! overlapsPort)
+                break;
+
+            const auto nextBounds = labelBounds.translated (-pinSize, 0);
+            if (nextBounds.getX() < minimumX)
+                break;
+
+            labelBounds = nextBounds;
+        }
     }
 
     g.setColour (subTextColor);
