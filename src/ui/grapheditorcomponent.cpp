@@ -1830,12 +1830,23 @@ void GraphEditorComponent::filesDropped (const StringArray& files, int x, int y)
 }
 
 //=============================================================================
-static Point<int> findAvailableNodePosition (const GraphEditorComponent& editor, Point<int> position)
+static Point<int> findAvailableNodePosition (const GraphEditorComponent& editor,
+                                             Point<int> position,
+                                             const int maximumX,
+                                             const int maximumY,
+                                             const BlockComponent* ignoredBlock)
 {
     constexpr int positionTolerance = 8;
     constexpr int positionOffset = 24;
 
-    const auto isOccupied = [&editor] (const Point<int>& candidate)
+    const auto clampToCanvas = [maximumX, maximumY] (Point<int> candidate)
+    {
+        candidate.x = jlimit (0, maximumX, candidate.x);
+        candidate.y = jlimit (0, maximumY, candidate.y);
+        return candidate;
+    };
+
+    const auto isOccupied = [&editor, ignoredBlock] (const Point<int>& candidate)
     {
         const Rectangle<int> nearbyPositions (candidate.x - positionTolerance,
                                               candidate.y - positionTolerance,
@@ -1844,17 +1855,38 @@ static Point<int> findAvailableNodePosition (const GraphEditorComponent& editor,
 
         for (int i = 0; i < editor.getNumChildComponents(); ++i)
             if (const auto* block = dynamic_cast<const BlockComponent*> (editor.getChildComponent (i)))
-                if (nearbyPositions.contains (block->getBounds().getPosition()))
+                if (block != ignoredBlock && nearbyPositions.contains (block->getBounds().getPosition()))
                     return true;
 
         return false;
     };
 
-    while (isOccupied (position))
+    position = clampToCanvas (position);
+    Array<Point<int>> candidates;
+    const auto addCandidate = [&] (Point<int> candidate)
     {
-        position.x += positionOffset;
-        position.y += positionOffset;
+        candidate = clampToCanvas (candidate);
+        if (! candidates.contains (candidate))
+            candidates.add (candidate);
+    };
+
+    addCandidate (position);
+    for (int step = 1; step <= editor.getNumChildComponents(); ++step)
+    {
+        const int offset = step * positionOffset;
+        addCandidate ({ position.x + offset, position.y });
+        addCandidate ({ position.x, position.y + offset });
+        addCandidate ({ position.x + offset, position.y + offset });
+        addCandidate ({ position.x - offset, position.y });
+        addCandidate ({ position.x, position.y - offset });
+        addCandidate ({ position.x - offset, position.y - offset });
+        addCandidate ({ position.x + offset, position.y - offset });
+        addCandidate ({ position.x - offset, position.y + offset });
     }
+
+    for (const auto& candidate : candidates)
+        if (! isOccupied (candidate))
+            return candidate;
 
     return position;
 }
@@ -1863,17 +1895,34 @@ void GraphEditorComponent::valueTreeChildAdded (ValueTree& parent, ValueTree& ch
 {
     if (child.hasType (types::Node))
     {
-        const auto position = findAvailableNodePosition (
-            *this,
-            { roundToInt (verticalLayout ? lastDropX : lastDropY),
-              roundToInt (verticalLayout ? lastDropY : lastDropX) });
-        child.setProperty (tags::x, verticalLayout ? position.x : position.y, 0);
-        child.setProperty (tags::y, verticalLayout ? position.y : position.x, 0);
+        // Mouse coordinates are already in Graph Editor display space. Convert
+        // to the model's orientation-specific axes only when storing them below.
+        const Point<int> requestedPosition {
+            roundToInt (lastDropX),
+            roundToInt (lastDropY)
+        };
+        child.setProperty (tags::x, verticalLayout ? requestedPosition.x : requestedPosition.y, 0);
+        child.setProperty (tags::y, verticalLayout ? requestedPosition.y : requestedPosition.x, 0);
 
         auto* comp = createBlock (Node (child, false));
-
         addAndMakeVisible (comp, 20000);
         comp->update();
+
+        // A normal-sized node belongs entirely within the existing canvas.
+        // Extend only an axis whose node dimension cannot fit at all.
+        const int requiredWidth = jmax (getWidth(), comp->getWidth());
+        const int requiredHeight = jmax (getHeight(), comp->getHeight());
+        if (requiredWidth != getWidth() || requiredHeight != getHeight())
+            setSize (requiredWidth, requiredHeight);
+
+        const auto position = findAvailableNodePosition (
+            *this,
+            comp->getBounds().getPosition(),
+            jmax (0, getWidth() - comp->getWidth()),
+            jmax (0, getHeight() - comp->getHeight()),
+            comp);
+        comp->moveBlockTo (position.x, position.y);
+        updateConnectorComponents();
     }
     else if (child.hasType (types::Arc) || child.hasType (tags::nodes) || child.hasType (tags::arcs))
     {
