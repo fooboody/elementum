@@ -62,8 +62,78 @@ private:
     }
 };
 
+class DuplicateNodeAction : public juce::UndoableAction
+{
+public:
+    DuplicateNodeAction (Services& a, const DuplicateNodeMessage& message)
+        : app (a), graph (message.node.getParentGraph())
+    {
+        Node source (message.node);
+        source.savePluginState();
+
+        ValueTree data (source.data().createCopy());
+        Node::sanitizeProperties (data, true);
+        nodeData = Node::resetIds (data);
+
+        if ((int) nodeData.getProperty (tags::version, EL_NODE_VERSION) < EL_NODE_VERSION)
+            nodeData.setProperty (tags::version, (int) EL_NODE_VERSION, nullptr);
+    }
+
+    bool perform() override
+    {
+        if (! graph.isGraph() || ! nodeData.isValid())
+            return false;
+
+        auto* const engine = app.find<EngineService>();
+        if (engine == nullptr)
+            return false;
+
+        addedNode = engine->addNode (Node (nodeData, false), graph, ConnectionBuilder());
+        if (! addedNode.isValid())
+            return false;
+
+        if (havePosition)
+        {
+            addedNode.setPosition (positionX, positionY);
+        }
+        else if (addedNode.hasPosition())
+        {
+            addedNode.getPosition (positionX, positionY);
+            havePosition = true;
+        }
+
+        return true;
+
+    }
+
+    bool undo() override
+    {
+        if (! addedNode.isValid())
+            return false;
+
+        auto* const engine = app.find<EngineService>();
+        if (engine == nullptr)
+            return false;
+
+        engine->removeNode (addedNode);
+        addedNode = Node();
+        return true;
+    }
+
+private:
+    Services& app;
+    const Node graph;
+    ValueTree nodeData;
+    Node addedNode;
+    double positionX = 0.0;
+    double positionY = 0.0;
+    bool havePosition = false;
+
+};
+
 class RemoveNodeAction : public juce::UndoableAction
 {
+
 public:
     explicit RemoveNodeAction (Services& a, const Node& node)
         : app (a), targetGraph (node.getParentGraph()), nodeUuid (node.getUuid())
@@ -318,6 +388,12 @@ private:
 void AddPluginMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
 {
     actions.add (new AddPluginAction (app, *this));
+}
+
+void DuplicateNodeMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const
+{
+    if (node.isValid() && node.getParentGraph().isGraph())
+        actions.add (new DuplicateNodeAction (app, *this));
 }
 
 void RemoveNodeMessage::createActions (Services& app, OwnedArray<UndoableAction>& actions) const

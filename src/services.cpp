@@ -227,32 +227,6 @@ void Services::handleMessage (const Message& msg)
     {
         ec->addPlugin (lpm->description, lpm->verified, lpm->relativeX, lpm->relativeY);
     }
-    else if (const auto* dnm = dynamic_cast<const DuplicateNodeMessage*> (&msg))
-    {
-        Node node = dnm->node;
-        ValueTree parent (node.data().getParent());
-        if (parent.hasType (tags::nodes))
-            parent = parent.getParent();
-        jassert (parent.hasType (types::Node));
-
-        const Node graph (parent, false);
-        node.savePluginState();
-        Node newNode (node.data().createCopy(), false);
-        Node::sanitizeProperties (newNode.data(), true);
-        if (newNode.version() < EL_NODE_VERSION)
-        {
-            std::clog << "[element] Dupliate node out of date?" << std::endl;
-            // TODO: migrate
-            newNode.setProperty (tags::version, (int) EL_NODE_VERSION);
-        }
-
-        if (newNode.isValid() && graph.isValid())
-        {
-            newNode = Node (Node::resetIds (newNode.data()), false);
-            ConnectionBuilder dummy;
-            ec->addNode (newNode, graph, dummy);
-        }
-    }
     else if (const auto* dnm2 = dynamic_cast<const DisconnectNodeMessage*> (&msg))
     {
         ec->disconnectNode (dnm2->node, dnm2->inputs, dnm2->outputs, dnm2->audio, dnm2->midi);

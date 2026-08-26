@@ -248,13 +248,14 @@ struct ReplaceNodeMessage : public AppMessage
     boost::signals2::signal<void()> success;
 };
 
-class DuplicateNodeMessage : public juce::Message
+struct DuplicateNodeMessage : public AppMessage
 {
-public:
     DuplicateNodeMessage (const Node& n)
-        : Message(), node (n) {}
+        : node (n) {}
     DuplicateNodeMessage() {}
+
     const Node node;
+    void createActions (Services& app, juce::OwnedArray<juce::UndoableAction>& actions) const override;
 };
 
 struct DisconnectNodeMessage : public AppMessage
