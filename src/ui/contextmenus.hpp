@@ -36,7 +36,7 @@ public:
         favorites = plugins->getFavoritePluginTypes();
     }
 
-    bool isPluginResultCode (const int resultCode)
+        bool isPluginResultCode (const int resultCode)
     {
         // clang-format off
         return (isPositiveAndBelow (int (resultCode - favoriteResultOffset), favorites.size())) ||
@@ -45,7 +45,18 @@ public:
         // clang-format on
     }
 
+    bool isUnverifiedRefreshResult (const int resultCode, String& formatName) const
+    {
+        const auto index = resultCode - unverifiedRefreshResultOffset;
+        if (! isPositiveAndBelow (index, unverifiedFormats.size()))
+            return false;
+
+        formatName = unverifiedFormats[index];
+        return true;
+    }
+
     bool isGroupManufacturersByInitialResult (const int resultCode) const
+
     {
         return resultCode == groupManufacturersByInitialResult;
     }
@@ -136,6 +147,7 @@ private:
     // MIDI device, or unverified-plugin result IDs.
     static constexpr int favoriteResultOffset = 10000;
     static constexpr int unverifiedResultOffset = 20000;
+    static constexpr int unverifiedRefreshResultOffset = 30000;
     static constexpr int pluginResultOffset = 100000;
 
     Array<ManufacturerGroup> getManufacturerGroups() const
@@ -270,15 +282,17 @@ private:
         return shortestRelativePath.isNotEmpty() ? shortestRelativePath : label;
     }
 
-    void addUnverifiedPluginsMenu()
+        void addUnverifiedPluginsMenu()
     {
         PopupMenu unverifiedMenu;
         unverified.clearQuick (true);
+        unverifiedFormats.clearQuick();
         for (const auto& name : Util::compiledAudioPluginFormats())
         {
             PopupMenu formatMenu;
             const int lastSize = unverified.size();
             plugins->getUnverifiedPlugins (name, unverified);
+
             if (auto* format = plugins->getAudioPluginFormat (name))
             {
                 for (int i = lastSize; i < unverified.size(); ++i)
@@ -306,16 +320,23 @@ private:
                                             : fid);
                 }
             }
+            const auto refreshResult = unverifiedRefreshResultOffset + unverifiedFormats.size();
+            unverifiedFormats.add (name);
             if (formatMenu.getNumItems() > 0)
-                unverifiedMenu.addSubMenu (name, formatMenu);
+                formatMenu.addSeparator();
+            formatMenu.addItem (refreshResult, "Refresh");
+            unverifiedMenu.addSubMenu (name, formatMenu);
+
         }
 
         addSubMenu ("Unverified", unverifiedMenu);
     }
 
     Array<PluginDescription> available, favorites;
-    OwnedArray<PluginDescription> unverified;
+        OwnedArray<PluginDescription> unverified;
+    StringArray unverifiedFormats;
     PluginManager* plugins { nullptr };
+
     Settings* settings { nullptr };
     bool hasAddedPlugins = false;
 };

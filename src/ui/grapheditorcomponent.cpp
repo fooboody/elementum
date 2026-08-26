@@ -438,6 +438,9 @@ GraphEditorComponent::GraphEditorComponent()
 
 GraphEditorComponent::~GraphEditorComponent()
 {
+    if (unverifiedRefreshManager != nullptr)
+        unverifiedRefreshManager->removeChangeListener (this);
+
     if (graph.isValid())
         graph.setProperty (tags::vertical, verticalLayout);
     data.removeListener (this);
@@ -568,13 +571,194 @@ void GraphEditorComponent::fixOutOfBoundsNodes()
 }
 
 void GraphEditorComponent::paint (Graphics& g)
-
 {
     auto backgroundColor = findColour (Style::contentBackgroundColorId);
     if (auto* const world = ViewHelpers::getGlobals (this))
         backgroundColor = world->settings().getColour (Settings::graphEditorBackgroundColorKey);
 
     g.fillAll (backgroundColor);
+}
+
+void GraphEditorComponent::showPluginMenu (const Rectangle<int>& popupTarget)
+{
+    const auto popupOptions = PopupMenu::Options()
+                                  .withTargetScreenArea (popupTarget)
+                                  .withPreferredPopupDirection (PopupMenu::Options::PopupDirection::downwards)
+                                  .withDeletionCheck (*this);
+
+    std::unique_ptr<PluginsPopupMenu> menu;
+    int result = 0;
+    for (;;)
+    {
+        menu = std::make_unique<PluginsPopupMenu> (this);
+        auto& popup = *menu;
+        if (graph.isGraph())
+        {
+#if 1
+            popup.addSectionHeader ("Graph I/O");
+            popup.addItem (1, "Audio Inputs", true, graph.hasAudioInputNode());
+            popup.addItem (2, "Audio Outputs", true, graph.hasAudioOutputNode());
+            popup.addItem (3, "MIDI Input", true, graph.hasMidiInputNode());
+            popup.addItem (4, "MIDI Output", true, graph.hasMidiOutputNode());
+            popup.addSeparator();
+#endif
+            PopupMenu submenu;
+            addMidiDevicesToMenu (submenu, true, 80000);
+            popup.addSubMenu ("MIDI Input Device", submenu);
+            submenu.clear();
+            addMidiDevicesToMenu (submenu, false, 90000);
+            popup.addSubMenu ("MIDI Output Device", submenu);
+        }
+
+        popup.addSeparator();
+        popup.addItem (5, "Change Orientation");
+        popup.addItem (7, "Fix Out-of-Bounds Nodes");
+        popup.addItem (8, "Fit Canvas to Nodes");
+
+        popup.addSeparator();
+        popup.addSectionHeader ("Plugins");
+        popup.addPluginItems();
+        result = popup.showMenu (popupOptions);
+
+        if (! popup.isGroupManufacturersByInitialResult (result))
+            break;
+
+        if (auto* const world = ViewHelpers::getGlobals (this))
+        {
+            auto& settings = world->settings();
+            settings.setGroupPluginManufacturersByInitial (! settings.groupPluginManufacturersByInitial());
+            if (! settings.saveIfNeeded())
+                DBG ("[element] Failed to save plugin manufacturer index setting");
+            continue;
+        }
+
+        return;
+    }
+
+    String refreshFormat;
+    if (menu->isUnverifiedRefreshResult (result, refreshFormat))
+    {
+        refreshUnverifiedPlugins (refreshFormat, popupTarget);
+        return;
+    }
+
+    if (menu->isPluginResultCode (result))
+    {
+        bool verified = false;
+        const auto desc = menu->getPluginDescription (result, verified);
+        if (desc.fileOrIdentifier.isNotEmpty() && desc.pluginFormatName.isNotEmpty())
+            ViewHelpers::postMessageFor (this, new AddPluginMessage (graph, desc, verified));
+    }
+    else if (result >= 80000 && result < 90000)
+    {
+        ViewHelpers::postMessageFor (this,
+                                     new AddMidiDeviceMessage (getMidiDeviceForMenuResult (result, true), true));
+    }
+    else if (result >= 90000 && result < 100000)
+    {
+        ViewHelpers::postMessageFor (this,
+                                     new AddMidiDeviceMessage (getMidiDeviceForMenuResult (result, false, 90000), false));
+    }
+    else
+    {
+        PluginDescription desc;
+        desc.pluginFormatName = "Internal";
+        bool hasRequestedType = false;
+        bool failure = false;
+
+        switch (result)
+        {
+            case 1:
+                desc.fileOrIdentifier = "audio.input";
+                hasRequestedType = graph.hasAudioInputNode();
+                break;
+            case 2:
+                desc.fileOrIdentifier = "audio.output";
+                hasRequestedType = graph.hasAudioOutputNode();
+                break;
+            case 3:
+                desc.fileOrIdentifier = "midi.input";
+                hasRequestedType = graph.hasMidiInputNode();
+                break;
+            case 4:
+                desc.fileOrIdentifier = "midi.output";
+                hasRequestedType = graph.hasMidiOutputNode();
+                break;
+            case 5:
+                setVerticalLayout (! isLayoutVertical());
+                return;
+            case 7:
+                fixOutOfBoundsNodes();
+                return;
+            case 8:
+                if (auto* const editor = findParentComponentOfClass<GraphEditor>())
+                    editor->fitCanvasToNodes();
+                return;
+            case 52:
+                setZoomScale (0.75);
+                return;
+            case 53:
+                setZoomScale (1.00);
+                return;
+            case 54:
+                setZoomScale (1.25);
+                return;
+            case 55:
+                setZoomScale (1.50);
+                return;
+            case 56:
+                setZoomScale (1.75);
+                return;
+            case 57:
+                setZoomScale (2.00);
+                return;
+            case 100:
+                updateBlockComponents (true);
+                updateConnectorComponents();
+                return;
+            default:
+                failure = true;
+                break;
+        }
+
+        if (failure)
+        {
+            DBG ("[element] unkown menu result: " << result);
+        }
+        else if (hasRequestedType)
+        {
+            const ValueTree requestedNode = graph.getNodesValueTree()
+                                                .getChildWithProperty (tags::identifier, desc.fileOrIdentifier);
+            const Node model (requestedNode, false);
+            ViewHelpers::postMessageFor (this, new RemoveNodeMessage (model));
+        }
+        else
+        {
+            ViewHelpers::postMessageFor (this, new AddPluginMessage (graph, desc));
+        }
+    }
+}
+
+void GraphEditorComponent::refreshUnverifiedPlugins (const String& formatName, const Rectangle<int>& targetArea)
+{
+    if (unverifiedRefreshManager != nullptr)
+        return;
+
+    auto* const cc = ViewHelpers::findContentComponent (this);
+    if (cc == nullptr)
+        return;
+
+    auto& plugins = cc->context().plugins();
+    unverifiedRefreshManager = &plugins;
+    unverifiedRefreshTarget = targetArea;
+    plugins.addChangeListener (this);
+
+    if (! plugins.searchUnverifiedPlugins (formatName) && ! plugins.isSearchingUnverifiedPlugins())
+    {
+        plugins.removeChangeListener (this);
+        unverifiedRefreshManager = nullptr;
+        unverifiedRefreshTarget = {};
+    }
 }
 
 void GraphEditorComponent::mouseDown (const MouseEvent& e)
@@ -596,182 +780,14 @@ void GraphEditorComponent::mouseDown (const MouseEvent& e)
             gui->selectNode (Node());
 
     if (e.mods.isPopupMenu())
-
     {
         const auto popupAnchor = e.getScreenPosition().roundToInt();
-        const auto popupTarget = Rectangle<int> (popupAnchor.x, popupAnchor.y - 1, 1, 1);
-        const auto popupOptions = PopupMenu::Options()
-                                      .withTargetScreenArea (popupTarget)
-                                      .withPreferredPopupDirection (PopupMenu::Options::PopupDirection::downwards)
-                                      .withDeletionCheck (*this);
-
-        std::unique_ptr<PluginsPopupMenu> menu;
-        int result = 0;
-        for (;;)
-        {
-            menu = std::make_unique<PluginsPopupMenu> (this);
-            auto& popup = *menu;
-            if (graph.isGraph())
-            {
-#if 1
-                popup.addSectionHeader ("Graph I/O");
-                popup.addItem (1, "Audio Inputs", true, graph.hasAudioInputNode());
-                popup.addItem (2, "Audio Outputs", true, graph.hasAudioOutputNode());
-                popup.addItem (3, "MIDI Input", true, graph.hasMidiInputNode());
-                popup.addItem (4, "MIDI Output", true, graph.hasMidiOutputNode());
-                popup.addSeparator();
-#endif
-                PopupMenu submenu;
-                addMidiDevicesToMenu (submenu, true, 80000);
-                popup.addSubMenu ("MIDI Input Device", submenu);
-                submenu.clear();
-                addMidiDevicesToMenu (submenu, false, 90000);
-                popup.addSubMenu ("MIDI Output Device", submenu);
-            }
-
-            popup.addSeparator();
-            popup.addItem (5, "Change Orientation");
-            popup.addItem (7, "Fix Out-of-Bounds Nodes");
-            popup.addItem (8, "Fit Canvas to Nodes");
-
-            popup.addSeparator();
-            popup.addSectionHeader ("Plugins");
-            popup.addPluginItems();
-            result = popup.showMenu (popupOptions);
-
-            if (! popup.isGroupManufacturersByInitialResult (result))
-                break;
-
-            if (auto* const world = ViewHelpers::getGlobals (this))
-            {
-                auto& settings = world->settings();
-                settings.setGroupPluginManufacturersByInitial (! settings.groupPluginManufacturersByInitial());
-                if (! settings.saveIfNeeded())
-                    DBG ("[element] Failed to save plugin manufacturer index setting");
-                continue;
-            }
-
-            return;
-        }
-
-        if (menu->isPluginResultCode (result))
-        {
-            bool verified = false;
-            const auto desc = menu->getPluginDescription (result, verified);
-            if (desc.fileOrIdentifier.isNotEmpty() && desc.pluginFormatName.isNotEmpty())
-                ViewHelpers::postMessageFor (this, new AddPluginMessage (graph, desc, verified));
-        }
-        else if (result >= 80000 && result < 90000)
-        {
-            ViewHelpers::postMessageFor (this,
-                                         new AddMidiDeviceMessage (getMidiDeviceForMenuResult (result, true), true));
-        }
-        else if (result >= 90000 && result < 100000)
-        {
-            ViewHelpers::postMessageFor (this,
-                                         new AddMidiDeviceMessage (getMidiDeviceForMenuResult (result, false, 90000), false));
-        }
-        else
-        {
-            PluginDescription desc;
-            desc.pluginFormatName = "Internal";
-            bool hasRequestedType = false;
-            bool failure = false;
-
-            switch (result)
-            {
-                case 1:
-                    desc.fileOrIdentifier = "audio.input";
-                    hasRequestedType = graph.hasAudioInputNode();
-                    break;
-                case 2:
-                    desc.fileOrIdentifier = "audio.output";
-                    hasRequestedType = graph.hasAudioOutputNode();
-                    break;
-                case 3:
-                    desc.fileOrIdentifier = "midi.input";
-                    hasRequestedType = graph.hasMidiInputNode();
-                    break;
-                case 4:
-                    desc.fileOrIdentifier = "midi.output";
-                    hasRequestedType = graph.hasMidiOutputNode();
-                    break;
-                case 5:
-                    setVerticalLayout (! isLayoutVertical());
-                    return;
-                    break;
-
-                                case 7:
-                    fixOutOfBoundsNodes();
-                    return;
-
-                case 8:
-                    if (auto* const editor = findParentComponentOfClass<GraphEditor>())
-                        editor->fitCanvasToNodes();
-                    return;
-                // Zoom options (commented don't look right yet)
-
-                // case 50: setZoomScale (0.25); return; break;
-                // case 51: setZoomScale (0.50); return; break;
-                case 52:
-                    setZoomScale (0.75);
-                    return;
-                    break;
-                case 53:
-                    setZoomScale (1.00);
-                    return;
-                    break;
-                case 54:
-                    setZoomScale (1.25);
-                    return;
-                    break;
-                case 55:
-                    setZoomScale (1.50);
-                    return;
-                    break;
-                case 56:
-                    setZoomScale (1.75);
-                    return;
-                    break;
-                case 57:
-                    setZoomScale (2.00);
-                    return;
-                    break;
-
-                case 100: {
-                    updateBlockComponents (true);
-                    updateConnectorComponents();
-                    return;
-                }
-                break;
-
-                default:
-                    failure = true;
-                    break;
-            }
-
-            if (failure)
-            {
-                DBG ("[element] unkown menu result: " << result);
-            }
-            else if (hasRequestedType)
-            {
-                const ValueTree requestedNode = graph.getNodesValueTree()
-                                                    .getChildWithProperty (tags::identifier, desc.fileOrIdentifier);
-                const Node model (requestedNode, false);
-                ViewHelpers::postMessageFor (this, new RemoveNodeMessage (model));
-            }
-            else
-            {
-                ViewHelpers::postMessageFor (this, new AddPluginMessage (graph, desc));
-            }
-        }
+        showPluginMenu (Rectangle<int> (popupAnchor.x, popupAnchor.y - 1, 1, 1));
+        return;
     }
-    else
-    {
-        addAndMakeVisible (lasso);
-        lasso.beginLasso (e, this);
-    }
+
+    addAndMakeVisible (lasso);
+    lasso.beginLasso (e, this);
 }
 
 void GraphEditorComponent::mouseUp (const MouseEvent& e)
@@ -1381,8 +1397,25 @@ void GraphEditorComponent::resized()
     updateConnectorComponents();
 }
 
-void GraphEditorComponent::changeListenerCallback (ChangeBroadcaster*)
+void GraphEditorComponent::changeListenerCallback (ChangeBroadcaster* source)
 {
+    if (source == unverifiedRefreshManager)
+    {
+        if (unverifiedRefreshManager->isSearchingUnverifiedPlugins())
+            return;
+
+        unverifiedRefreshManager->removeChangeListener (this);
+        unverifiedRefreshManager = nullptr;
+        const auto targetArea = unverifiedRefreshTarget;
+        unverifiedRefreshTarget = {};
+        Component::SafePointer<GraphEditorComponent> self (this);
+        juce::MessageManager::callAsync ([self, targetArea]() {
+            if (self != nullptr && self->isShowing())
+                self->showPluginMenu (targetArea);
+        });
+        return;
+    }
+
     updateComponents();
 }
 

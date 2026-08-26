@@ -17,6 +17,7 @@ class BlockFactory;
 class ConnectorComponent;
 class PortComponent;
 class PluginWindow;
+class PluginManager;
 
 /** A panel that displays and edits a Graph. */
 class GraphEditorComponent : public Component,
@@ -141,6 +142,8 @@ private:
 
     bool ignoreNodeSelected = false;
     bool selectionSyncInProgress = false;
+    PluginManager* unverifiedRefreshManager = nullptr;
+    Rectangle<int> unverifiedRefreshTarget;
 
     float zoomScale = 1.0;
 
@@ -168,6 +171,8 @@ private:
 
     void updateSelection();
     void notifySelectionChanged();
+    void showPluginMenu (const Rectangle<int>& targetArea);
+    void refreshUnverifiedPlugins (const String& formatName, const Rectangle<int>& targetArea);
 
     struct AutoConnectPair
     {

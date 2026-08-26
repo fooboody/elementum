@@ -1094,7 +1094,8 @@ class UnverifiedPlugins : private Thread
 
 {
 public:
-    UnverifiedPlugins() : Thread ("euvpl") {}
+    UnverifiedPlugins (PluginManager& manager)
+        : Thread ("euvpl"), owner (manager) {}
 
     ~UnverifiedPlugins()
     {
@@ -1103,12 +1104,14 @@ public:
             stopThread (1000);
     }
 
-    void searchForPlugins (PropertiesFile* props)
+    bool searchForPlugins (PropertiesFile* props, const StringArray& formatNames = {})
     {
-        if (isThreadRunning())
-            return;
+        if (isThreadRunning() || searching.exchange (true))
+            return false;
 
+        formatsToSearch = formatNames;
         if (props)
+
         {
             for (const auto& f : Util::compiledAudioPluginFormats())
             {
@@ -1121,8 +1124,11 @@ public:
             paths.clear();
         }
 
-        startThread (Thread::Priority::background);
+                startThread (Thread::Priority::background);
+        return true;
     }
+
+    bool isSearching() const { return searching.load(); }
 
     void getPlugins (OwnedArray<PluginDescription>& plugs,
                      const String& format,
@@ -1164,9 +1170,11 @@ public:
 
 private:
     friend class Thread;
+    PluginManager& owner;
     CriticalSection lock;
     UnverifiedPluginMap plugins;
     UnverifiedPluginPaths paths;
+    StringArray formatsToSearch;
 
     struct Item
     {
@@ -1175,6 +1183,7 @@ private:
     };
 
     Atomic<int> cancelFlag;
+    std::atomic<bool> searching { false };
 
     void run() override
     {
@@ -1183,16 +1192,26 @@ private:
         PluginManager pluginManager;
         pluginManager.getNodeFactory().add (new CLAPProvider());
         pluginManager.addDefaultFormats();
-        auto& manager (pluginManager.getAudioPluginFormats());
+                auto& manager (pluginManager.getAudioPluginFormats());
+        const auto formats = formatsToSearch;
+        const auto shouldSearch = [&formats] (const String& format)
+        {
+            return formats.isEmpty() || formats.contains (format);
+        };
 
         // JUCE Formats.
         for (int i = 0; i < manager.getNumFormats(); ++i)
+
         {
             if (threadShouldExit() || cancelFlag.get() != 0)
                 break;
 
-            auto* const format = manager.getFormat (i);
+                        auto* const format = manager.getFormat (i);
+            if (! shouldSearch (format->getName()))
+                continue;
+
             FileSearchPath path = paths[format->getName()];
+
             path.addPath (format->getDefaultLocationsToSearch());
             const auto found = format->searchPathsForPlugins (path, true, false);
 
@@ -1207,8 +1226,12 @@ private:
             if (threadShouldExit() || cancelFlag.get() != 0)
                 break;
 
-            const auto formatName = provider->format();
+                        const auto formatName = provider->format();
+            if (! shouldSearch (formatName))
+                continue;
+
             FileSearchPath path = paths[formatName];
+
             path.addPath (provider->defaultSearchPath());
             // Providers with no search path (e.g. internal nodes) aren't file-based.
             if (path.getNumPaths() <= 0)
@@ -1220,6 +1243,10 @@ private:
         }
 
         cancelFlag.set (0);
+        // ChangeBroadcaster delivers asynchronously. Publish the completed state
+        // first so listeners can react to this notification immediately.
+        searching = false;
+        owner.sendChangeMessage();
     }
 };
 
@@ -1254,6 +1281,16 @@ public:
     void searchUnverifiedPlugins (PropertiesFile* props)
     {
         unverified.searchForPlugins (props);
+    }
+
+    bool searchUnverifiedPlugins (PropertiesFile* props, const String& format)
+    {
+        return unverified.searchForPlugins (props, { format });
+    }
+
+    bool isSearchingUnverifiedPlugins() const
+    {
+        return unverified.isSearching();
     }
 
     /** Load hidden/favorite curation from a metadata file (keyed by
@@ -1315,7 +1352,8 @@ private:
     KnownPluginList allPlugins;
     StringArray hiddenPlugins, favoritePlugins;
     File deadAudioPlugins;
-    UnverifiedPlugins unverified;
+        UnverifiedPlugins unverified { owner };
+
     NodeFactory nodes;
     double sampleRate = 44100.0;
     int blockSize = 512;
@@ -1508,6 +1546,18 @@ void PluginManager::searchUnverifiedPlugins()
     if (! priv)
         return;
     priv->searchUnverifiedPlugins (this->props);
+}
+
+bool PluginManager::searchUnverifiedPlugins (const String& formatName)
+{
+    return priv != nullptr
+           && formatName.isNotEmpty()
+           && priv->searchUnverifiedPlugins (this->props, formatName);
+}
+
+bool PluginManager::isSearchingUnverifiedPlugins() const
+{
+    return priv != nullptr && priv->isSearchingUnverifiedPlugins();
 }
 
 juce::ChildProcessWorker* PluginManager::createAudioPluginScannerWorker()

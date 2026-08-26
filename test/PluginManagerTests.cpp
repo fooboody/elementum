@@ -25,6 +25,25 @@ static bool unverifiedContains (PluginManager& manager, const juce::String& form
     return false;
 }
 
+class UnverifiedSearchListener final : public juce::ChangeListener
+{
+public:
+    explicit UnverifiedSearchListener (PluginManager& pluginManager)
+        : manager (pluginManager) {}
+
+    void changeListenerCallback (juce::ChangeBroadcaster*) override
+    {
+        received = true;
+        wasSearchingWhenReceived = manager.isSearchingUnverifiedPlugins();
+    }
+
+    bool received { false };
+    bool wasSearchingWhenReceived { false };
+
+private:
+    PluginManager& manager;
+};
+
 } // namespace
 
 BOOST_AUTO_TEST_SUITE (PluginManagerTests)
@@ -73,6 +92,53 @@ BOOST_AUTO_TEST_CASE (UnverifiedClapPlugins)
             juce::Thread::sleep (20);
     }
     BOOST_REQUIRE_MESSAGE (found, "unverified scan should find the CLAP file");
+
+    bool initialSearchFinished = false;
+    for (int retry = 0; ! initialSearchFinished && retry < 250; ++retry)
+    {
+        initialSearchFinished = ! manager.isSearchingUnverifiedPlugins();
+        if (! initialSearchFinished)
+            juce::Thread::sleep (20);
+    }
+    BOOST_REQUIRE_MESSAGE (initialSearchFinished, "initial unverified search should finish");
+
+    // Flush the initial search's asynchronous notification before observing the
+    // format-specific refresh.
+    juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+    UnverifiedSearchListener refreshListener (manager);
+    manager.addChangeListener (&refreshListener);
+
+    // A selected-format refresh must find files added after the initial scan.
+    const auto refreshedClap = tempDir.getChildFile ("Refreshed.clap");
+    BOOST_REQUIRE (refreshedClap.create().wasOk());
+    BOOST_REQUIRE (manager.searchUnverifiedPlugins ("CLAP"));
+
+    bool refreshedFound = false;
+    for (int retry = 0; ! refreshedFound && retry < 250; ++retry)
+    {
+        refreshedFound = unverifiedContains (manager, "CLAP", refreshedClap.getFullPathName());
+        if (! refreshedFound)
+            juce::Thread::sleep (20);
+    }
+    BOOST_REQUIRE_MESSAGE (refreshedFound, "format-specific refresh should find the new CLAP file");
+
+    bool refreshFinished = false;
+    for (int retry = 0; ! refreshFinished && retry < 250; ++retry)
+    {
+        refreshFinished = ! manager.isSearchingUnverifiedPlugins();
+        if (! refreshFinished)
+            juce::Thread::sleep (20);
+    }
+    BOOST_REQUIRE_MESSAGE (refreshFinished, "format-specific unverified refresh should finish");
+
+    for (int retry = 0; ! refreshListener.received && retry < 250; ++retry)
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (20);
+
+    BOOST_REQUIRE_MESSAGE (refreshListener.received,
+                           "format-specific unverified refresh should notify listeners");
+    BOOST_REQUIRE_MESSAGE (! refreshListener.wasSearchingWhenReceived,
+                           "unverified refresh notification should report a completed search");
+    manager.removeChangeListener (&refreshListener);
 
     // Once known with an "id:path" identifier, it is no longer unverified.
     juce::PluginDescription desc;

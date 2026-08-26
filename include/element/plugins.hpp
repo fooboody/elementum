@@ -116,10 +116,18 @@ public:
     /** Give a properties file to be used when settings aren't available. FIXME */
     void setPropertiesFile (juce::PropertiesFile* pf);
 
-    /** Search for unverified plugins in background thread */
+        /** Search for unverified plugins in a background thread. */
     void searchUnverifiedPlugins();
 
+    /** Search one plugin format for unverified plugins in a background thread.
+        Returns false when an unverified scan is already running. */
+    bool searchUnverifiedPlugins (const juce::String& formatName);
+
+    /** Returns true while an unverified plugin search is running. */
+    bool isSearchingUnverifiedPlugins() const;
+
     /** This will get a possible list of plugins. Trying to load this might fail */
+
     void getUnverifiedPlugins (const juce::String& formatName, juce::OwnedArray<juce::PluginDescription>& plugins);
 
     /** Restore User Plugins From a file */
