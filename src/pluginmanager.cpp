@@ -1068,7 +1068,30 @@ void PluginScanner::run()
 using UnverifiedPluginMap = HashMap<String, StringArray>;
 using UnverifiedPluginPaths = HashMap<String, FileSearchPath>;
 
+static String getVST3BundlePath (const String& fileOrIdentifier)
+{
+    constexpr auto extension = ".vst3";
+    constexpr int extensionLength = 5;
+
+    for (int extensionStart = fileOrIdentifier.indexOfIgnoreCase (extension);
+         extensionStart >= 0;
+         extensionStart = fileOrIdentifier.indexOfIgnoreCase (extensionStart + extensionLength, extension))
+    {
+        const int extensionEnd = extensionStart + extensionLength;
+        if (extensionEnd == fileOrIdentifier.length()
+            || fileOrIdentifier[extensionEnd] == '/'
+            || fileOrIdentifier[extensionEnd] == '\\')
+        {
+            return fileOrIdentifier.substring (0, extensionEnd);
+        }
+
+    }
+
+    return fileOrIdentifier;
+}
+
 class UnverifiedPlugins : private Thread
+
 {
 public:
     UnverifiedPlugins() : Thread ("euvpl") {}
@@ -1109,9 +1132,19 @@ public:
         if (plugins.contains (format))
         {
             const auto types = list.getTypes();
-            for (const auto& file : plugins.getReference (format))
+                        for (const auto& file : plugins.getReference (format))
             {
                 bool known = nullptr != list.getTypeForFile (file);
+                if (! known && format == "VST3")
+                {
+                    const auto bundlePath = getVST3BundlePath (file);
+                    for (int i = types.size(); --i >= 0 && ! known;)
+                    {
+                        const auto& d = types.getReference (i);
+                        known = d.pluginFormatName == format
+                                && getVST3BundlePath (d.fileOrIdentifier).equalsIgnoreCase (bundlePath);
+                    }
+                }
                 // Provider formats (e.g. CLAP) store types as "pluginID:filePath".
                 for (int i = types.size(); --i >= 0 && ! known;)
                 {
@@ -1121,6 +1154,7 @@ public:
                 }
                 if (known)
                     continue;
+
                 auto* const desc = plugs.add (new PluginDescription());
                 desc->pluginFormatName = format;
                 desc->fileOrIdentifier = file;
