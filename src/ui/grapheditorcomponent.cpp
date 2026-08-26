@@ -1797,13 +1797,48 @@ void GraphEditorComponent::filesDropped (const StringArray& files, int x, int y)
 }
 
 //=============================================================================
+static Point<int> findAvailableNodePosition (const GraphEditorComponent& editor, Point<int> position)
+{
+    constexpr int positionTolerance = 8;
+    constexpr int positionOffset = 24;
+
+    const auto isOccupied = [&editor] (const Point<int>& candidate)
+    {
+        const Rectangle<int> nearbyPositions (candidate.x - positionTolerance,
+                                              candidate.y - positionTolerance,
+                                              positionTolerance * 2 + 1,
+                                              positionTolerance * 2 + 1);
+
+        for (int i = 0; i < editor.getNumChildComponents(); ++i)
+            if (const auto* block = dynamic_cast<const BlockComponent*> (editor.getChildComponent (i)))
+                if (nearbyPositions.contains (block->getBounds().getPosition()))
+                    return true;
+
+        return false;
+    };
+
+    while (isOccupied (position))
+    {
+        position.x += positionOffset;
+        position.y += positionOffset;
+    }
+
+    return position;
+}
+
 void GraphEditorComponent::valueTreeChildAdded (ValueTree& parent, ValueTree& child)
 {
     if (child.hasType (types::Node))
     {
-        child.setProperty (tags::x, verticalLayout ? lastDropX : lastDropY, 0);
-        child.setProperty (tags::y, verticalLayout ? lastDropY : lastDropX, 0);
+        const auto position = findAvailableNodePosition (
+            *this,
+            { roundToInt (verticalLayout ? lastDropX : lastDropY),
+              roundToInt (verticalLayout ? lastDropY : lastDropX) });
+        child.setProperty (tags::x, verticalLayout ? position.x : position.y, 0);
+        child.setProperty (tags::y, verticalLayout ? position.y : position.x, 0);
+
         auto* comp = createBlock (Node (child, false));
+
         addAndMakeVisible (comp, 20000);
         comp->update();
     }
