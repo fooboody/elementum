@@ -346,7 +346,51 @@ int MidiEngine::getNumActiveMidiInputs() const
     return total;
 }
 
+void MidiEngine::refreshMidiInputs()
+{
+    struct InputState
+    {
+        MidiDeviceInfo device;
+        bool active = false;
+    };
+
+    Array<InputState> inputsToReopen;
+    inputsToReopen.ensureStorageAllocated (openMidiInputs.size());
+
+    for (const auto* holder : openMidiInputs)
+    {
+        if (holder == nullptr || holder->input == nullptr)
+            continue;
+
+        inputsToReopen.add ({ holder->input->getDeviceInfo(), holder->active });
+    }
+
+    if (inputsToReopen.isEmpty())
+        return;
+
+    // Do not hold midiCallbackLock here. Stopping or destroying a MidiInput may
+    // wait for a callback already in flight, while that callback takes
+    // midiCallbackLock before it dispatches messages.
+    for (auto* holder : openMidiInputs)
+        if (holder != nullptr && holder->input != nullptr)
+            holder->input->stop();
+
+    openMidiInputs.clear (true);
+
+    for (const auto& input : inputsToReopen)
+    {
+        if (auto* holder = getMidiInput (input.device.identifier, true))
+            holder->active = input.active;
+        else
+            DBG ("[element] unable to refresh MIDI input " << input.device.name
+                                                            << " (" << input.device.identifier << ")");
+    }
+
+    sendChangeMessage();
+}
+
 //==============================================================================
+
 void MidiEngine::setDefaultMidiOutput (const MidiDeviceInfo& device)
 {
     if (defaultMidiOutputID != device.identifier)

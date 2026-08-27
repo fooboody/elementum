@@ -18,7 +18,9 @@
 #include <element/version.hpp>
 
 #include "auth.hpp"
+#include "engine/midiengine.hpp"
 #include "engine/midipanic.hpp"
+
 #include "messages.hpp"
 #include "services/mappingservice.hpp"
 #include "services/sessionservice.hpp"
@@ -831,9 +833,11 @@ void GuiService::getAllCommands (Array<CommandID>& ids)
                     //======================================================================
                     Commands::importGraph,
                     Commands::exportGraph,
-                    //======================================================================
+                                        //======================================================================
                     Commands::panic,
+                    Commands::refreshMidiInputs,
                     Commands::transportSeekZero,
+
                     //======================================================================
                     //======================================================================
                     Commands::recentsClear,
@@ -942,11 +946,18 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             result.setInfo ("Export Current Graph", "Export the current graph to file", "Session", 0);
             break;
         //======================================================================
-        case Commands::panic:
+                case Commands::panic:
             result.addDefaultKeypress ('p', ModifierKeys::altModifier | ModifierKeys::commandModifier);
             result.setInfo ("Panic!", "Sends all notes off to the engine", "Engine", 0);
             break;
+        case Commands::refreshMidiInputs:
+            result.setInfo ("Refresh MIDI Inputs",
+                            "Reopens all MIDI inputs without changing their enabled state.",
+                            "Engine",
+                            0);
+            break;
         case Commands::transportSeekZero:
+
             result.addDefaultKeypress ('/', 0);
             result.setInfo ("Seek Start", "Seek to Beginning", "Engine", 0);
             break;
@@ -1197,14 +1208,19 @@ bool GuiService::perform (const InvocationInfo& info)
             break;
         }
         //======================================================================
-        case Commands::panic: {
+                case Commands::panic: {
             auto e = context().audio();
             for (const auto& msg : MidiPanic::messages())
                 e->addMidiMessage (msg);
             break;
         }
 
+        case Commands::refreshMidiInputs:
+            context().midi().refreshMidiInputs();
+            break;
+
         case Commands::transportSeekZero: {
+
             auto e = context().audio();
             e->seekToAudioFrame (0);
             break;

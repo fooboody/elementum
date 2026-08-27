@@ -68,10 +68,17 @@ public:
      */
     void removeMidiInputCallback (MidiInputCallback* callback);
 
-    /** Returns the number of enabled midi inputs */
+        /** Returns the number of enabled midi inputs */
     int getNumActiveMidiInputs() const;
 
+    /** Reopens all currently open MIDI inputs without changing their enabled state
+        or registered callbacks. Intended for recovering from an input whose
+        underlying operating-system handle has stopped delivering messages.
+    */
+    void refreshMidiInputs();
+
     //==============================================================================
+
     /** Sets a midi output device to use as the default.
 
         The list of devices can be obtained with the MidiOutput::getAvailableDevices() method.

@@ -60,6 +60,7 @@ public:
         importGraph,
 
         panic,
+        refreshMidiInputs,
         importSession,
 
         transportRewind = 0x0600,
@@ -182,6 +183,7 @@ public:
             importGraph,
 
             panic,
+            refreshMidiInputs,
             importSession,
 
             transportRewind,
@@ -331,10 +333,14 @@ public:
             case Commands::showConsole:
                 return "showConsole";
                 break;
-            case Commands::panic:
+                        case Commands::panic:
                 return "panic";
                 break;
+            case Commands::refreshMidiInputs:
+                return "refreshMidiInputs";
+                break;
             case Commands::graphNew:
+
                 return "graphNew";
                 break;
             case Commands::graphOpen:
@@ -445,10 +451,13 @@ public:
         if (str == "showConsole")
             return Commands::showConsole;
 
-        if (str == "panic")
+                if (str == "panic")
             return Commands::panic;
+        if (str == "refreshMidiInputs")
+            return Commands::refreshMidiInputs;
 
         if (str == "graphNew")
+
             return Commands::graphNew;
         if (str == "graphOpen")
             return Commands::graphOpen;

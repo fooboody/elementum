@@ -4,8 +4,10 @@
 #include <element/context.hpp>
 #include <element/devices.hpp>
 #include <element/settings.hpp>
+#include <element/ui/commands.hpp>
 
 #include "appinfo.hpp"
+
 #include "engine/midiengine.hpp"
 #include "engine/midipanic.hpp"
 
@@ -1017,6 +1019,8 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
     sub.clear();
     for (const auto& device : MidiInput::getAvailableDevices())
         sub.addItem (MidiInputDevice + index++, device.name, true, midi.isMidiInputEnabled (device));
+    sub.addSeparator();
+    sub.addItem (Commands::refreshMidiInputs, "Refresh MIDI Inputs");
     menu.addSubMenu ("MIDI Input Devices", sub);
 
     index = 0;
@@ -1069,9 +1073,16 @@ bool Settings::performMenuResult (Context& world, const int result)
 {
     auto& devices (world.devices());
     auto& midi (world.midi());
+        if (result == Commands::refreshMidiInputs)
+    {
+        midi.refreshMidiInputs();
+        return true;
+    }
+
     bool handled = true;
 
     switch (result)
+
     {
         case ScanFormPluginsOnStart:
             setScanForPluginsOnStartup (! scanForPluginsOnStartup());
