@@ -15,10 +15,12 @@
 - ノードの位置と現在の表示領域に応じてGraph Canvasを縮小する `Fit Canvas to Nodes` を追加しました。
 - Graph Mixerフェーダーのつまみをダブルクリックして0.0 dBへ戻す操作を追加しました。
 - PluginsメニューとノードのReplaceメニュー用に、メーカー名を頭文字別に整理する `Group Manufacturers by Initial` を追加しました。
-- プラグイン検索にメーカー名を含める `Include Manufacturers`、検索結果・ノード・Patch Bay・プラグインウィンドウから詳細を開く `Details`、プラグインノードのお気に入り切替を追加しました。
+- プラグイン検索にメーカー名を含める `Include Manufacturers`を追加しました。
+- プラグインの詳細情報を開く `Details`を追加しました。
+- ノードからの`Favorite`切替を追加しました。
 - PresetsメニューからNodesフォルダを開く `Open Nodes Folder` を追加しました。
 - Plugin Managerに `Rescan Selected` を追加しました。選択したプラグインだけを再スキャンできます。
-- Plugin Managerリストに複数文字対応の検索ジャンプを追加しました。入力した先頭文字列に一致するプラグインへ移動します。
+- Plugin Managerリストに検索ジャンプを追加しました。入力した先頭文字列に一致するプラグインへ移動します。
 - Plugin Managerリストの`Clear List`に確認ダイアログを追加しました。
 - キーマッピングにより多くの項目を追加しました。
 - プラグインスキャンの安定性とカスタム性を上げるため、タイムアウトを30／60／90／180／300秒から選べるようにしました。また、10秒以上応答しないケースのみ自動再試行を1回かけるようにしました。
@@ -38,9 +40,11 @@
 - Graph MixerとConsoleの高さを別々に保存し、各パネルの表示・非表示・上下入替・ビュー遷移の後にも独立した高さを維持するようにしました。
 - Plugin ManagerまたはKey Mappingsを表示中はGraph Mixerを一時的に隠し、両画面ではGraph Mixer表示を変更できないようにしました。
 - Plugin ManagerおよびKey MappingsのCloseは、履歴復帰ではなく常にGraph Editorへ戻るようにしました。
-- Plugin ManagerのUnverified一覧は登録済み検索パスを省いた相対パス表示へ変更し、PluginsメニューはFavorites、Unverified、グループ化設定、メーカー一覧の順へ整理しました。
+- Plugin ManagerのUnverified一覧は登録済み検索パスを省いた相対パス表示へ変更しました。
+- プラグイン検索時、候補のないカテゴリを表示しないよう変更しました。
 - 多くのメニュー表記をMenu Caseへ統一し、入力やダイアログを開かない項目から不要な三点リーダーを除去しました。
 - 一部のメニュー名をより実際の動作に則した名称へ整理しました。
+- 
 - Graph Mixerの高さ設定を絶対値に変更しました。
 - Disconnectメニューからの変更をUndo/Redo対象にしました。
 - 新規ノードが既存ノードに完全に重なって配置されるケースを回避しました。

@@ -365,10 +365,7 @@ void MidiEngine::refreshMidiInputs()
         inputsToReopen.add ({ holder->input->getDeviceInfo(), holder->active });
     }
 
-    if (inputsToReopen.isEmpty())
-        return;
-
-    // Do not hold midiCallbackLock here. Stopping or destroying a MidiInput may
+        // Do not hold midiCallbackLock here. Stopping or destroying a MidiInput may
     // wait for a callback already in flight, while that callback takes
     // midiCallbackLock before it dispatches messages.
     for (auto* holder : openMidiInputs)
@@ -377,16 +374,55 @@ void MidiEngine::refreshMidiInputs()
 
     openMidiInputs.clear (true);
 
+   #if JUCE_WINDOWS
+    // MidiInput instances are backed by JUCE's process-wide UMP Endpoints
+    // singleton on Windows. Recreating inputs alone therefore leaves the same
+    // native endpoint cache and session alive. Release all Element-owned MIDI
+    // handles before recreating that singleton, which is the closest safe
+    // equivalent to the clean MIDI state obtained on an application restart.
+    std::unique_ptr<MidiOutput> oldMidiOutput;
+    {
+        const ScopedLock sl (midiOutputLock);
+        oldMidiOutput.swap (defaultMidiOutput);
+    }
+
+    if (oldMidiOutput != nullptr)
+    {
+        oldMidiOutput->stopBackgroundThread();
+        oldMidiOutput.reset();
+    }
+
+    juce::universal_midi_packets::Endpoints::deleteInstance();
+   #endif
+
     for (const auto& input : inputsToReopen)
     {
         if (auto* holder = getMidiInput (input.device.identifier, true))
             holder->active = input.active;
         else
-            DBG ("[element] unable to refresh MIDI input " << input.device.name
-                                                            << " (" << input.device.identifier << ")");
+            Logger::writeToLog ("[element] unable to refresh MIDI input " + input.device.name
+                                + " (" + input.device.identifier + ")");
     }
 
+   #if JUCE_WINDOWS
+    if (defaultMidiOutputID.isNotEmpty())
+    {
+        if (auto midiOutput = MidiOutput::openDevice (defaultMidiOutputID))
+        {
+            midiOutput->startBackgroundThread();
+            const ScopedLock sl (midiOutputLock);
+            defaultMidiOutput = std::move (midiOutput);
+        }
+        else
+        {
+            Logger::writeToLog ("[element] unable to refresh MIDI output " + defaultMidiOutputName
+                                + " (" + defaultMidiOutputID + ")");
+        }
+    }
+   #endif
+
     sendChangeMessage();
+
 }
 
 //==============================================================================
