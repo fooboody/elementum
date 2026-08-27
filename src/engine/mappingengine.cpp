@@ -11,8 +11,14 @@
 
 namespace element {
 
+namespace {
+juce::CriticalSection oscReceiverRouterLock;
+MappingEngine* oscReceiverMappingEngine = nullptr;
+} // namespace
+
 //=============================================================================
 struct MappingEngine::Binding
+
 {
     MidiMapping mapping;
     std::unique_ptr<MappingTarget> target;
@@ -27,11 +33,16 @@ public:
     explicit Router (MappingEngine& e) : engine (e) {}
     ~Router() override { cancelPendingUpdate(); }
 
-    void handleIncomingMidiMessage (juce::MidiInput* source, const juce::MidiMessage& message) override
+        void handleIncomingMidiMessage (juce::MidiInput* source, const juce::MidiMessage& message) override
+    {
+        enqueue (source != nullptr ? source->getIdentifier() : juce::String(), message);
+    }
+
+    void enqueue (const juce::String& device, const juce::MidiMessage& message)
     {
         if (! message.isController() && ! message.isNoteOnOrOff())
             return;
-        const juce::String id = source != nullptr ? source->getIdentifier() : juce::String();
+
         // Stamp with the arrival time so tap-tempo measures the true inter-event
         // interval, not the (variable) message-thread dispatch latency added by
         // the hop below. Cheap + RT-safe; consistent with the UI TAP clock.
@@ -39,12 +50,13 @@ public:
         stamped.setTimeStamp (juce::Time::getMillisecondCounterHiRes());
         {
             juce::ScopedLock sl (lock);
-            queue.add ({ id, stamped });
+            queue.add ({ device, stamped });
         }
         triggerAsyncUpdate();
     }
 
     void handleAsyncUpdate() override
+
     {
         juce::Array<Item> local;
         {
@@ -71,6 +83,12 @@ private:
 MappingEngine::MappingEngine() {}
 MappingEngine::~MappingEngine()
 {
+    {
+        juce::ScopedLock sl (oscReceiverRouterLock);
+        if (oscReceiverMappingEngine == this)
+            oscReceiverMappingEngine = nullptr;
+    }
+
     bindings.clear();
     router = nullptr;
 }
@@ -97,6 +115,7 @@ void MappingEngine::rebuildBindings (SessionPtr session)
 void MappingEngine::process (const juce::String& device, const juce::MidiMessage& message)
 {
     if (mapCapture.get())
+
     {
         mapCapture.set (false);
         capturedDevice = device;
@@ -115,15 +134,40 @@ void MappingEngine::process (const juce::String& device, const juce::MidiMessage
     }
 }
 
+void MappingEngine::routeOscReceiverMidiMessage (const juce::MidiMessage& message)
+{
+    // OSCReceiverNode calls this from JUCE's realtime OSC callback. Keep the
+    // shared routing pointer stable while enqueueing, then let Router marshal
+    // the message to the message thread before changing any mapping target.
+    const juce::ScopedLock sl (oscReceiverRouterLock);
+    if (oscReceiverMappingEngine != nullptr)
+        oscReceiverMappingEngine->enqueue (MappingEngine::oscReceiverDeviceIdentifier, message);
+}
+
+void MappingEngine::enqueue (const juce::String& device, const juce::MidiMessage& message)
+{
+    if (router != nullptr)
+        router->enqueue (device, message);
+}
+
 void MappingEngine::startListening (MidiEngine& midi)
 {
     if (router == nullptr)
         router.reset (new Router (*this));
     midi.addMidiInputCallback (router.get(), true);
+
+    const juce::ScopedLock sl (oscReceiverRouterLock);
+    oscReceiverMappingEngine = this;
 }
 
 void MappingEngine::stopListening (MidiEngine& midi)
 {
+    {
+        const juce::ScopedLock sl (oscReceiverRouterLock);
+        if (oscReceiverMappingEngine == this)
+            oscReceiverMappingEngine = nullptr;
+    }
+
     if (router != nullptr)
     {
         midi.removeMidiInputCallback (router.get());

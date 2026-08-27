@@ -3,6 +3,7 @@
 // Author: Eliot Akira <me@eliotakira.com>
 
 #include "nodes/oscreceiver.hpp"
+#include "engine/mappingengine.hpp"
 #include "utils.hpp"
 
 namespace element {
@@ -103,10 +104,12 @@ void OSCReceiverNode::oscMessageReceived (const OSCMessage& message)
 
     auto timestamp = Time::getMillisecondCounterHiRes();
 
-    MidiMessage midiMsg = Util::processOscToMidiMessage (message);
-    midiMsg.setTimeStamp (timestamp);
+        MidiMessage midiMsg = Util::processOscToMidiMessage (message);
+    MappingEngine::routeOscReceiverMidiMessage (midiMsg);
 
+    midiMsg.setTimeStamp (timestamp);
     outputMidiMessages.addMessageToQueue (midiMsg);
+
 };
 
 void OSCReceiverNode::oscBundleReceived (const OSCBundle& bundle) {};

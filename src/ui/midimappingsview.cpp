@@ -11,6 +11,7 @@
 #include <element/node.hpp>
 #include <element/parameter.hpp>
 #include <element/processor.hpp>
+#include "engine/mappingengine.hpp"
 #include "services/mappingservice.hpp"
 
 namespace element {
@@ -41,9 +42,12 @@ struct DeviceLabel
 DeviceLabel deviceLabel (const MidiMapping& m)
 {
     const auto identifier = m.getDevice();
-    if (identifier.isEmpty())
+        if (identifier.isEmpty())
         return { "(any)", true };
+    if (identifier == MappingEngine::oscReceiverDeviceIdentifier)
+        return { TRANS (MappingEngine::oscReceiverDeviceName), true };
     for (const auto& info : MidiInput::getAvailableDevices())
+
         if (info.identifier == identifier)
             return { info.name, true };
     const auto stored = m.getDeviceName();
@@ -180,9 +184,10 @@ private:
 
         // Device: "(Any Device)" plus every connected input.
         {
-            StringArray choices { TRANS ("Any Device") };
-            Array<var> values { var (String()) };
+                        StringArray choices { TRANS ("Any Device"), TRANS (MappingEngine::oscReceiverDeviceName) };
+            Array<var> values { var (String()), var (MappingEngine::oscReceiverDeviceIdentifier) };
             for (const auto& info : MidiInput::getAvailableDevices())
+
             {
                 choices.add (info.name);
                 values.add (info.identifier);
@@ -284,9 +289,10 @@ private:
         juce::Array<PropertyComponent*> comps;
 
         {
-            StringArray choices { TRANS ("All Devices") };
-            Array<var> values { var (String()) };
+                        StringArray choices { TRANS ("All Devices"), TRANS (MappingEngine::oscReceiverDeviceName) };
+            Array<var> values { var (String()), var (MappingEngine::oscReceiverDeviceIdentifier) };
             for (const auto& info : MidiInput::getAvailableDevices())
+
             {
                 choices.add (info.name);
                 values.add (info.identifier);

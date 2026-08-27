@@ -492,10 +492,18 @@ void MappingService::syncDeviceNames()
     {
         auto mapping = session->getMidiMapping (i);
         const auto identifier = mapping.getDevice();
-        if (identifier.isEmpty())
+                if (identifier.isEmpty())
             continue;
 
+        if (identifier == MappingEngine::oscReceiverDeviceIdentifier)
+        {
+            if (mapping.getDeviceName() != MappingEngine::oscReceiverDeviceName)
+                mapping.setDeviceName (MappingEngine::oscReceiverDeviceName);
+            continue;
+        }
+
         for (const auto& info : devices)
+
         {
             if (info.identifier != identifier)
                 continue;

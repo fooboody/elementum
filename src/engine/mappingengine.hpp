@@ -28,7 +28,11 @@ public:
     using CapturedEventSignal = Signal<void()>;
     using TempoTapSignal = Signal<void()>;
 
+    inline static constexpr const char* oscReceiverDeviceIdentifier = "element.osc-receiver";
+    inline static constexpr const char* oscReceiverDeviceName = "OSC Receiver";
+
     MappingEngine();
+
     ~MappingEngine();
 
     /** Rebuild live bindings from the session's flat MIDI mappings. */
@@ -38,7 +42,12 @@ public:
         on the message thread; this is the unit-test entry point. */
     void process (const juce::String& device, const juce::MidiMessage& message);
 
+    /** Queues a message received by any OSC Receiver node using the canonical
+        pseudo-device identifier. Safe to call from the OSC receiver callback. */
+    static void routeOscReceiverMidiMessage (const juce::MidiMessage& message);
+
     /** Begin/stop receiving MIDI from all inputs and routing through process().
+
         Messages are marshalled to the message thread. */
     void startListening (MidiEngine& midi);
     void stopListening (MidiEngine& midi);
@@ -62,9 +71,12 @@ public:
     TempoTapSignal& tempoTapAppliedSignal() { return tempoTapCallback; }
 
 private:
-    struct Binding;
+        struct Binding;
     class Router;
+    void enqueue (const juce::String& device, const juce::MidiMessage& message);
+
     std::vector<std::unique_ptr<Binding>> bindings;
+
     std::unique_ptr<Router> router;
     juce::Atomic<bool> mapCapture { false };
     juce::String capturedDevice;

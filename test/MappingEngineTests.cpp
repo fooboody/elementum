@@ -90,8 +90,37 @@ BOOST_AUTO_TEST_CASE (DeviceFilter)
     BOOST_REQUIRE_CLOSE (param->getValue(), 1.0f, 0.01f);
 }
 
+BOOST_AUTO_TEST_CASE (OscReceiverDeviceFilter)
+{
+    Context context;
+    auto session = context.session();
+
+    ProcessorPtr obj = new ParamTestNode (1);
+    auto nodeId = addLiveNode (session, obj);
+    auto param = obj->getParameters()[0];
+
+    session->addMidiMapping (MidiMapping::fromCapture (
+        MappingEngine::oscReceiverDeviceIdentifier,
+        MidiMessage::controllerEvent (1, 7, 0),
+        "parameter",
+        nodeId,
+        0));
+
+    MappingEngine engine;
+    engine.rebuildBindings (session);
+
+    // Physical MIDI must not trigger an OSC Receiver-specific mapping.
+    engine.process ("dev-A", MidiMessage::controllerEvent (1, 7, 127));
+    BOOST_REQUIRE_SMALL (param->getValue(), 0.01f);
+
+    engine.process (MappingEngine::oscReceiverDeviceIdentifier,
+                    MidiMessage::controllerEvent (1, 7, 127));
+    BOOST_REQUIRE_CLOSE (param->getValue(), 1.0f, 0.01f);
+}
+
 BOOST_AUTO_TEST_CASE (EmptyDeviceMatchesAny)
 {
+
     Context context;
     auto session = context.session();
 
@@ -104,7 +133,9 @@ BOOST_AUTO_TEST_CASE (EmptyDeviceMatchesAny)
 
     MappingEngine engine;
     engine.rebuildBindings (session);
-    engine.process ("anything", MidiMessage::controllerEvent (1, 7, 127));
+        engine.process (MappingEngine::oscReceiverDeviceIdentifier,
+                    MidiMessage::controllerEvent (1, 7, 127));
+
     BOOST_REQUIRE_CLOSE (param->getValue(), 1.0f, 0.01f);
 }
 
