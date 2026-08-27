@@ -61,16 +61,7 @@ public:
 
     void mouseDown (const MouseEvent& ev) override
     {
-        if (ev.mods.isPopupMenu())
-            return;
-
-        if (! down)
-        {
-            down = true;
-            dragging = false;
-            selectionRequested = false;
-            requestSelection (ev.mods);
-        }
+        beginReorderGesture (ev.mods);
     }
 
     void showContextMenu()
@@ -94,14 +85,8 @@ public:
 
     void mouseDrag (const MouseEvent& ev) override
     {
-        if (down && ! dragging)
-        {
-            dragging = true;
-            auto* dnd = findParentComponentOfClass<DragAndDropContainer>();
-            Image image (Image::ARGB, 1, 1, true);
-            ScaledImage si (image);
-            dnd->startDragging (var ("graphMixerStrip"), this, si);
-        }
+        ignoreUnused (ev);
+        startReorderDrag();
     }
 
     void mouseMove (const MouseEvent& ev) override
@@ -111,7 +96,8 @@ public:
 
     void mouseUp (const MouseEvent& ev) override
     {
-        dragging = down = hover = selectionRequested = false;
+        ignoreUnused (ev);
+        endReorderGesture();
     }
 
     bool shouldDrawDragImageWhenOver() override
@@ -193,6 +179,39 @@ public:
     }
 
 private:
+    void beginReorderGesture (const ModifierKeys& modifiers)
+    {
+        if (modifiers.isPopupMenu() || down)
+            return;
+
+        down = true;
+        dragging = false;
+        selectionRequested = false;
+        requestSelection (modifiers);
+    }
+
+    void startReorderDrag()
+    {
+        if (! down || dragging)
+            return;
+
+        dragging = true;
+        auto* dnd = findParentComponentOfClass<DragAndDropContainer>();
+        Image image (Image::ARGB, 1, 1, true);
+        ScaledImage si (image);
+        dnd->startDragging (var ("graphMixerStrip"), this, si);
+    }
+
+    void endReorderGesture()
+    {
+        dragging = down = hover = selectionRequested = false;
+    }
+
+    bool isReorderDragHandle (const MouseEvent& ev)
+    {
+        return ev.originalComponent == &getChannelStrip();
+    }
+
     bool selected = false;
     bool dragging = false;
     bool down = false;
@@ -200,22 +219,37 @@ private:
     bool selectionRequested = false;
 
     struct ChildListener : public MouseListener
+
     {
         ChildListener (GraphMixerChannelStrip& o) : owner (o) {}
-        void mouseDown (const MouseEvent& ev) override
+                void mouseDown (const MouseEvent& ev) override
         {
+            reorderDragHandle = false;
             if (ev.mods.isPopupMenu())
+            {
                 owner.showContextMenu();
-            else
-                owner.requestSelection (ev.mods);
+                return;
+            }
+
+            reorderDragHandle = owner.isReorderDragHandle (ev);
+            owner.beginReorderGesture (ev.mods);
+        }
+
+        void mouseDrag (const MouseEvent&) override
+        {
+            if (reorderDragHandle)
+                owner.startReorderDrag();
         }
 
         void mouseUp (const MouseEvent&) override
         {
-            owner.selectionRequested = false;
+            reorderDragHandle = false;
+            owner.endReorderGesture();
         }
 
         GraphMixerChannelStrip& owner;
+        bool reorderDragHandle = false;
+
     };
 
     std::unique_ptr<ChildListener> listener;
