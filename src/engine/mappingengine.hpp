@@ -42,8 +42,7 @@ public:
         on the message thread; this is the unit-test entry point. */
     void process (const juce::String& device, const juce::MidiMessage& message);
 
-    /** Queues a message received by any OSC Receiver node using the canonical
-        pseudo-device identifier. Safe to call from the OSC receiver callback. */
+    /** Routes a message received by any OSC Receiver node through MidiEngine. */
     static void routeOscReceiverMidiMessage (const juce::MidiMessage& message);
 
     /** Begin/stop receiving MIDI from all inputs and routing through process().

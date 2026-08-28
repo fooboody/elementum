@@ -7,6 +7,7 @@
 #include <element/devices.hpp>
 #include <element/plugins.hpp>
 #include <element/settings.hpp>
+#include <element/session.hpp>
 #include <element/ui.hpp>
 #include <element/ui/content.hpp>
 #include <element/ui/mainwindow.hpp>
@@ -853,6 +854,7 @@ public:
         setSize (300, 400);
 
         devices.addChangeListener (this);
+        world.session()->addChangeListener (this);
         updateDevices();
         startTimer (1 * 1000); // refresh if needed every 1 second
     }
@@ -861,13 +863,14 @@ public:
     {
         startStopCont.removeListener (this);
         devices.removeChangeListener (this);
+        world.session()->removeChangeListener (this);
         midiInputs = nullptr;
         midiOutput.removeListener (this);
     }
 
     void timerCallback() override
     {
-        if ((midiInputs && midiInputs->getNumDevices() != MidiInput::getAvailableDevices().size()) || midiOutput.getNumItems() - 1 != MidiOutput::getAvailableDevices().size())
+        if ((midiInputs && midiInputs->getNumDevices() != MidiInput::getAvailableDevices().size() + (hasOscReceiverNode() ? 1 : 0)) || midiOutput.getNumItems() - 1 != MidiOutput::getAvailableDevices().size())
         {
             updateDevices();
         }
@@ -1047,11 +1050,18 @@ private:
 
         int getNumDevices() const { return midiInputs.size(); }
 
-        void updateDevices()
+        void updateDevices (const bool includeOscReceiver)
         {
             midiInputLabels.clearQuick (true);
             midiInputs.clearQuick (true);
             inputs = MidiInput::getAvailableDevices();
+            if (includeOscReceiver)
+            {
+                MidiDeviceInfo oscReceiver;
+                oscReceiver.name = MidiEngine::oscReceiverDeviceName;
+                oscReceiver.identifier = MidiEngine::oscReceiverDeviceIdentifier;
+                inputs.add (oscReceiver);
+            }
 
             for (const auto& d : inputs)
             {
@@ -1151,6 +1161,18 @@ private:
     std::unique_ptr<MidiInputs> midiInputs;
     Viewport midiInputView;
 
+    bool hasOscReceiverNode() const
+    {
+        bool found = false;
+        if (auto session = world.session())
+            session->forEach ([&found] (const ValueTree& tree) {
+                if (tree.hasType (types::Node)
+                    && tree.getProperty (tags::identifier).toString() == EL_NODE_ID_OSC_RECEIVER)
+                    found = true;
+            });
+        return found;
+    }
+
     void updateDevices()
     {
         outputs = MidiOutput::getAvailableDevices();
@@ -1166,7 +1188,8 @@ private:
             ++i;
         }
 
-        midiInputs->updateDevices();
+        const bool oscReceiverAvailable = hasOscReceiverNode();
+        midiInputs->updateDevices (oscReceiverAvailable);
 
         updateInputSelection();
         updateOutputSelection();

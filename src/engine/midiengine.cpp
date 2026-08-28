@@ -17,6 +17,8 @@ using juce::MidiMessage;
 using juce::ValueTree;
 using juce::XmlElement;
 
+MidiEngine* MidiEngine::currentInstance = nullptr;
+
 //==============================================================================
 void MidiEngine::applySettings (Settings& settings)
 {
@@ -26,6 +28,7 @@ void MidiEngine::applySettings (Settings& settings)
     juce::ignoreUnused (midiOutputs);
 
     midiInsFromXml.clear();
+    oscReceiverActive = false;
 
     if (auto xml = std::unique_ptr<XmlElement> (settings.getUserSettings()->getXmlValue (Settings::midiEngineKey)))
     {
@@ -35,6 +38,11 @@ void MidiEngine::applySettings (Settings& settings)
             const auto child (data.getChild (i));
             if (child.hasType (tags::input))
             {
+                if (child[tags::identifier].toString() == oscReceiverDeviceIdentifier)
+                {
+                    oscReceiverActive = (bool) child[tags::active];
+                    continue;
+                }
                 if (auto* const holder = getMidiInput (child[tags::identifier], true))
                 {
                     holder->active = false; // open but not active initially
@@ -63,6 +71,14 @@ void MidiEngine::writeSettings (Settings& settings)
         input.setProperty (tags::name, holder->input->getName(), nullptr)
             .setProperty (tags::identifier, holder->input->getIdentifier(), nullptr)
             .setProperty (tags::active, holder->active, nullptr);
+        data.appendChild (input, nullptr);
+    }
+
+    {
+        ValueTree input (tags::input);
+        input.setProperty (tags::name, oscReceiverDeviceName, nullptr)
+            .setProperty (tags::identifier, oscReceiverDeviceIdentifier, nullptr)
+            .setProperty (tags::active, oscReceiverActive, nullptr);
         data.appendChild (input, nullptr);
     }
 
@@ -160,22 +176,32 @@ void MidiEngine::MidiInputHolder::handleIncomingMidiMessage (MidiInput* source, 
         return;
 
     jassert (source == input.get());
-    const ScopedLock sl (engine.midiCallbackLock);
-
-    for (auto& mc : engine.midiCallbacks)
-        if ((active || mc.consumer) && (mc.device.isEmpty() || mc.device == input->getIdentifier()))
-            mc.callback->handleIncomingMidiMessage (input.get(), message);
+    if (active)
+        engine.dispatchIncomingMidiMessage (input->getIdentifier(), input.get(), message);
+    else
+    {
+        const ScopedLock sl (engine.midiCallbackLock);
+        for (auto& mc : engine.midiCallbacks)
+            if (mc.consumer && (mc.device.isEmpty() || mc.device == input->getIdentifier()))
+                if (auto* extended = dynamic_cast<MidiInputCallbackWithIdentifier*> (mc.callback))
+                    extended->handleIncomingMidiMessage (input->getIdentifier(), message);
+                else
+                    mc.callback->handleIncomingMidiMessage (input.get(), message);
+    }
 }
 
 //==============================================================================
 MidiEngine::MidiEngine()
 {
+    currentInstance = this;
     callbackHandler.reset (new CallbackHandler (*this));
 }
 
 MidiEngine::~MidiEngine()
 {
     callbackHandler.reset (nullptr);
+    if (currentInstance == this)
+        currentInstance = nullptr;
 }
 
 //==============================================================================
@@ -221,6 +247,16 @@ MidiEngine::MidiInputHolder* MidiEngine::getMidiInput (const String& identifier,
 //==============================================================================
 void MidiEngine::setMidiInputEnabled (const MidiDeviceInfo& device, const bool enabled)
 {
+    if (device.identifier == oscReceiverDeviceIdentifier)
+    {
+        if (enabled != oscReceiverActive)
+        {
+            oscReceiverActive = enabled;
+            sendChangeMessage();
+        }
+        return;
+    }
+
     if (enabled != isMidiInputEnabled (device))
     {
         if (enabled)
@@ -240,6 +276,9 @@ void MidiEngine::setMidiInputEnabled (const MidiDeviceInfo& device, const bool e
 
 bool MidiEngine::isMidiInputEnabled (const MidiDeviceInfo& device) const
 {
+    if (device.identifier == oscReceiverDeviceIdentifier)
+        return oscReceiverActive;
+
     for (auto* mi : openMidiInputs)
         if (mi->input != nullptr && mi->input->getIdentifier() == device.identifier && mi->active)
             return true;
@@ -312,12 +351,25 @@ void MidiEngine::removeMidiInputCallback (MidiInputCallback* callbackToRemove)
 void MidiEngine::handleIncomingMidiMessageInt (MidiInput* source, const MidiMessage& message)
 {
     if (! message.isActiveSense())
-    {
-        const ScopedLock sl (midiCallbackLock);
-        for (auto& mc : midiCallbacks)
-            if (mc.consumer || mc.device.isEmpty() || mc.device == source->getIdentifier())
+        dispatchIncomingMidiMessage (source != nullptr ? source->getIdentifier() : String(), source, message);
+}
+
+void MidiEngine::dispatchIncomingMidiMessage (const String& identifier, MidiInput* source,
+                                              const MidiMessage& message)
+{
+    const ScopedLock sl (midiCallbackLock);
+    for (auto& mc : midiCallbacks)
+        if (mc.consumer || mc.device.isEmpty() || mc.device == identifier)
+            if (auto* extended = dynamic_cast<MidiInputCallbackWithIdentifier*> (mc.callback))
+                extended->handleIncomingMidiMessage (identifier, message);
+            else
                 mc.callback->handleIncomingMidiMessage (source, message);
-    }
+}
+
+void MidiEngine::routeOscReceiverMidiMessage (const MidiMessage& message)
+{
+    if (currentInstance != nullptr && currentInstance->oscReceiverActive)
+        currentInstance->dispatchIncomingMidiMessage (oscReceiverDeviceIdentifier, nullptr, message);
 }
 
 void MidiEngine::processMidiBuffer (const MidiBuffer& buffer, int nframes, double sampleRate)
@@ -339,7 +391,7 @@ void MidiEngine::processMidiBuffer (const MidiBuffer& buffer, int nframes, doubl
 
 int MidiEngine::getNumActiveMidiInputs() const
 {
-    int total = 0;
+    int total = oscReceiverActive ? 1 : 0;
     for (const auto& dev : MidiInput::getAvailableDevices())
         if (isMidiInputEnabled (dev))
             ++total;

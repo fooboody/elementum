@@ -9,9 +9,20 @@ namespace element {
 
 class Settings;
 
+class MidiInputCallbackWithIdentifier
+{
+public:
+    virtual ~MidiInputCallbackWithIdentifier() = default;
+    virtual void handleIncomingMidiMessage (const juce::String& identifier,
+                                            const juce::MidiMessage& message) = 0;
+};
+
 class MidiEngine : public juce::ChangeBroadcaster
 {
 public:
+    inline static constexpr const char* oscReceiverDeviceIdentifier = "element.osc-receiver";
+    inline static constexpr const char* oscReceiverDeviceName = "OSC Receiver";
+
     MidiEngine();
     ~MidiEngine();
 
@@ -107,6 +118,7 @@ public:
     MidiOutput* getDefaultMidiOutput() const noexcept { return defaultMidiOutput.get(); }
 
     void processMidiBuffer (const MidiBuffer& buffer, int nframes, double sampleRate);
+    static void routeOscReceiverMidiMessage (const juce::MidiMessage& message);
 
     CriticalSection& getMidiOutputLock() { return midiOutputLock; }
 
@@ -151,6 +163,9 @@ private:
 
     MidiInputHolder* getMidiInput (const String& identifier, bool openIfNotAlready);
     void handleIncomingMidiMessageInt (juce::MidiInput*, const juce::MidiMessage&);
+    void dispatchIncomingMidiMessage (const String& identifier, juce::MidiInput*, const juce::MidiMessage&);
+    bool oscReceiverActive = false;
+    static MidiEngine* currentInstance;
 };
 
 } // namespace element
