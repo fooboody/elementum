@@ -258,21 +258,6 @@ class Content::StatusBar : public Component,
                            private Timer
 {
 public:
-    /** Label that invokes a handler when double-clicked. */
-    class ClickableLabel : public Label
-    {
-    public:
-        std::function<void()> onDoubleClicked;
-
-        void mouseDoubleClick (const MouseEvent& ev) override
-        {
-            if (onDoubleClicked)
-                onDoubleClicked();
-            else
-                Label::mouseDoubleClick (ev);
-        }
-    };
-
     StatusBar (Context& g)
         : world (g),
           devices (world.devices()),
@@ -289,11 +274,11 @@ public:
         addAndMakeVisible (streamingStatusLabel);
         addAndMakeVisible (statusLabel);
 
-        statusLabel.setTooltip ("Double-click to open audio settings");
-        statusLabel.onDoubleClicked = [this]() {
-            if (auto* const ui = world.services().find<UI>())
-                ui->showPreferencesDialog (ELEMENT_AUDIO_SETTINGS_NAME);
-        };
+        if (world.services().getRunMode() != RunMode::Plugin)
+        {
+            statusLabel.setTooltip ("Click to open audio settings");
+            statusLabel.setMouseCursor (MouseCursor::PointingHandCursor);
+        }
         addAndMakeVisible (dataDirectoryLabel);
         addMouseListener (this, true);
         dataDirectoryLabel.setMouseCursor (MouseCursor::PointingHandCursor);
@@ -325,7 +310,13 @@ public:
 
     void mouseUp (const MouseEvent& event) override
     {
-        if (event.eventComponent == &dataDirectoryLabel && event.mouseWasClicked())
+        if (world.services().getRunMode() != RunMode::Plugin
+            && event.eventComponent == &statusLabel && event.mouseWasClicked())
+        {
+            if (auto* const ui = world.services().find<UI>())
+                ui->showPreferencesDialog (ELEMENT_AUDIO_SETTINGS_NAME);
+        }
+        else if (event.eventComponent == &dataDirectoryLabel && event.mouseWasClicked())
             DataPath::applicationDataDir().startAsProcess();
     }
 
@@ -441,7 +432,7 @@ private:
     PluginManager& plugins;
 
     Label sampleRateLabel, streamingStatusLabel, dataDirectoryLabel;
-    ClickableLabel statusLabel;
+    Label statusLabel;
     ValueTree node;
     Value sampleRate, streamingStatus, status;
 
