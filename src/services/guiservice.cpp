@@ -542,6 +542,12 @@ void GuiService::applyStoredChannelToUpdater()
 
 void GuiService::showPreferencesDialog (const String& section)
 {
+    // Preferences are only available in the standalone application.  Keep
+    // this guard at the dialog boundary so every caller, including commands
+    // invoked through key mappings, follows the same rule.
+    if (getRunMode() != RunMode::Standalone)
+        return;
+
     if (auto* const dialog = windowManager->findDialogByName ("Preferences"))
     {
         if (! dialog->isOnDesktop() || ! dialog->isVisible())
@@ -874,6 +880,9 @@ void GuiService::getCommandInfo (CommandID commandID, ApplicationCommandInfo& re
             result.setInfo ("Show About", "About this program", "Application", 0);
             break;
         case Commands::showPreferences:
+            // Do not query getRunMode() here: command registration happens
+            // from GuiService's constructor, before Services::add() assigns
+            // the Service owner. The dialog boundary enforces the mode rule.
             result.setInfo ("Show Preferences", "Elementum Preferences", "Application", 0);
             result.addDefaultKeypress (',', ModifierKeys::commandModifier);
             break;
