@@ -1,4 +1,12 @@
-# Change Log
+# Changelog
+
+## Elementum fork note
+
+This file preserves release history inherited from upstream Kushview Element. Entries below were written for upstream Element and should not be read as Elementum-native releases or as support commitments by the Elementum fork.
+
+Elementum-specific user-facing additions and behavior changes are documented in [CHANGELOG-FORK.md](CHANGELOG-FORK.md).
+
+## Upstream Element history
 
 ## [1.2.x]
 

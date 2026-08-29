@@ -24,16 +24,17 @@ Please use the appropriate project when reporting an issue:
 
 Elementum retains the core Element workflow of connecting Audio and MIDI nodes into reusable graphs. Core capabilities include plug-in hosting, graph nesting, MIDI routing, virtual keyboard input, undo/redo, embedded plug-in editors, and scripting support. Actual available plug-in formats depend on the operating system, build configuration, installed plug-ins, and host context.
 
-This fork also adds UI, workflow, and other improvements. The core architecture has not been modified.
+This fork adds even more features and bug fixes. The core architecture has not been modified.
 
-| Area | Elementum additions |
+| Area | Key additions |
 |---|---|
 | Customization | Configurable Graph Editor colors and menu appearance, including dark mode |
 | Graph editing | Nearby-port auto-connection and disconnection, bulk swapping of Audio connections, automatic node Enable/Disable, and Alt-click Enable/Disable toggling |
 | MIDI workflow | Automatic wiring from `MIDI IN DEVICE` and `MIDI IN` nodes to newly added MIDI-input nodes |
 | Real-time load monitoring | Process CPU usage, total DSP load, and per-node load |
-| Node control | Batch Enable/Disable for selected nodes and functional Audio input muting |
-| Profile management | Concurrent instances on a per-profile basis using `--profile-dir` |
+| Profile management | Profile-based management and multi-instance support using `--profile-dir` |
+
+[CHANGELOG-FORK.md](CHANGELOG-FORK.md)
 
 ## Running Elementum
 

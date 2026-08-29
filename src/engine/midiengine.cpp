@@ -1,5 +1,7 @@
 // Copyright 2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Modified by fooboody on 2026
 
 #include <element/juce/audio_basics.hpp>
 #include <element/juce/audio_devices.hpp>

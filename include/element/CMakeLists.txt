@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
 # SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
+# Modified by fooboody on 2026
 
 # Generate a version header in a specific path (build/include/element/version.h)
 

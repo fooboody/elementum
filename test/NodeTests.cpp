@@ -1,5 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (C) Kushview, LLC.
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Modified by fooboody on 2026
 
 #include <boost/test/unit_test.hpp>
 #include <element/node.hpp>

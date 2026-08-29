@@ -1,5 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Kushview, LLC
+# SPDX-FileCopyrightText: 2026 Fooboody Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
+# Modified by fooboody on 2026
 
 # The juce version to use.  This can be a git tag, hash, or branch.
 set(ELEMENT_JUCE_VERSION 8.0.14)

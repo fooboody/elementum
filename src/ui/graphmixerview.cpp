@@ -1,5 +1,7 @@
 // Copyright 2019-2023 Kushview, LLC <info@kushview.net>
+// Copyright 2026 Fooboody Studio
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Modified by fooboody on 2026
 
 #include <element/context.hpp>
 #include <element/services.hpp>
