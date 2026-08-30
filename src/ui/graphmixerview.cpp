@@ -260,7 +260,8 @@ private:
 class GraphMixerListBoxModel : public ListBoxModel
 {
 public:
-        std::function<void()> onSelectionChanged;
+    std::function<void()> onRefreshNeeded;
+    std::function<void()> onSelectionChanged;
     std::function<void (GraphMixerChannelStrip&, double)> onFaderValueApplied;
     std::function<void (const Node&, ModifierKeys)> onSelectionRequested;
 
@@ -289,7 +290,7 @@ public:
         GraphMixerChannelStrip* const strip = existing == nullptr
                                                   ? new GraphMixerChannelStrip (gui)
                                                   : dynamic_cast<GraphMixerChannelStrip*> (existing);
-                strip->onRefreshNeeded = std::bind (&GraphMixerListBoxModel::refresh, this);
+        strip->onRefreshNeeded = onRefreshNeeded;
         strip->onFaderValueApplied = onFaderValueApplied;
         strip->onSelectionRequested = onSelectionRequested;
 
@@ -413,7 +414,11 @@ public:
         box.setRowHeight (80);
         box.setMultipleSelectionEnabled (true);
         model.reset (new GraphMixerListBoxModel (gui, box));
-                model->onSelectionChanged = [this]() { onMixerSelectionChanged(); };
+        model->onRefreshNeeded = [this]() {
+            model->refresh();
+            syncMixerSelectionFromGraphEditor();
+        };
+        model->onSelectionChanged = [this]() { onMixerSelectionChanged(); };
         model->onFaderValueApplied = [this] (GraphMixerChannelStrip& source, double value) {
             syncSelectedFaderValues (source, value);
         };
