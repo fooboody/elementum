@@ -11,8 +11,10 @@ namespace element {
 
 class BreadCrumbComponent;
 class Node;
+class PluginManager;
 
 class ConnectionGrid : public ContentView,
+                       public juce::ChangeListener,
                        public DragAndDropTarget
 {
 public:
@@ -40,7 +42,11 @@ public:
 #endif
 
 private:
+    void changeListenerCallback (juce::ChangeBroadcaster* source) override;
+
     std::unique_ptr<BreadCrumbComponent> breadcrumb;
+    PluginManager* unverifiedRefreshManager { nullptr };
+    Rectangle<int> unverifiedRefreshTarget;
 
     friend class PatchMatrix;
     class PatchMatrix;

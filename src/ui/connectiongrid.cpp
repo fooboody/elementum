@@ -329,27 +329,83 @@ private:
             return;
         }
 
+        const auto popupTarget = ev.getScreenPosition().roundToInt();
+        showEmptyAreaMenu (Rectangle<int> (popupTarget.x, popupTarget.y - 1, 1, 1));
+    }
+
+    void showEmptyAreaMenu (const Rectangle<int>& popupTarget)
+    {
         const Node graph (graphModel);
 
-        PluginsPopupMenu menu (this);
-        if (graph.isRootGraph())
+        const auto popupOptions = PopupMenu::Options()
+                                      .withTargetScreenArea (popupTarget)
+                                      .withPreferredPopupDirection (PopupMenu::Options::PopupDirection::downwards)
+                                      .withDeletionCheck (*this);
+
+        std::unique_ptr<PluginsPopupMenu> menu;
+        int result = 0;
+        for (;;)
         {
+            menu = std::make_unique<PluginsPopupMenu> (this);
+            if (graph.isRootGraph())
+            {
 #if 1
-            menu.addSectionHeader ("Graph I/O");
-            menu.addItem (1, "Audio Inputs", true, graph.hasAudioInputNode());
-            menu.addItem (2, "Audio Outputs", true, graph.hasAudioOutputNode());
-            menu.addItem (3, "MIDI Input", true, graph.hasMidiInputNode());
-            menu.addItem (4, "MIDI Output", true, graph.hasMidiOutputNode());
+                menu->addSectionHeader ("Graph I/O");
+                menu->addItem (1, "Audio Inputs", true, graph.hasAudioInputNode());
+                menu->addItem (2, "Audio Outputs", true, graph.hasAudioOutputNode());
+                menu->addItem (3, "MIDI Input", true, graph.hasMidiInputNode());
+                menu->addItem (4, "MIDI Output", true, graph.hasMidiOutputNode());
 #endif
+            }
+
+            menu->addSectionHeader ("Plugins");
+            menu->addPluginItems();
+            result = menu->showMenu (popupOptions);
+
+            if (! menu->isGroupManufacturersByInitialResult (result))
+                break;
+
+            if (auto* const world = ViewHelpers::getGlobals (this))
+            {
+                auto& settings = world->settings();
+                settings.setGroupPluginManufacturersByInitial (! settings.groupPluginManufacturersByInitial());
+                if (! settings.saveIfNeeded())
+                    DBG ("[element] Failed to save plugin manufacturer index setting");
+                continue;
+            }
+
+            return;
         }
 
-        menu.addSectionHeader ("Plugins");
-        menu.addPluginItems();
-        const int result = menu.show();
-        if (menu.isPluginResultCode (result))
+        String refreshFormat;
+        if (menu->isUnverifiedRefreshResult (result, refreshFormat))
+        {
+            if (auto* const world = ViewHelpers::getGlobals (this))
+            {
+                auto& plugins = world->plugins();
+                if (auto* const grid = findParentComponentOfClass<ConnectionGrid>())
+                {
+                    if (grid->unverifiedRefreshManager != nullptr)
+                        return;
+
+                    grid->unverifiedRefreshManager = &plugins;
+                    grid->unverifiedRefreshTarget = popupTarget;
+                    plugins.addChangeListener (grid);
+                    if (! plugins.searchUnverifiedPlugins (refreshFormat) && ! plugins.isSearchingUnverifiedPlugins())
+                    {
+                        plugins.removeChangeListener (grid);
+                        grid->unverifiedRefreshManager = nullptr;
+                        grid->unverifiedRefreshTarget = {};
+                    }
+                }
+            }
+            return;
+        }
+
+        if (menu->isPluginResultCode (result))
         {
             bool verified = false;
-            const auto desc = menu.getPluginDescription (result, verified);
+            const auto desc = menu->getPluginDescription (result, verified);
             if (desc.fileOrIdentifier.isNotEmpty() && desc.pluginFormatName.isNotEmpty())
                 ViewHelpers::postMessageFor (this, new AddPluginMessage (graph, desc, verified));
         }
@@ -970,11 +1026,33 @@ ConnectionGrid::ConnectionGrid()
 
 ConnectionGrid::~ConnectionGrid()
 {
+    if (unverifiedRefreshManager != nullptr)
+        unverifiedRefreshManager->removeChangeListener (this);
+
     matrix = nullptr;
     sources = nullptr;
     controls = nullptr;
     destinations = nullptr;
     quads = nullptr;
+}
+
+void ConnectionGrid::changeListenerCallback (juce::ChangeBroadcaster* source)
+{
+    if (source != static_cast<juce::ChangeBroadcaster*> (unverifiedRefreshManager))
+        return;
+
+    if (unverifiedRefreshManager->isSearchingUnverifiedPlugins())
+        return;
+
+    unverifiedRefreshManager->removeChangeListener (this);
+    unverifiedRefreshManager = nullptr;
+    const auto targetArea = unverifiedRefreshTarget;
+    unverifiedRefreshTarget = {};
+    Component::SafePointer<ConnectionGrid> self (this);
+    juce::MessageManager::callAsync ([self, targetArea]() {
+        if (self != nullptr && self->isShowing() && self->matrix != nullptr)
+            self->matrix->showEmptyAreaMenu (targetArea);
+    });
 }
 
 Node ConnectionGrid::getGraph() const noexcept
