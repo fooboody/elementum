@@ -5,6 +5,11 @@
 
 #include <element/devices.hpp>
 #include "engine/jack.hpp"
+#include "win32.hpp"
+
+#if JUCE_WINDOWS
+#include <dbt.h>
+#endif
 
 #if JUCE_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN

@@ -8,14 +8,16 @@ Elementum-specific user-facing additions and behavior changes are documented in 
 
 ## Upstream Element history
 
-## [1.2.x]
+## [Unreleased]
 
 ### Added
 - CLAP plugins now appear in the Unverified plugin menu and can be added to a graph without a prior scan.
 - Graph Mixer: channel strips can be hidden via right-click and restored from the mixer background's right-click menu.
+- Wired up a Close Session action for the session workflow.
 
 ### Changed
 - Disconnected audio devices are no longer silently replaced with another device: Element closes the device, shows its status in the status bar, and automatically restores it when it reconnects. Double-click the status label to open audio settings.
+- Improved tray/window behavior so the main window stays clear of docked taskbars when shown from the tray.
 - Graph Mixer: larger fonts for node names, dB readouts and the meter scale, plus a higher-contrast layout.
 - Graph Mixer: channel strip name headers now use the node's block color from the graph editor.
 - Double-clicking a channel strip fader resets it to 0 dB.
@@ -24,6 +26,8 @@ Elementum-specific user-facing additions and behavior changes are documented in 
 
 ### Fixed
 - Freeze on Windows when an ASIO audio interface is disconnected. Reconnection is now driven by system hardware notifications instead of repeatedly probing the driver.
+- Improved MIDI disconnect/reconnect handling for more reliable device recovery.
+- Session save prompts no longer appear when moving from a blank session to a new one.
 - Blocks embedded in the graph return to their embedded state when the plugin window is closed.
 - MIDI Monitor note names displayed two octaves too high.
 - MIDI Monitor logged Start/Stop/Continue messages twice.

@@ -368,6 +368,8 @@ void Processor::prepare (const double newSampleRate,
         oversampler->prepare (jmax (getNumPorts (PortType::Audio, true),
                                     getNumPorts (PortType::Audio, false)),
                               blockSize);
+        if (osPow > 0)
+            oversampler->ensureProcessor (osPow - 1);
 
         if (auto* const osProc = getOversamplingProcessor())
             osLatency = osProc->getLatencyInSamples();

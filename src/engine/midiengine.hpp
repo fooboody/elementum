@@ -155,6 +155,7 @@ private:
     StringArray midiInsFromXml;
     OwnedArray<MidiInputHolder> openMidiInputs;
     Array<MidiCallbackInfo> midiCallbacks;
+    StringArray knownMidiInputIDs, knownMidiOutputIDs;
 
     String defaultMidiOutputName, defaultMidiOutputID;
     std::unique_ptr<MidiOutput> defaultMidiOutput;
@@ -162,8 +163,10 @@ private:
 
     class CallbackHandler;
     std::unique_ptr<CallbackHandler> callbackHandler;
+    juce::MidiDeviceListConnection deviceListConnection;
 
     MidiInputHolder* getMidiInput (const String& identifier, bool openIfNotAlready);
+    void handleDeviceListChanged();
     void handleIncomingMidiMessageInt (juce::MidiInput*, const juce::MidiMessage&);
     void dispatchIncomingMidiMessage (const String& identifier, juce::MidiInput*, const juce::MidiMessage&);
     bool oscReceiverActive = false;

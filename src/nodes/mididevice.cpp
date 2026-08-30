@@ -149,11 +149,28 @@ MidiDeviceProcessor::MidiDeviceProcessor (const bool isInput, MidiEngine& me)
       midi (me)
 {
     setPlayConfigDetails (0, 0, 44100.0, 1024);
+    midi.addChangeListener (this);
 }
 
 MidiDeviceProcessor::~MidiDeviceProcessor() noexcept
 {
+    midi.removeChangeListener (this);
     closeDevice();
+}
+
+void MidiDeviceProcessor::changeListenerCallback (juce::ChangeBroadcaster*)
+{
+    // MIDI input recovery is owned by MidiEngine. Output nodes own their
+    // ElementMidiOutput instance, so they must restore that instance after
+    // the engine has completed its global refresh.
+    if (inputDevice || deviceWanted.identifier.isEmpty())
+        return;
+    if (deviceIsAvailable (deviceWanted) && isDeviceOpen())
+        return;
+
+    const auto wanted = deviceWanted;
+    closeDevice();
+    setDevice (wanted);
 }
 
 void MidiDeviceProcessor::setLatency (double latencyMs)

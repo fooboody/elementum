@@ -13,6 +13,7 @@ class MidiEngine;
 
 class MidiDeviceProcessor : public BaseProcessor,
                             public MidiInputCallback,
+                            private juce::ChangeListener,
                             private Timer
 {
 public:
@@ -162,6 +163,7 @@ private:
     void timerCallback() override;
     bool deviceIsAvailable (const String& name);
     bool deviceIsAvailable (const MidiDeviceInfo& dev);
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MidiDeviceProcessor);
 };
 

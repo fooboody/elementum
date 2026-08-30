@@ -197,13 +197,67 @@ MidiEngine::MidiEngine()
 {
     currentInstance = this;
     callbackHandler.reset (new CallbackHandler (*this));
+
+    for (const auto& device : MidiInput::getAvailableDevices())
+        knownMidiInputIDs.addIfNotAlreadyThere (device.identifier);
+    for (const auto& device : MidiOutput::getAvailableDevices())
+        knownMidiOutputIDs.addIfNotAlreadyThere (device.identifier);
+
+    deviceListConnection = juce::MidiDeviceListConnection::make ([this] { handleDeviceListChanged(); });
 }
 
 MidiEngine::~MidiEngine()
 {
+    deviceListConnection.reset();
     callbackHandler.reset (nullptr);
     if (currentInstance == this)
         currentInstance = nullptr;
+}
+
+void MidiEngine::handleDeviceListChanged()
+{
+    StringArray inputIDs;
+    for (const auto& device : MidiInput::getAvailableDevices())
+        inputIDs.addIfNotAlreadyThere (device.identifier);
+
+    StringArray outputIDs;
+    for (const auto& device : MidiOutput::getAvailableDevices())
+        outputIDs.addIfNotAlreadyThere (device.identifier);
+
+    const auto listsDiffer = [] (const StringArray& lhs, const StringArray& rhs)
+    {
+        if (lhs.size() != rhs.size())
+            return true;
+
+        for (const auto& identifier : lhs)
+            if (! rhs.contains (identifier))
+                return true;
+
+        return false;
+    };
+
+    const bool inputListChanged = listsDiffer (inputIDs, knownMidiInputIDs);
+    const bool outputListChanged = listsDiffer (outputIDs, knownMidiOutputIDs);
+    knownMidiInputIDs = inputIDs;
+    knownMidiOutputIDs = outputIDs;
+
+    bool defaultOutputAvailable = false;
+    if (defaultMidiOutputID.isNotEmpty())
+        defaultOutputAvailable = outputIDs.contains (defaultMidiOutputID);
+
+    // Use the full recovery path only when an input changed or the selected
+    // default output crossed an available/unavailable boundary. An unrelated
+    // output-list change still notifies Output nodes without restarting every
+    // MIDI input.
+    if (inputListChanged
+        || (defaultMidiOutputID.isNotEmpty() && defaultOutputAvailable != (defaultMidiOutput != nullptr)))
+    {
+        refreshMidiInputs();
+    }
+    else if (outputListChanged)
+    {
+        sendChangeMessage();
+    }
 }
 
 //==============================================================================
@@ -265,11 +319,13 @@ void MidiEngine::setMidiInputEnabled (const MidiDeviceInfo& device, const bool e
         {
             if (auto* holder = getMidiInput (device.identifier, true))
                 holder->active = true;
+            midiInsFromXml.addIfNotAlreadyThere (device.identifier);
         }
         else
         {
             if (auto* holder = getMidiInput (device.identifier, false))
                 holder->active = false;
+            midiInsFromXml.removeString (device.identifier);
         }
 
         sendChangeMessage();
@@ -411,16 +467,44 @@ void MidiEngine::refreshMidiInputs()
     Array<InputState> inputsToReopen;
     inputsToReopen.ensureStorageAllocated (openMidiInputs.size());
 
+    auto addInputToReopen = [&inputsToReopen] (const String& identifier, const String& name, bool active)
+    {
+        for (const auto& input : inputsToReopen)
+            if (input.device.identifier == identifier)
+                return;
+
+        MidiDeviceInfo device;
+        device.identifier = identifier;
+        device.name = name;
+        inputsToReopen.add ({ device, active });
+    };
+
     for (const auto* holder : openMidiInputs)
     {
         if (holder == nullptr || holder->input == nullptr)
             continue;
 
-        inputsToReopen.add ({ holder->input->getDeviceInfo(), holder->active });
+        const auto device = holder->input->getDeviceInfo();
+        addInputToReopen (device.identifier, device.name, holder->active);
+        if (holder->active)
+            midiInsFromXml.addIfNotAlreadyThere (device.identifier);
     }
 
-        // Do not hold midiCallbackLock here. Stopping or destroying a MidiInput may
-    // wait for a callback already in flight, while that callback takes
+    // Preserve enabled inputs and consumer-owned inputs even when the device
+    // is already absent when the list-change callback arrives. They will be
+    // reopened by a later device-list change when they become available.
+    for (const auto& identifier : midiInsFromXml)
+        addInputToReopen (identifier, String(), true);
+
+    {
+        const ScopedLock sl (midiCallbackLock);
+        for (const auto& callback : midiCallbacks)
+            if (callback.consumer && callback.device.isNotEmpty())
+                addInputToReopen (callback.device, String(), false);
+    }
+
+    // Do not hold midiCallbackLock while stopping or destroying a MidiInput:
+    // that may wait for a callback already in flight, while that callback takes
     // midiCallbackLock before it dispatches messages.
     for (auto* holder : openMidiInputs)
         if (holder != nullptr && holder->input != nullptr)
