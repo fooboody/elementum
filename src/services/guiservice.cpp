@@ -422,7 +422,11 @@ void GuiService::saveProperties (PropertiesFile* props)
         keyMappingsDirty = false;
     }
 
-    if (mainWindow)
+    // When the application starts hidden, the native window is initially
+    // created with its fallback centred bounds and the saved state is restored
+    // only when it is first shown. Do not persist those temporary bounds if
+    // the application exits before the window has ever been shown.
+    if (mainWindow && ! restoreMainWindowStateOnShow)
     {
         props->setValue ("mainWindowState", mainWindow->getWindowStateAsString());
         props->setValue ("mainWindowFullScreen", mainWindow->isFullScreen());
