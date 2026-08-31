@@ -67,13 +67,20 @@ void MidiEngine::applySettings (Settings& settings)
 void MidiEngine::writeSettings (Settings& settings)
 {
     ValueTree data ("MidiSettings");
+    StringArray writtenInputIDs;
+
     for (auto* const holder : openMidiInputs)
     {
+        const auto identifier = holder->input->getIdentifier();
         ValueTree input (tags::input);
         input.setProperty (tags::name, holder->input->getName(), nullptr)
-            .setProperty (tags::identifier, holder->input->getIdentifier(), nullptr)
-            .setProperty (tags::active, holder->active, nullptr);
+            .setProperty (tags::identifier, identifier, nullptr)
+            // midiInsFromXml is the persistent user choice. holder->active is
+            // only the current runtime routing state and may be false while a
+            // device is being recovered.
+            .setProperty (tags::active, midiInsFromXml.contains (identifier), nullptr);
         data.appendChild (input, nullptr);
+        writtenInputIDs.addIfNotAlreadyThere (identifier);
     }
 
     {
@@ -84,36 +91,27 @@ void MidiEngine::writeSettings (Settings& settings)
         data.appendChild (input, nullptr);
     }
 
-    if (midiInsFromXml.size() > 0)
+    for (const auto& identifier : midiInsFromXml)
     {
-        // Add any midi devices that have been enabled before, but which aren't currently
-        // open because the device has been disconnected.
-        const auto avail = MidiInput::getAvailableDevices();
+        if (writtenInputIDs.contains (identifier))
+            continue;
 
-        StringArray availableIDs;
-        for (const auto& amd : avail)
-            availableIDs.add (amd.identifier);
-        for (int i = 0; i < midiInsFromXml.size(); ++i)
+        MidiDeviceInfo info;
+        info.identifier = identifier;
+        for (const auto& device : MidiInput::getAvailableDevices())
         {
-            if (availableIDs.contains (midiInsFromXml[i], false))
-                continue;
-
-            MidiDeviceInfo info;
-            info.identifier = midiInsFromXml[i];
-            for (const auto& amd2 : avail)
+            if (device.identifier == identifier)
             {
-                if (amd2.identifier == info.identifier)
-                {
-                    info.name = amd2.name;
-                    break;
-                }
+                info.name = device.name;
+                break;
             }
-            ValueTree input (tags::input);
-            input.setProperty (tags::name, info.name, nullptr)
-                .setProperty (tags::identifier, info.identifier, nullptr)
-                .setProperty (tags::active, true, nullptr);
-            data.appendChild (input, nullptr);
         }
+
+        ValueTree input (tags::input);
+        input.setProperty (tags::name, info.name, nullptr)
+            .setProperty (tags::identifier, info.identifier, nullptr)
+            .setProperty (tags::active, true, nullptr);
+        data.appendChild (input, nullptr);
     }
 
     data.setProperty ("defaultMidiOutput", defaultMidiOutputName, nullptr);
@@ -313,19 +311,26 @@ void MidiEngine::setMidiInputEnabled (const MidiDeviceInfo& device, const bool e
         return;
     }
 
-    if (enabled != isMidiInputEnabled (device))
+    const bool wasEnabled = isMidiInputEnabled (device);
+
+    // This list is the persistent user preference. Keep it independent from
+    // the transient runtime state of the MIDI handle.
+    if (enabled)
+        midiInsFromXml.addIfNotAlreadyThere (device.identifier);
+    else
+        midiInsFromXml.removeString (device.identifier);
+
+    if (enabled != wasEnabled)
     {
         if (enabled)
         {
             if (auto* holder = getMidiInput (device.identifier, true))
                 holder->active = true;
-            midiInsFromXml.addIfNotAlreadyThere (device.identifier);
         }
         else
         {
             if (auto* holder = getMidiInput (device.identifier, false))
                 holder->active = false;
-            midiInsFromXml.removeString (device.identifier);
         }
 
         sendChangeMessage();
@@ -486,8 +491,6 @@ void MidiEngine::refreshMidiInputs()
 
         const auto device = holder->input->getDeviceInfo();
         addInputToReopen (device.identifier, device.name, holder->active);
-        if (holder->active)
-            midiInsFromXml.addIfNotAlreadyThere (device.identifier);
     }
 
     // Preserve enabled inputs and consumer-owned inputs even when the device
