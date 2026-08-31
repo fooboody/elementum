@@ -740,7 +740,7 @@ bool PluginListComponent::keyPressed (const KeyPress& key, Component*)
         return false;
 
     const auto character = key.getTextCharacter();
-    if (CharacterFunctions::isLetter (character))
+    if (CharacterFunctions::isLetter (character) || CharacterFunctions::isDigit (character))
     {
         const auto now = Time::getMillisecondCounter();
         if (now - typeSearchLastKeyTime > typeSearchTimeoutMilliseconds)
