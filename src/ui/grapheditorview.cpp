@@ -32,6 +32,8 @@ void GraphEditorView::init()
     addAndMakeVisible (_editor);
     setSize (640, 360);
     setWantsKeyboardFocus (true);
+
+    _editor.onCanvasSizeChanged = [this]() { saveSettings(); };
 }
 
 GraphEditorView::~GraphEditorView()
@@ -132,13 +134,6 @@ void GraphEditorView::graphDisplayResized (const Rectangle<int>& area)
 {
     auto r = area;
     _editor.setBounds (r);
-
-    auto s = settings();
-    if (s.isValid())
-    {
-        s.setProperty (tags::width, _editor.getWidth(), nullptr)
-            .setProperty (tags::height, _editor.getHeight(), nullptr);
-    }
 }
 
 void GraphEditorView::graphNodeWillChange()
@@ -215,14 +210,13 @@ void GraphEditorView::restoreSettings()
         return;
     }
 
-#if 0
-    _editor.setSize (s.getProperty (tags::width, getWidth()),
-                     s.getProperty (tags::height, getHeight()));
-   
-    _editor.setZoomScale (s.getProperty ("zoomScale", 1.0f));
-#endif
-
     resized();
+
+    if (s.hasProperty (tags::width) && s.hasProperty (tags::height))
+    {
+        _editor.setCanvasSize ({ (int) s.getProperty (tags::width),
+                                 (int) s.getProperty (tags::height) });
+    }
 }
 
 void GraphEditorView::saveSettings()
@@ -231,8 +225,9 @@ void GraphEditorView::saveSettings()
     if (! s.isValid())
         return;
 
-    s.setProperty (tags::width, _editor.getWidth(), nullptr);
-    s.setProperty (tags::height, _editor.getHeight(), nullptr);
+    const auto canvasSize = _editor.getCanvasSize();
+    s.setProperty (tags::width, canvasSize.x, nullptr);
+    s.setProperty (tags::height, canvasSize.y, nullptr);
     // s.setProperty ("horizontalRangeStart", view.getHorizontalScrollBar().getCurrentRangeStart(), nullptr);
     // s.setProperty ("verticalRangeStart", view.getVerticalScrollBar().getCurrentRangeStart(), nullptr);
     // s.setProperty ("zoomScale", _editor.getZoomScale(), nullptr);

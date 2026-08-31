@@ -297,7 +297,12 @@ public:
     bool isNodeSelected (const Node& node) const { return _editor.isNodeSelected (node); }
     void setSelectedNodes (const NodeArray& nodes) { _editor.setSelectedNodes (nodes); }
     Signal<void()>& getSelectionChangedSignal() { return _editor.selectionChanged; }
-    void fixOutOfBoundsNodes() { _editor.fixOutOfBoundsNodes(); }
+    void fixOutOfBoundsNodes()
+    {
+        _editor.fixOutOfBoundsNodes();
+        if (onCanvasSizeChanged)
+            onCanvasSizeChanged();
+    }
 
     void fitCanvasToNodes()
 
@@ -330,6 +335,16 @@ public:
         const int availableHeight = jmax (0, viewportHeight - (horizontalScrollbarNeeded ? scrollbarThickness : 0));
         _editor.setSize (jmax (requiredSpace.getWidth(), availableWidth),
                          jmax (requiredSpace.getHeight(), availableHeight));
+
+        if (onCanvasSizeChanged)
+            onCanvasSizeChanged();
+    }
+
+    juce::Point<int> getCanvasSize() const { return { _editor.getWidth(), _editor.getHeight() }; }
+
+    void setCanvasSize (const juce::Point<int>& size)
+    {
+        _editor.setSize (size.x, size.y);
     }
 
     void paint (juce::Graphics& g) override
@@ -354,6 +369,7 @@ public:
     void selectNode (const Node& node) { _editor.selectNode (node); }
     void selectAllNodes() { _editor.selectAllNodes(); }
     std::function<bool (const StringArray&, int, int)> onFilesDropped;
+    std::function<void()> onCanvasSizeChanged;
     // END FIXME
 
 private:

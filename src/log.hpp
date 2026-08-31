@@ -17,7 +17,7 @@ public:
     Log()
     {
         mainlogger = std::make_unique<juce::FileLogger> (
-            getMainLogFile(), "Element (main)");
+            getMainLogFile(), "Elementum (main)");
     }
 
     ~Log()
