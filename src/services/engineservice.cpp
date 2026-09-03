@@ -320,6 +320,23 @@ public:
             g->detach (engine);
     }
 
+    void applyInactiveProcessing()
+    {
+        const auto session = owner.context().session();
+        const auto active = session != nullptr ? session->getActiveGraph() : Node();
+        const bool enabled = owner.context().settings().reduceCpuUsageForInactiveGraphs();
+
+        for (auto* const holder : graphs)
+        {
+            if (auto* const root = holder->getRootGraph())
+            {
+                const bool shouldSuspend = enabled && holder->model != active;
+                if (root->isSuspended() != shouldSuspend)
+                    root->suspendProcessing (shouldSuspend);
+            }
+        }
+    }
+
     // remove the holder, this will also delete it!
     void remove (RootGraphHolder* g)
     {
@@ -898,7 +915,13 @@ void EngineService::setRootNode (const Node& newRootNode)
         DBG ("[element] no graph controller for node: " << newRootNode.getName());
     }
 
+    graphs->applyInactiveProcessing();
     engine->refreshSession();
+}
+
+void EngineService::applyInactiveGraphProcessingSetting()
+{
+    graphs->applyInactiveProcessing();
 }
 
 void EngineService::syncModels()

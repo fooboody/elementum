@@ -8,6 +8,8 @@
 #include <element/ui/navigation.hpp>
 #include <element/node.hpp>
 #include <element/processor.hpp>
+#include <element/context.hpp>
+#include <element/settings.hpp>
 
 #include "ui/datapathbrowser.hpp"
 #include "ui/grapheditorview.hpp"
@@ -281,6 +283,15 @@ public:
         nameArea.removeFromRight (loadGap);
 
         TreeItemBase::paintContent (g, nameArea);
+
+        if (auto* const context = ViewHelpers::getGlobals (getOwnerView()))
+        {
+            const auto session = context->session();
+            if (context->settings().reduceCpuUsageForInactiveGraphs()
+                && session != nullptr
+                && detail::findRoot (node) != session->getActiveGraph())
+                return;
+        }
 
         String loadText (processor->getDSPLoad(), 1);
         loadText << "%";

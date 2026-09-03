@@ -33,6 +33,7 @@ public:
     static const char* showPluginWindowsKey;
     static const char* openLastUsedSessionKey;
     static const char* askToSaveSessionKey;
+    static const char* reduceCpuUsageForInactiveGraphsKey;
     static const char* menuAppearanceKey;
     static const char* popupMenuHighlightedBackgroundColorKey;
     static const char* popupMenuHighlightedTextColorKey;
@@ -153,6 +154,8 @@ public:
     /** True if the user should be prompted to save when exiting the app */
     bool askToSaveSession();
     void setAskToSaveSession (const bool);
+    bool reduceCpuUsageForInactiveGraphs() const;
+    void setReduceCpuUsageForInactiveGraphs (const bool);
 
     bool autoConnectNearbyPorts() const;
     void setAutoConnectNearbyPorts (const bool);

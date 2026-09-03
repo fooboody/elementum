@@ -124,6 +124,7 @@ public:
 
     /** called when the session loads or re-loads */
     void sessionReloaded();
+    void applyInactiveGraphProcessingSetting();
 
     /** replace a node with a given plugin */
     void replace (const Node&, const juce::PluginDescription&);

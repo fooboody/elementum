@@ -42,6 +42,7 @@
 - OSC ReceiverをMIDI Mappingsのデバイスとして選択可能にしました。
 - OSC ReceiverをMIDI Inデバイスとして選択可能にしました。(OSC Receiverノードが追加されている必要があります。)
 - グラフ間のノードコピーに対応しました。
+- 非アクティブグラフのCPU使用率削減オプションを追加しました。
 
 ### Changed
 

@@ -12,6 +12,7 @@
 
 #include "engine/midiengine.hpp"
 #include "engine/midipanic.hpp"
+#include <element/engine.hpp>
 
 namespace element {
 
@@ -23,6 +24,7 @@ const char* Settings::pluginScanTimeoutSecondsKey = "pluginScanTimeoutSeconds";
 const char* Settings::showPluginWindowsKey = "showPluginWindows";
 const char* Settings::openLastUsedSessionKey = "openLastUsedSession";
 const char* Settings::askToSaveSessionKey = "askToSaveSession";
+const char* Settings::reduceCpuUsageForInactiveGraphsKey = "reduceCpuUsageForInactiveGraphs";
 const char* Settings::menuAppearanceKey = "menuAppearance";
 const char* Settings::popupMenuHighlightedBackgroundColorKey = "popupMenuHighlightedBackgroundColor";
 const char* Settings::popupMenuHighlightedTextColorKey = "popupMenuHighlightedTextColor";
@@ -95,6 +97,7 @@ enum OptionsMenuItemId
     PluginWindowsOnTop,
     OpenLastUsedSession,
     AskToSaveSessions,
+    ReduceCpuUsageForInactiveGraphs,
     AutoConnectNearbyPorts,
     SwapNearbyAudioConnections,
     AutoEnableNodesWithAudioConnections,
@@ -569,6 +572,19 @@ void Settings::setAskToSaveSession (const bool value)
         props->setValue (askToSaveSessionKey, value);
 }
 
+bool Settings::reduceCpuUsageForInactiveGraphs() const
+{
+    if (auto* props = getProps())
+        return props->getBoolValue (reduceCpuUsageForInactiveGraphsKey, false);
+    return false;
+}
+
+void Settings::setReduceCpuUsageForInactiveGraphs (const bool value)
+{
+    if (auto* props = getProps())
+        props->setValue (reduceCpuUsageForInactiveGraphsKey, value);
+}
+
 bool Settings::autoConnectNearbyPorts() const
 {
     if (auto* props = getProps())
@@ -996,6 +1012,12 @@ void Settings::addItemsToMenu (Context& world, PopupMenu& menu)
                  askToSaveSession());
 
     sub.addSeparator();
+    sub.addItem (ReduceCpuUsageForInactiveGraphs,
+                 "Reduce CPU Usage for Inactive Graphs",
+                 true,
+                 reduceCpuUsageForInactiveGraphs());
+
+    sub.addSeparator();
     sub.addItem (AutoConnectNearbyPorts,
                  "Auto-Connect/Disconnect Nearby Ports",
                  true,
@@ -1103,6 +1125,11 @@ bool Settings::performMenuResult (Context& world, const int result)
             break;
         case AskToSaveSessions:
             setAskToSaveSession (! askToSaveSession());
+            break;
+        case ReduceCpuUsageForInactiveGraphs:
+            setReduceCpuUsageForInactiveGraphs (! reduceCpuUsageForInactiveGraphs());
+            if (auto* engine = world.services().find<EngineService>())
+                engine->applyInactiveGraphProcessingSetting();
             break;
         case AutoConnectNearbyPorts:
             setAutoConnectNearbyPorts (! autoConnectNearbyPorts());

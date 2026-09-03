@@ -974,7 +974,10 @@ void Node::savePluginState()
                 objectData.setProperty (tags::programState, state.toBase64Encoding(), 0);
             }
 
-            setProperty (tags::bypass, proc->isSuspended());
+            // Root-graph suspension used for inactive-graph CPU reduction is
+            // runtime-only and must not overwrite the user's saved state.
+            if (! isRootGraph())
+                setProperty (tags::bypass, proc->isSuspended());
             setProperty (tags::program, proc->getCurrentProgram());
 
             const auto layout = proc->getBusesLayout();
