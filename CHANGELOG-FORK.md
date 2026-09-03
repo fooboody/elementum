@@ -41,6 +41,7 @@
 - MIDI入力デバイスの復旧・リセット用に`Refresh MIDI Inputs`を追加しました。
 - OSC ReceiverをMIDI Mappingsのデバイスとして選択可能にしました。
 - OSC ReceiverをMIDI Inデバイスとして選択可能にしました。(OSC Receiverノードが追加されている必要があります。)
+- グラフ間のノードコピーに対応しました。
 
 ### Changed
 

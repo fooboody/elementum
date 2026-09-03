@@ -68,7 +68,8 @@ class DuplicateNodeAction : public juce::UndoableAction
 {
 public:
     DuplicateNodeAction (Services& a, const DuplicateNodeMessage& message)
-        : app (a), graph (message.node.getParentGraph())
+        : app (a), graph (message.targetGraph.isGraph() ? message.targetGraph
+                                                         : message.node.getParentGraph())
     {
         Node source (message.node);
         source.savePluginState();

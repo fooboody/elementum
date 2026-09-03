@@ -163,6 +163,8 @@ private:
 class SessionNodeTreeItem : public SessionBaseTreeItem
 {
 public:
+    static constexpr int copyToItemBase = 1000;
+
     SessionNodeTreeItem (const Node& n)
         : node (n)
     {
@@ -316,6 +318,42 @@ public:
         }
     }
 
+    void copyToGraph (const Node& targetGraph)
+    {
+        if (! node.isGraph() && ! node.isRootGraph() && targetGraph.isRootGraph()
+            && targetGraph != detail::findRoot (node))
+        {
+            ViewHelpers::postMessageFor (getOwnerView(),
+                                         new DuplicateNodeMessage (node, targetGraph));
+        }
+    }
+
+    void addCopyToMenu (PopupMenu& menu)
+    {
+        if (node.isGraph() || node.isRootGraph())
+            return;
+
+        if (auto currentSession = session(); currentSession != nullptr && currentSession->getNumGraphs() > 1)
+        {
+            PopupMenu graphs;
+            const auto sourceRoot = detail::findRoot (node);
+            bool hasDestination = false;
+
+            for (int i = 0; i < currentSession->getNumGraphs(); ++i)
+            {
+                const auto graph = currentSession->getGraph (i);
+                if (graph == sourceRoot)
+                    continue;
+
+                graphs.addItem (copyToItemBase + i, graph.getDisplayName());
+                hasDestination = true;
+            }
+
+            if (hasDestination)
+                menu.addSubMenu ("Copy To", graphs, true);
+        }
+    }
+
     void addNewGraph()
     {
         if (! node.isGraph())
@@ -369,6 +407,17 @@ public:
             break;
 
             default:
+                if (result >= copyToItemBase)
+                {
+                    if (auto currentSession = session())
+                    {
+                        const int graphIndex = result - copyToItemBase;
+                        if (isPositiveAndBelow (graphIndex, currentSession->getNumGraphs()))
+                        {
+                            copyToGraph (currentSession->getGraph (graphIndex));
+                        }
+                    }
+                }
                 break;
         }
     }
@@ -398,6 +447,7 @@ public:
         }
 
         menu.addItem (2, "Duplicate");
+        addCopyToMenu (menu);
         menu.addSeparator();
         menu.addItem (1, "Delete");
 

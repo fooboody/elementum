@@ -252,11 +252,12 @@ struct ReplaceNodeMessage : public AppMessage
 
 struct DuplicateNodeMessage : public AppMessage
 {
-    DuplicateNodeMessage (const Node& n)
-        : node (n) {}
+    DuplicateNodeMessage (const Node& n, const Node& target = Node())
+        : node (n), targetGraph (target) {}
     DuplicateNodeMessage() {}
 
     const Node node;
+    const Node targetGraph;
     void createActions (Services& app, juce::OwnedArray<juce::UndoableAction>& actions) const override;
 };
 
