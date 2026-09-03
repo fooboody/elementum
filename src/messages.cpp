@@ -105,6 +105,8 @@ public:
             havePosition = true;
         }
 
+        engine->autoConnectMidiInputNodes (graph, addedNode);
+
         return true;
 
     }

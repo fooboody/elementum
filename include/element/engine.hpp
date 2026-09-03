@@ -54,6 +54,9 @@ public:
         a ConnectionBuilder */
     Node addPlugin (const Node& graph, const juce::PluginDescription& desc, const ConnectionBuilder& builder, const bool verified = true);
 
+    /** Connects existing MIDI input nodes to a node when the setting is enabled. */
+    void autoConnectMidiInputNodes (const Node& graph, const Node& target);
+
     /** Adds a midi device node to the current root graph */
     Node addMidiDeviceNode (const juce::MidiDeviceInfo& device, const bool isInput);
 

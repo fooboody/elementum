@@ -618,6 +618,15 @@ Node EngineService::addNode (const Node& node, const Node& target, const Connect
     return Node();
 }
 
+void EngineService::autoConnectMidiInputNodes (const Node& graph, const Node& target)
+{
+    if (! context().settings().autoConnectMidiInputNodes())
+        return;
+
+    if (auto* controller = graphs->findGraphManagerFor (graph))
+        detail::connectExistingMidiInputNodes (*controller, graph, target);
+}
+
 Node EngineService::addNode (const String& ID, const String& format)
 {
     juce::PluginDescription desc;
@@ -957,8 +966,7 @@ Node EngineService::addPlugin (const Node& graph, const PluginDescription& desc,
         if (node.isValid())
         {
             builder.addConnections (*controller, node.getNodeId());
-            if (context().settings().autoConnectMidiInputNodes())
-                detail::connectExistingMidiInputNodes (*controller, graph, node);
+            autoConnectMidiInputNodes (graph, node);
             jassert (! node.getUuid().isNull());
         }
 
