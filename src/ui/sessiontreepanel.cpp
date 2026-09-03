@@ -783,6 +783,7 @@ public:
 
     void showSettings()
     {
+        activateGraph();
         updateIndexInParent();
         ViewHelpers::invokeDirectly (getOwnerView(), Commands::showGraphConfig, false);
     }
@@ -798,6 +799,7 @@ public:
 
     void editGraph()
     {
+        activateGraph();
         updateIndexInParent();
         ViewHelpers::invokeDirectly (getOwnerView(), Commands::showGraphEditor, false);
     }

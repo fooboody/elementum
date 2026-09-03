@@ -86,5 +86,6 @@
 - `Plugins on Top by Defaut`無効、`Automatically Show Plugin Window`有効時、表示直後のプラグインウィンドウが背面に隠れる不具合を修正しました。
 - ノード削除のUndoで配置が復元されない不具合を修正しました。
 - ノード選択解除時、ミキサー側の選択も解除されるように修正しました。
+- 使用中でないグラフが、コンテキストメニュー経由でアクティブになった際、内部処理が追従しない不具合を修正しました。
 
 > このCHANGELOGは、Elementumフォーク固有の変更をまとめたものです。上流Elementの既存CHANGELOGは `CHANGELOG.md` を参照してください。
