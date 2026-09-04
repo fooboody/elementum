@@ -20,7 +20,8 @@ class MidiMappingProperties;
 class MidiMappingsView : public ContentView,
                          public juce::TableListBoxModel,
                          public juce::Button::Listener,
-                         public juce::Value::Listener
+                         public juce::Value::Listener,
+                         private juce::ValueTree::Listener
 {
 public:
     MidiMappingsView();
@@ -69,6 +70,11 @@ private:
 
     /** Remove the mapping shown at the given display row and refresh. */
     void removeMapping (int displayRow);
+
+    /** Keep display-only node labels current when graph or node names change. */
+    void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
+    void updateObservedSession (SessionPtr);
+    juce::ValueTree observedSessionTree;
 };
 
 } // namespace element

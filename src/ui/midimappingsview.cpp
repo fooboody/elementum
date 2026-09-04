@@ -76,6 +76,21 @@ String parameterName (const Node& node, int index)
     return index < 0 ? String ("-") : "Param " + String (index + 1);
 }
 
+/** Display-only label for a node in the MIDI mappings UI. The mapping still
+    stores and resolves the node by UUID; this only adds its containing graph
+    name so equal plugin names remain understandable across graphs. */
+String nodeLabel (const Node& node)
+{
+    if (! node.isValid())
+        return "(missing)";
+
+    const auto graph = node.getParentGraph();
+    const auto name = node.getDisplayName();
+    if (graph.isValid() && graph.getDisplayName().isNotEmpty())
+        return graph.getDisplayName() + " - " + name;
+    return name;
+}
+
 /** True if a node with the given uuid lives anywhere under this graph. */
 bool graphContainsNode (const Node& graph, const juce::Uuid& target)
 {
@@ -160,7 +175,7 @@ private:
             const auto child = node.getNode (i);
             if (child.getObject() != nullptr)
             {
-                names.add (child.getDisplayName());
+                names.add (nodeLabel (child));
                 uuids.add (child.getUuid().toString());
             }
             if (child.data().getNumChildren() > 0)
@@ -369,7 +384,7 @@ MidiMappingsView::MidiMappingsView()
     table.getHeader().addColumn ("Device", ColDevice, 160);
     table.getHeader().addColumn ("Event", ColEvent, 90);
     table.getHeader().addColumn ("Ch", ColChannel, 44);
-    table.getHeader().addColumn ("Node", ColNode, 160);
+    table.getHeader().addColumn ("Node", ColNode, 300);
     table.getHeader().addColumn ("Parameter", ColParameter, 160);
     table.setHeaderHeight (22);
 
@@ -410,6 +425,8 @@ MidiMappingsView::MidiMappingsView()
 
 MidiMappingsView::~MidiMappingsView()
 {
+    if (observedSessionTree.isValid())
+        observedSessionTree.removeListener (this);
     filterDevice.removeListener (this);
     filterTarget.removeListener (this);
     filterNode.removeListener (this);
@@ -435,6 +452,7 @@ void MidiMappingsView::resized()
 
 void MidiMappingsView::stabilizeContent()
 {
+    updateObservedSession (ViewHelpers::getSession (this));
     updateRowOrder();
     table.updateContent();
 
@@ -534,7 +552,8 @@ void MidiMappingsView::updateRowOrder()
             case ColChannel:
                 return ma.getMidiChannel() - mb.getMidiChannel();
             case ColNode:
-                return session->findNodeById (ma.getNodeUuid()).getDisplayName().compareIgnoreCase (session->findNodeById (mb.getNodeUuid()).getDisplayName());
+                return nodeLabel (session->findNodeById (ma.getNodeUuid()))
+                    .compareIgnoreCase (nodeLabel (session->findNodeById (mb.getNodeUuid())));
             case ColParameter: {
                 auto na = session->findNodeById (ma.getNodeUuid());
                 auto nb = session->findNodeById (mb.getNodeUuid());
@@ -593,6 +612,36 @@ void MidiMappingsView::valueChanged (Value&)
     });
 }
 
+void MidiMappingsView::updateObservedSession (SessionPtr session)
+{
+    const auto newTree = session != nullptr ? session->data() : juce::ValueTree();
+    if (observedSessionTree == newTree)
+        return;
+
+    if (observedSessionTree.isValid())
+        observedSessionTree.removeListener (this);
+    observedSessionTree = newTree;
+    if (observedSessionTree.isValid())
+        observedSessionTree.addListener (this);
+}
+
+void MidiMappingsView::valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier& property)
+{
+    if (property != tags::name)
+        return;
+
+    // Graph/node names are display-only, but the selected properties panel and
+    // table both cache their text. Rebuild after the originating edit returns.
+    juce::Component::SafePointer<MidiMappingsView> self (this);
+    juce::MessageManager::callAsync ([self]() mutable {
+        if (self != nullptr)
+        {
+            self->stabilizeContent();
+            self->selectedRowsChanged (self->table.getSelectedRow());
+        }
+    });
+}
+
 int MidiMappingsView::getNumRows()
 {
     return (int) rowOrder.size();
@@ -636,7 +685,7 @@ void MidiMappingsView::paintCell (Graphics& g, int row, int columnId, int w, int
                 break;
             }
             auto node = session->findNodeById (mapping.getNodeUuid());
-            text = node.isValid() ? node.getDisplayName() : String ("(missing)");
+            text = nodeLabel (node);
             break;
         }
         case ColParameter: {
