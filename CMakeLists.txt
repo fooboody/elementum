@@ -151,11 +151,11 @@ if(ELEMENT_BUILD_PLUGINS)
     ## Instrument Plugin
     juce_add_plugin(element_instrument
         PLUGIN_NAME                 "Elementum"
-        PRODUCT_NAME                "Elementum"
+        PRODUCT_NAME                "FS-Elementum"
         # JUCE requires BUILD_VERSION to be major.minor.bugfix.
         BUILD_VERSION               "${PROJECT_VERSION}"
         PLUGIN_MANUFACTURER_CODE    Foob
-        PLUGIN_CODE                 Elum
+        PLUGIN_CODE                 Eltm
 
         BUNDLE_ID                   "io.github.fooboody.elementum.plugin"
         AU_MAIN_TYPE                kAudioUnitType_MusicDevice
@@ -179,11 +179,11 @@ if(ELEMENT_BUILD_PLUGINS)
     ## Effect Plugin
     juce_add_plugin(element_effect
         PLUGIN_NAME                 "Elementum FX"
-        PRODUCT_NAME                "Elementum FX"
+        PRODUCT_NAME                "FS-Elementum-FX"
         # JUCE requires BUILD_VERSION to be major.minor.bugfix.
         BUILD_VERSION               "${PROJECT_VERSION}"
         PLUGIN_MANUFACTURER_CODE    Foob
-        PLUGIN_CODE                 EuFX
+        PLUGIN_CODE                 EmFX
 
         BUNDLE_ID                   "io.github.fooboody.elementum.fx"
         AU_MAIN_TYPE                kAudioUnitType_Effect
@@ -209,11 +209,11 @@ if(ELEMENT_BUILD_PLUGINS)
         ## MIDI Effect Plugin
         juce_add_plugin(element_midi_effect
             PLUGIN_NAME                 "Elementum MFX"
-            PRODUCT_NAME                "Elementum MFX"
+            PRODUCT_NAME                "FS-Elementum-MFX"
             # JUCE requires BUILD_VERSION to be major.minor.bugfix.
             BUILD_VERSION               "${PROJECT_VERSION}"
             PLUGIN_MANUFACTURER_CODE    Foob
-            PLUGIN_CODE                 EuMX
+            PLUGIN_CODE                 EmMX
             
             BUNDLE_ID                   "io.github.fooboody.elementum.mfx"
             AU_MAIN_TYPE                kAudioUnitType_MIDIProcessor
