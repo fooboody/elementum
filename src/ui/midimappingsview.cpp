@@ -73,7 +73,7 @@ String parameterName (const Node& node, int index)
                     return name;
             }
 
-    return index < 0 ? String ("—") : "Param " + String (index + 1);
+    return index < 0 ? String ("-") : "Param " + String (index + 1);
 }
 
 /** True if a node with the given uuid lives anywhere under this graph. */
@@ -395,7 +395,7 @@ MidiMappingsView::MidiMappingsView()
     layout.setItemLayout (1, 4.0, 4.0, 4.0);
     layout.setItemLayout (2, 180.0, -1.0, -0.38);
 
-    emptyLabel.setText (TRANS ("No MIDI mappings yet — press the map button and wiggle a control."),
+    emptyLabel.setText (TRANS ("No MIDI mappings yet - press the map button and wiggle a control."),
                         dontSendNotification);
     emptyLabel.setJustificationType (Justification::centred);
     emptyLabel.setColour (Label::textColourId, Colours::grey);
@@ -448,7 +448,7 @@ void MidiMappingsView::stabilizeContent()
     emptyLabel.setVisible (numRows == 0);
     if (numRows == 0)
         emptyLabel.setText (filtered ? TRANS ("No mappings match the current filter.")
-                                     : TRANS ("No MIDI mappings yet — press the map button and wiggle a control."),
+                                     : TRANS ("No MIDI mappings yet - press the map button and wiggle a control."),
                             dontSendNotification);
 
     if (numRows > 0)
@@ -689,20 +689,20 @@ void MidiMappingsView::deleteKeyPressed (int lastRowSelected)
 
 void MidiMappingsView::cellClicked (int rowNumber, int, const MouseEvent& e)
 {
-    if (! e.mods.isPopupMenu())
-        return;
+    // if (! e.mods.isPopupMenu())
+    //     return;
 
-    table.selectRow (rowNumber);
+    // table.selectRow (rowNumber);
 
-    PopupMenu menu;
-    menu.addItem (1, TRANS ("Delete Mapping"));
+    // PopupMenu menu;
+    // menu.addItem (1, TRANS ("Delete Mapping"));
 
-    Component::SafePointer<MidiMappingsView> self (this);
-    menu.showMenuAsync (PopupMenu::Options().withTargetComponent (&table),
-                        [self, rowNumber] (int result) mutable {
-                            if (self != nullptr && result == 1)
-                                self->removeMapping (rowNumber);
-                        });
+    // Component::SafePointer<MidiMappingsView> self (this);
+    // menu.showMenuAsync (PopupMenu::Options().withTargetComponent (&table),
+    //                     [self, rowNumber] (int result) mutable {
+    //                         if (self != nullptr && result == 1)
+    //                             self->removeMapping (rowNumber);
+    //                     });
 }
 
 } // namespace element
