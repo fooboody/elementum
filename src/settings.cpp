@@ -50,6 +50,7 @@ const char* Settings::midiOutLatencyKey = "midiOutLatency";
 const char* Settings::desktopScaleKey = "desktopScale";
 const char* Settings::mainContentTypeKey = "mainContentType";
 const char* Settings::pluginListHeaderKey = "pluginListHeader";
+const char* Settings::midiMappingsHeaderKey = "midiMappingsHeader";
 const char* Settings::groupPluginManufacturersByInitialKey = "groupPluginManufacturersByInitial";
 const char* Settings::includePluginManufacturersInSearchKey = "includePluginManufacturersInSearch";
 const char* Settings::devicesKey = "devices";

@@ -5,6 +5,7 @@
 
 #include "ui/midimappingsview.hpp"
 #include "ui/viewhelpers.hpp"
+#include <element/context.hpp>
 #include <element/juce/audio_devices.hpp>
 #include <element/ui/content.hpp>
 #include <element/ui/style.hpp>
@@ -13,6 +14,7 @@
 #include <element/node.hpp>
 #include <element/parameter.hpp>
 #include <element/processor.hpp>
+#include <element/settings.hpp>
 #include "engine/mappingengine.hpp"
 #include "services/mappingservice.hpp"
 
@@ -435,6 +437,31 @@ MidiMappingsView::~MidiMappingsView()
     table.setModel (nullptr);
     resizer = nullptr;
     props = nullptr;
+}
+
+void MidiMappingsView::willBeRemoved()
+{
+    saveSettings();
+}
+
+void MidiMappingsView::didBecomeActive()
+{
+    restoreSettings();
+    stabilizeContent();
+}
+
+void MidiMappingsView::saveSettings()
+{
+    if (auto* world = ViewHelpers::getGlobals (this))
+        if (auto* props = world->settings().getUserSettings())
+            props->setValue (Settings::midiMappingsHeaderKey, table.getHeader().toString());
+}
+
+void MidiMappingsView::restoreSettings()
+{
+    if (auto* world = ViewHelpers::getGlobals (this))
+        if (auto* props = world->settings().getUserSettings())
+            table.getHeader().restoreFromString (props->getValue (Settings::midiMappingsHeaderKey));
 }
 
 void MidiMappingsView::resized()

@@ -59,6 +59,7 @@ public:
     static const char* desktopScaleKey;
     static const char* mainContentTypeKey;
     static const char* pluginListHeaderKey;
+    static const char* midiMappingsHeaderKey;
     static const char* groupPluginManufacturersByInitialKey;
     static const char* includePluginManufacturersInSearchKey;
     static const char* devicesKey;

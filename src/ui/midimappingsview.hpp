@@ -28,7 +28,8 @@ public:
     ~MidiMappingsView() override;
 
     void resized() override;
-    void didBecomeActive() override { stabilizeContent(); }
+    void willBeRemoved() override;
+    void didBecomeActive() override;
     void stabilizeContent() override;
 
     //=========================================================================
@@ -75,6 +76,9 @@ private:
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
     void updateObservedSession (SessionPtr);
     juce::ValueTree observedSessionTree;
+
+    void saveSettings();
+    void restoreSettings();
 };
 
 } // namespace element
