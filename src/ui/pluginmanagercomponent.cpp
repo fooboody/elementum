@@ -374,13 +374,6 @@ public:
     void addMenuItems (PopupMenu& menu, const int columnIdClicked) override
     {
         TableHeaderComponent::addMenuItems (menu, columnIdClicked);
-
-        if (owner.isAutoSizeMenuOptionShown())
-        {
-            menu.addSeparator();
-            menu.addItem (autoSizeColumnItem, "Auto-Size This Column", columnIdClicked != 0);
-            menu.addItem (autoSizeAllColumnsItem, "Auto-Size All Columns");
-        }
     }
 
     void reactToMenuItem (const int menuReturnId, const int columnIdClicked) override
@@ -635,7 +628,7 @@ PluginListComponent::PluginListComponent (PluginManager& p, PropertiesFile* prop
 
     TableHeaderComponent& header = table.getHeader();
 
-    header.addColumn (String(), TableModel::favoriteCol, 26, 26, 26, TableHeaderComponent::notResizable | TableHeaderComponent::notSortable);
+    header.addColumn (TRANS ("Favorite"), TableModel::favoriteCol, 26, 26, 26, TableHeaderComponent::notResizable | TableHeaderComponent::notSortable);
     header.addColumn (TRANS ("Name"), TableModel::nameCol, 200, 100, 700, TableHeaderComponent::defaultFlags | TableHeaderComponent::sortedForwards);
     header.addColumn (TRANS ("Format"), TableModel::typeCol, 80, 80, 80, TableHeaderComponent::notResizable);
     header.addColumn (TRANS ("Category"), TableModel::categoryCol, 100, 100, 200);

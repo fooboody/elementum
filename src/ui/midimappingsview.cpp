@@ -388,6 +388,7 @@ MidiMappingsView::MidiMappingsView()
     table.getHeader().addColumn ("Ch", ColChannel, 44);
     table.getHeader().addColumn ("Node", ColNode, 300);
     table.getHeader().addColumn ("Parameter", ColParameter, 160);
+    table.setAutoSizeMenuOptionShown (false);
     table.setHeaderHeight (22);
 
     filterDevice.setValue (String());
