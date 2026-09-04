@@ -3,29 +3,49 @@ name: Release
 on:
   push:
     tags:
-      - '[0-9]*.[0-9]*.[0-9]*'
+      - '[0-9]*.[0-9]*.[0-9]*-fooboody.[0-9]*'
   workflow_dispatch:
     inputs:
       version:
         description: 'Release version for manual testing'
-        required: false
+        required: true
+        type: string
+
+permissions:
+  contents: read
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      package: true
+
   create-release:
+    needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - uses: actions/checkout@v4
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
+    - name: Download release packages
+      uses: actions/download-artifact@v4
       with:
-        name: Element v${{ github.event.inputs.version || github.ref_name }}
-        tag_name: ${{ github.event.inputs.version || github.ref_name }}
+        pattern: elementum-*
+        path: release-assets
+        merge-multiple: true
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        name: Elementum v${{ inputs.version || github.ref_name }}
+        tag_name: ${{ inputs.version || github.ref_name }}
         body: |
-          **Element ${{ github.event.inputs.version || github.ref_name }} is now available!**
+          **Elementum ${{ inputs.version || github.ref_name }} is now available!**
           
-          For a list of notable changes, see the [CHANGELOG](https://github.com/${{ github.repository }}/blob/${{ github.event.inputs.version || github.ref_name }}/CHANGELOG.md).
+          For a list of notable changes, see the [CHANGELOG](https://github.com/${{ github.repository }}/blob/${{ inputs.version || github.ref_name }}/CHANGELOG.md).
           
           Please see the release notes below for details on what's changed.
+        files: release-assets/*
+        fail_on_unmatched_files: true
         draft: true
         generate_release_notes: true
         prerelease: false

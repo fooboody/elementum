@@ -3,21 +3,35 @@ name: Build
 on:
   push:
     branches: [ main ]
-    <<: &ci_paths
-      paths-ignore:
-        - 'deps/**'
-      paths:
-        - 'src/**'
-        - 'include/**'
-        - '**/*.cmake'
-        - 'CMakeLists.txt'
-        - '**/CMakeLists.txt'
-        - '.gitmodules'
-        - '.github/workflows/build.yml'
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - '**/*.cmake'
+      - 'CMakeLists.txt'
+      - '**/CMakeLists.txt'
+      - '.gitmodules'
+      - '.github/workflows/build.yml'
   pull_request:
     branches: [ main ]
-    <<: *ci_paths
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - '**/*.cmake'
+      - 'CMakeLists.txt'
+      - '**/CMakeLists.txt'
+      - '.gitmodules'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      package:
+        description: 'Build and upload a CPack package'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
@@ -133,7 +147,7 @@ jobs:
           -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl `
           -DCMAKE_BUILD_TYPE=Release `
           -DELEMENT_ENABLE_ASIO=ON `
-          -DELEMENT_ENABLE_UPDATER=ON `
+          -DELEMENT_ENABLE_UPDATER=OFF `
           -DELEMENT_BUILD_PLUGINS=ON
     
     - name: Configure CMake (Unix)
@@ -141,7 +155,8 @@ jobs:
       run: |
         cmake -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
-        -DELEMENT_ENABLE_UPDATER=${{ runner.os == 'macOS' && 'ON' || 'OFF' }} \
+        -DELEMENT_ENABLE_UPDATER=OFF \
+        ${{ runner.os == 'macOS' && '-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"' || '' }} \
         -DELEMENT_BUILD_PLUGINS=ON
       env:
         BOOST_ROOT: ${{ steps.install-boost-linux.outputs.BOOST_ROOT || steps.install-boost-macos.outputs.BOOST_ROOT }}
@@ -151,3 +166,16 @@ jobs:
     
     - name: Run tests
       run: ctest --test-dir build --output-on-failure
+
+    - name: Build release package
+      if: inputs.package
+      run: cmake --build build --config Release --target installer
+
+    - name: Upload release package
+      if: inputs.package
+      uses: actions/upload-artifact@v4
+      with:
+        name: elementum-${{ matrix.os }}
+        path: build/elementum-*
+        if-no-files-found: error
+        retention-days: 14
