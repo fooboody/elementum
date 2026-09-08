@@ -731,6 +731,15 @@ void GuiService::presentPluginWindow (const Node& node, const bool focus)
     {
         window->setName (String());
 
+        // A plugin window can lose activation while its native editor is being
+        // created.  That schedules ForegroundCheck, which may run after this
+        // method and bring the main window to the front even though the app is
+        // already foreground.  Cancel that stale check before presenting the
+        // window; genuine foreground transitions are still detected by the
+        // next activation change.
+        if (Process::isForegroundProcess())
+            foregroundCheck.stopTimer();
+
         if (getRunMode() == RunMode::Plugin)
         {
             // This makes plugin window handling more like the standalone
