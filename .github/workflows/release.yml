@@ -41,9 +41,7 @@ jobs:
         body: |
           **Elementum ${{ inputs.version || github.ref_name }} is now available!**
           
-          For a list of notable changes, see the [CHANGELOG](https://github.com/${{ github.repository }}/blob/${{ inputs.version || github.ref_name }}/CHANGELOG.md).
-          
-          Please see the release notes below for details on what's changed.
+          For a list of notable changes, see the [CHANGELOG-FORK](https://github.com/${{ github.repository }}/blob/${{ inputs.version || github.ref_name }}/CHANGELOG-FORK.md).
         files: release-assets/*
         fail_on_unmatched_files: true
         draft: true
